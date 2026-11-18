@@ -49,7 +49,12 @@ brick in the last 3 s) · Star (+1 level) · Grenade (destroys all enemies on th
 ## Flow
 Title → join (A / Space / Enter) → START (or pick STAGE n first) → stage banner 2.2 s → play →
 all 20 destroyed → 3 s → results tally → next stage. Base lost or every player out → 3 s → game over → title.
-After the last map the maps loop; each lap converts 4 weaker enemies into stronger ones.
+30 stages, rosters ramping from mostly LIGHT (1) to mostly HEAVY (30). After stage 30 the maps loop; each lap converts
+4 weaker enemies into stronger ones.
+
+**Map rule (tested):** from every enemy and player spawn, a 16×16 tank must be able to reach the base treating
+bricks as open and steel/water as walls (`levels::tests::every_spawn_can_reach_the_base`). Watch for: a water gap
+that exits straight into steel, and 1-cell (8-unit) open bands between obstacle rows — a tank needs 2 cells.
 
 ## Controls
 | | Controller | Keyboard P1 | Keyboard P2 |
@@ -80,7 +85,7 @@ Controller disconnect → game pauses with a note; any unassigned controller pre
 
 ## Known gaps / deliberate omissions
 - Hi-score lives for the session only (not saved).
-- No music loop, no exe icon, no Steam artwork.
+- No music loop, no Steam grid artwork (the exe and window do have an icon).
 - Results tally is static (no count-up animation).
 - Grenade-killed spawning enemies leave their sparkle to finish (cosmetic).
 - Keyboard layouts share Esc and Backspace; both act for whoever is joined on the keyboard.
@@ -96,4 +101,5 @@ Controller disconnect → game pauses with a note; any unassigned controller pre
 | One Esc press joined both keyboard slots | Esc is "start" on both layouts | join only on confirm, never on start |
 | Armor enemy looked like player 2 | green tint shared with 2P | enemy palette never uses gold/green |
 | ~1000 fps on the owner's PC despite `AutoVsync` | VSync not honoured (driver override / streaming setup) | own FPS limiter in Settings, default 60 |
+| New stages walled spawns off from the base | bridge exits into steel; 1-cell open bands between blob rows | reachability test over all stages |
 | Smoke runs blasted sound in the room | audio always on | audio plugin skips when `BT_SHOT` / `BT_MUTE` is set |

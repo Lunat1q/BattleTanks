@@ -1,6 +1,8 @@
 # Battle Tanks
 
-Two-player couch tank game: defend your base, clear 20 enemy tanks per stage. Built with Rust + [Bevy](https://bevy.org/).
+![icon](assets/icon.png)
+
+Two-player couch tank game: defend your base, clear 20 enemy tanks per stage across 30 stages. Built with Rust + [Bevy](https://bevy.org/).
 Made for playing on a TV with two controllers; two people can also share a keyboard.
 
 ## Download

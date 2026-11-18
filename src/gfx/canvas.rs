@@ -77,16 +77,42 @@ impl Canvas {
         self.paint(sdf, color);
     }
 
-    pub fn into_image(self) -> Image {
-        let data = self
-            .px
+    /// Multiply colours (not alpha) by `c`, like `Sprite::color` does for the grey tanks.
+    pub fn tint(&mut self, c: C) {
+        for p in &mut self.px {
+            for k in 0..3 {
+                p[k] *= c[k];
+            }
+        }
+    }
+
+    /// Composite `top` (same size) over this canvas.
+    pub fn over(&mut self, top: &Canvas) {
+        for (d, s) in self.px.iter_mut().zip(&top.px) {
+            for k in 0..4 {
+                d[k] = s[k] + d[k] * (1.0 - s[3]);
+            }
+        }
+    }
+
+    pub fn size(&self) -> (u32, u32) {
+        (self.w as u32, self.h as u32)
+    }
+
+    /// Straight-alpha RGBA8, row 0 at the top.
+    pub fn rgba8(&self) -> Vec<u8> {
+        self.px
             .iter()
             .flat_map(|p| {
                 let a = p[3];
                 let un = |v: f32| if a > 0.0 { (v / a).clamp(0.0, 1.0) } else { 0.0 };
                 [un(p[0]), un(p[1]), un(p[2]), a.clamp(0.0, 1.0)].map(|v| (v * 255.0 + 0.5) as u8)
             })
-            .collect();
+            .collect()
+    }
+
+    pub fn into_image(self) -> Image {
+        let data = self.rgba8();
         Image::new(
             Extent3d { width: self.w as u32, height: self.h as u32, depth_or_array_layers: 1 },
             TextureDimension::D2,

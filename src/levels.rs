@@ -24,6 +24,28 @@ const STAGES: &[&str] = &[
     include_str!("../levels/06.txt"),
     include_str!("../levels/07.txt"),
     include_str!("../levels/08.txt"),
+    include_str!("../levels/09.txt"),
+    include_str!("../levels/10.txt"),
+    include_str!("../levels/11.txt"),
+    include_str!("../levels/12.txt"),
+    include_str!("../levels/13.txt"),
+    include_str!("../levels/14.txt"),
+    include_str!("../levels/15.txt"),
+    include_str!("../levels/16.txt"),
+    include_str!("../levels/17.txt"),
+    include_str!("../levels/18.txt"),
+    include_str!("../levels/19.txt"),
+    include_str!("../levels/20.txt"),
+    include_str!("../levels/21.txt"),
+    include_str!("../levels/22.txt"),
+    include_str!("../levels/23.txt"),
+    include_str!("../levels/24.txt"),
+    include_str!("../levels/25.txt"),
+    include_str!("../levels/26.txt"),
+    include_str!("../levels/27.txt"),
+    include_str!("../levels/28.txt"),
+    include_str!("../levels/29.txt"),
+    include_str!("../levels/30.txt"),
 ];
 
 pub struct Stage {
@@ -124,6 +146,39 @@ pub fn load(n: usize) -> Stage {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::geom::CELLS;
+
+    /// Tank-sized flood fill over 8-unit cells (position = bottom-left cell of a 2x2 tank).
+    /// Bricks count as open (they can be shot away); steel and water don't.
+    fn reachable(ter: &Terrain, from: (usize, usize)) -> Vec<bool> {
+        let open = |cx: usize, cy: usize| {
+            (0..2).all(|dx| (0..2).all(|dy| !matches!(ter.get(cx * 2 + dx, cy * 2 + dy), Tile::Steel | Tile::Water)))
+        };
+        let fits = |x: usize, y: usize| x < CELLS - 1 && y < CELLS - 1 && (0..2).all(|dx| (0..2).all(|dy| open(x + dx, y + dy)));
+        let mut seen = vec![false; CELLS * CELLS];
+        let mut todo = vec![from];
+        while let Some((x, y)) = todo.pop() {
+            if !fits(x, y) || std::mem::replace(&mut seen[y * CELLS + x], true) {
+                continue;
+            }
+            todo.extend([(x + 1, y), (x, y + 1)]);
+            todo.extend(x.checked_sub(1).map(|x| (x, y)));
+            todo.extend(y.checked_sub(1).map(|y| (x, y)));
+        }
+        seen
+    }
+
+    #[test]
+    fn every_spawn_can_reach_the_base() {
+        // Just above the base ring's top edge, centred on the base.
+        let target = 2 * CELLS + 12;
+        for (i, src) in STAGES.iter().enumerate() {
+            let (ter, _) = parse(src).unwrap();
+            for spawn in [(0, 24), (12, 24), (24, 24), (8, 0), (16, 0)] {
+                assert!(reachable(&ter, spawn)[target], "levels/{:02}.txt: spawn {spawn:?} is walled off from the base", i + 1);
+            }
+        }
+    }
 
     #[test]
     fn every_stage_parses() {

@@ -1,2 +1,5 @@
 /target
 *.png
+!assets/icon.png
+target_game_folder.env
+.codegraph/

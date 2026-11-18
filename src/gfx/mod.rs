@@ -5,6 +5,7 @@ mod art_tanks;
 mod art_world;
 pub mod canvas;
 mod fx;
+mod icon;
 mod world;
 
 use crate::rules::{EnemyKind, PowerKind};
@@ -73,10 +74,11 @@ pub fn enemy_color(kind: EnemyKind, hp: u32) -> Color {
 pub fn plugin(app: &mut App) {
     // Built right here (not in a startup system) so `Gfx` exists before the first `OnEnter`.
     let gfx = build_textures(&mut app.world_mut().resource_mut::<Assets<Image>>());
-    app.insert_resource(gfx)
-        .insert_resource(ClearColor(Color::srgb(0.035, 0.04, 0.055)))
-        .add_systems(Startup, spawn_camera)
-        .add_plugins((world::plugin, fx::plugin));
+    app.insert_resource(gfx).insert_resource(ClearColor(Color::srgb(0.035, 0.04, 0.055))).add_systems(Startup, spawn_camera).add_plugins((
+        world::plugin,
+        fx::plugin,
+        icon::plugin,
+    ));
 }
 
 fn build_textures(images: &mut Assets<Image>) -> Gfx {

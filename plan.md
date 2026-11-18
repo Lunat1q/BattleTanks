@@ -34,6 +34,11 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Spawn sparkle, shield bubble, armor hit flash, bonus-carrier red flash, freeze tint, score pop-ups
 - [x] Synthesised sound effects + short jingles (no asset files)
 
+### M3.5 — Content & identity ✅
+- [x] 30 stages (22 new: 09–30), rosters ramping to heavy armour; reachability test guards every map
+- [x] App icon: exe resource (Explorer/Steam) + window/taskbar icon, painted from the game's own tank art
+- [x] Version 0.2.0 (unreleased build in the owner's game folder)
+
 ### M4 — Ship to the TV ⏳
 - [x] Release profile (thin LTO, stripped, no console window)
 - [ ] Build release exe on the gaming PC, add to Steam (see README), test through Sunshine/Moonlight with 2 pads
@@ -42,8 +47,7 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 
 ### Next ideas (not started — confirm before building)
 - [ ] Persist hi-score (small file in `%APPDATA%`)
-- [ ] More stages (format is in `levels.rs`; add `levels/NN.txt` + one `include_str!`)
-- [ ] Exe icon + Steam grid artwork
+- [ ] Steam grid artwork (capsule/hero images)
 - [ ] Background music loop
 - [ ] Results-screen count-up animation like the classic tally
 

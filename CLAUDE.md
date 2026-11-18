@@ -17,6 +17,7 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 | Lint | `cargo clippy --all-targets` (must be warning-free) |
 | Format | `cargo fmt` (`rustfmt.toml`: width 140) |
 | Release exe | `cargo build --release` → `target/release/battle_tanks.exe` (single file, no assets) |
+| Regenerate app icon | `cargo test write_icon_file -- --ignored` → `assets/icon.ico` + `icon.png` (commit both) |
 | Smoke run + screenshot | `BT_SHOT=<scratch>/shot.png BT_STAGE=2 BT_SHOT_AT=8 ./target/debug/battle_tanks.exe --windowed` |
 
 - First build compiles Bevy (~3 min). If cargo says a `bevy_*` version "doesn't exist", the local index is stale:
@@ -80,6 +81,8 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 
 - Every change ships with tests for the pure logic it touches; every bug fix gets a regression test.
 - Done = `cargo fmt` clean, `cargo clippy --all-targets` warning-free, `cargo test` green, `cargo build --release`
-  succeeds, and a smoke screenshot looked at when visuals/startup changed. Then commit straight to `main` and
+  succeeds, and a smoke screenshot looked at when visuals/startup changed. Then copy
+  `target/release/battle_tanks.exe` to `<folder>\BattleTanks.exe`, where `<folder>` is the single line in the
+  gitignored `target_game_folder.env` (the owner's local game folder; skip if the file is absent). Then commit straight to `main` and
   push. Releases: bump `version` in `Cargo.toml` (shown on the title), tag `vX.Y.Z`, `gh release create` with
   the release exe attached as `BattleTanks.exe` (no branches/PRs unless asked, no AI co-author trailers).

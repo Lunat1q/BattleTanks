@@ -46,7 +46,12 @@ fn enemy_look(kind: EnemyKind) -> Look {
 }
 
 fn draw(l: Look, frame: u32) -> Image {
-    let mut c = Canvas::new(16.0, 16.0, PPU);
+    paint(l, frame, PPU, 16.0).into_image()
+}
+
+/// Grey tank (16 units) centred on a `span`-unit canvas at `ppu` pixels per unit.
+fn paint(l: Look, frame: u32, ppu: f32, span: f32) -> Canvas {
+    let mut c = Canvas::new(span, span, ppu);
     let tw = l.tread_w;
     // Treads with moving links.
     for side in [-1.0f32, 1.0] {
@@ -112,7 +117,7 @@ fn draw(l: Look, frame: u32) -> Image {
         },
     );
     c.paint(|p| sd_circle(p, tc + Vec2::new(0.9, -0.9), l.turret * 0.3), |_| gray(0.42));
-    c.into_image()
+    c
 }
 
 /// `[level][frame]` player tank images.
@@ -123,4 +128,9 @@ pub fn players() -> Vec<[Image; 2]> {
 /// `[kind][frame]` enemy tank images.
 pub fn enemies() -> Vec<[Image; 2]> {
     EnemyKind::ALL.iter().map(|&k| [draw(enemy_look(k), 0), draw(enemy_look(k), 1)]).collect()
+}
+
+/// Top player tank model (star level 3), grey, for the app icon.
+pub fn hero(ppu: f32, span: f32) -> Canvas {
+    paint(player_look(3), 0, ppu, span)
 }
