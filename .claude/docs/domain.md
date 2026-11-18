@@ -21,7 +21,7 @@ All numbers live in `src/rules.rs` unless noted.
 ### Players
 - 2 spare tanks (3 total); +1 every 20 000 points; tank power-up +1.
 - Star levels: 0 slow bullet · 1 fast bullet · 2 two bullets · 3 breaks steel / digs deeper. Dying resets to 0.
-- Respawn shield 3 s; helmet 10 s. Hit by the other player → paralyzed 3 s (no move/fire), no damage.
+- Respawn shield 3 s; helmet 10 s. Hit by the other player → paralyzed 3 s (no move/fire), no damage — only with FRIENDLY FIRE on.
 - Fire on press, auto-repeat every 0.25 s while held, capped by bullets in flight.
 
 ### Enemies (20 per stage, roster per stage file, shuffled deterministically per stage number)
@@ -61,6 +61,8 @@ After the last map the maps loop; each lap converts 4 weaker enemies into strong
 | Fullscreen | Settings | F11 / Alt+Enter | |
 
 ## Settings
+The title shows the build version (`Cargo.toml` `version`) bottom-right.
+
 Title → SETTINGS (any controller or keyboard; left/right or A changes, B back). Saved on every change to
 `%APPDATA%\BattleTanks\settings.txt` as `key=value` lines; bad or missing values fall back to defaults.
 | Setting | Values | Default | Notes |
@@ -71,6 +73,8 @@ Title → SETTINGS (any controller or keyboard; left/right or A changes, B back)
 | VOLUME | 0–100 % in 10s | 80 % | 0 skips playback entirely |
 | SCREEN SHAKE | ON/OFF | ON | comfort on a big TV |
 | SHOW FPS | ON/OFF | OFF | smoothed FPS, top-right, every screen |
+| FRIENDLY FIRE | ON/OFF | ON | ON = classic (players paralyze each other); OFF = player bullets pass through the other player |
+| VIBRATION | ON/OFF | ON | rumble on the slot's own pad: own tank destroyed (strong), paralyzed (medium), base lost (everyone, long), kill / power-up (short tick) |
 
 Controller disconnect → game pauses with a note; any unassigned controller pressing A takes over the slot.
 

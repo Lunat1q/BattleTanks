@@ -1,5 +1,5 @@
 //! Player settings, saved to `%APPDATA%\BattleTanks\settings.txt`: video (FPS limit, VSync, fullscreen),
-//! volume, screen shake, FPS counter. Also owns the frame limiter, the F11 toggle and the FPS overlay.
+//! volume, screen shake, FPS counter, friendly fire, controller vibration. Also owns the frame limiter, the F11 toggle and the FPS overlay.
 
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
@@ -20,16 +20,28 @@ pub struct Settings {
     pub volume: u32,
     pub shake: bool,
     pub show_fps: bool,
+    /// Players' bullets paralyze each other (classic). Off: they pass through.
+    pub friendly_fire: bool,
+    pub vibration: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { fps_limit: 60, vsync: true, fullscreen: true, volume: 80, shake: true, show_fps: false }
+        Settings {
+            fps_limit: 60,
+            vsync: true,
+            fullscreen: true,
+            volume: 80,
+            shake: true,
+            show_fps: false,
+            friendly_fire: true,
+            vibration: true,
+        }
     }
 }
 
 /// Menu rows, in order. The settings screen adds BACK after these.
-pub const ITEMS: [&str; 6] = ["FPS LIMIT", "VSYNC", "FULLSCREEN", "VOLUME", "SCREEN SHAKE", "SHOW FPS"];
+pub const ITEMS: [&str; 8] = ["FPS LIMIT", "VSYNC", "FULLSCREEN", "VOLUME", "SCREEN SHAKE", "SHOW FPS", "FRIENDLY FIRE", "VIBRATION"];
 
 fn on_off(b: bool) -> &'static str {
     if b { "ON" } else { "OFF" }
@@ -53,6 +65,8 @@ impl Settings {
                 "volume" => s.volume = v.parse::<u32>().map(|n| n.min(100) / 10 * 10).unwrap_or(s.volume),
                 "shake" => s.shake = flag(v, s.shake),
                 "show_fps" => s.show_fps = flag(v, s.show_fps),
+                "friendly_fire" => s.friendly_fire = flag(v, s.friendly_fire),
+                "vibration" => s.vibration = flag(v, s.vibration),
                 _ => {}
             }
         }
@@ -61,8 +75,8 @@ impl Settings {
 
     pub fn serialize(&self) -> String {
         format!(
-            "fps_limit={}\nvsync={}\nfullscreen={}\nvolume={}\nshake={}\nshow_fps={}\n",
-            self.fps_limit, self.vsync, self.fullscreen, self.volume, self.shake, self.show_fps
+            "fps_limit={}\nvsync={}\nfullscreen={}\nvolume={}\nshake={}\nshow_fps={}\nfriendly_fire={}\nvibration={}\n",
+            self.fps_limit, self.vsync, self.fullscreen, self.volume, self.shake, self.show_fps, self.friendly_fire, self.vibration
         )
     }
 
@@ -79,6 +93,8 @@ impl Settings {
             3 => self.volume = if forward { (self.volume + 10).min(100) } else { self.volume.saturating_sub(10) },
             4 => self.shake = !self.shake,
             5 => self.show_fps = !self.show_fps,
+            6 => self.friendly_fire = !self.friendly_fire,
+            7 => self.vibration = !self.vibration,
             _ => {}
         }
     }
@@ -93,6 +109,8 @@ impl Settings {
             3 => format!("{}%", self.volume),
             4 => on_off(self.shake).into(),
             5 => on_off(self.show_fps).into(),
+            6 => on_off(self.friendly_fire).into(),
+            7 => on_off(self.vibration).into(),
             _ => String::new(),
         }
     }
@@ -203,7 +221,16 @@ mod tests {
 
     #[test]
     fn round_trips_and_rejects_junk() {
-        let s = Settings { fps_limit: 144, vsync: false, fullscreen: false, volume: 30, shake: false, show_fps: true };
+        let s = Settings {
+            fps_limit: 144,
+            vsync: false,
+            fullscreen: false,
+            volume: 30,
+            shake: false,
+            show_fps: true,
+            friendly_fire: false,
+            vibration: false,
+        };
         assert_eq!(Settings::parse(&s.serialize()), s);
         assert_eq!(Settings::parse("fps_limit=77\nvsync=maybe\nvolume=loud\nnoise"), Settings::default());
         assert_eq!(Settings::parse("volume=250").volume, 100);
@@ -231,7 +258,7 @@ mod tests {
             s.adjust(3, false);
         }
         assert_eq!(s.value(3), "0%");
-        for item in [1, 2, 4, 5] {
+        for item in [1, 2, 4, 5, 6, 7] {
             let before = s.value(item);
             s.adjust(item, true);
             assert_ne!(s.value(item), before, "item {item}");

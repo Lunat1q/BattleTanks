@@ -184,6 +184,34 @@ pub enum FxKind {
     Points(u32),
 }
 
+/// Controller vibration for a player slot; `input` sends it to that slot's pad if vibration is on.
+#[derive(Message, Clone, Copy, PartialEq, Debug)]
+pub struct Rumble {
+    pub slot: usize,
+    pub strong: f32,
+    pub weak: f32,
+    pub secs: f32,
+}
+
+impl Rumble {
+    /// Own tank destroyed.
+    pub fn death(slot: usize) -> Self {
+        Rumble { slot, strong: 0.9, weak: 0.6, secs: 0.45 }
+    }
+    /// Base destroyed: everyone feels it.
+    pub fn base_lost(slot: usize) -> Self {
+        Rumble { slot, strong: 1.0, weak: 1.0, secs: 0.9 }
+    }
+    /// Paralyzed by the other player.
+    pub fn stunned(slot: usize) -> Self {
+        Rumble { slot, strong: 0.4, weak: 0.5, secs: 0.3 }
+    }
+    /// Small confirmation: a kill, a power-up.
+    pub fn tick(slot: usize) -> Self {
+        Rumble { slot, strong: 0.0, weak: 0.45, secs: 0.12 }
+    }
+}
+
 /// Sound event for `audio`.
 #[derive(Message, Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum Sfx {
@@ -220,6 +248,7 @@ pub fn plugin(app: &mut App) {
         .add_message::<Fx>()
         .add_message::<Sfx>()
         .add_message::<combat::Hit>()
+        .add_message::<Rumble>()
         .configure_sets(Update, Sim.run_if(sim_running))
         .add_systems(
             Update,

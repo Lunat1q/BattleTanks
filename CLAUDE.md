@@ -81,4 +81,5 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 - Every change ships with tests for the pure logic it touches; every bug fix gets a regression test.
 - Done = `cargo fmt` clean, `cargo clippy --all-targets` warning-free, `cargo test` green, `cargo build --release`
   succeeds, and a smoke screenshot looked at when visuals/startup changed. Then commit straight to `main` and
-  push (no branches/PRs unless asked, no AI co-author trailers).
+  push. Releases: bump `version` in `Cargo.toml` (shown on the title), tag `vX.Y.Z`, `gh release create` with
+  the release exe attached as `BattleTanks.exe` (no branches/PRs unless asked, no AI co-author trailers).

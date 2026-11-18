@@ -9,12 +9,12 @@ src/
   main.rs             # loads Settings first so the window opens in the saved mode; plugin list
   geom.rs             # units (SUB 4, CELL 8, TILE 16, FIELD 208), Dir, rect overlap, grid snap  [pure]
   rng.rs              # xorshift64* Resource: below/range/chance/pick/shuffle                     [pure]
-  settings.rs         # Settings (fps, vsync, fullscreen, volume, shake, show_fps) <-> %APPDATA%\BattleTanks\settings.txt;
+  settings.rs         # Settings (fps, vsync, fullscreen, volume, shake, show_fps, friendly_fire, vibration) <-> %APPDATA%\BattleTanks\settings.txt;
                       # apply to window, F11 toggle, FPS overlay, frame limiter in Last
   rules.rs            # every gameplay number: speeds, timers, enemy stats, gun levels, scoring    [pure]
   terrain.rs          # 52x52 sub-cell grid, tank blocking, bullet impact strip, base ring, dirty list [pure]
   levels.rs           # parse stage files, force spawns/base clear, rosters, harder laps         [pure]
-  input.rs            # Device (pads, two keyboard layouts) -> Intent per frame (DeviceIntents)
+  input.rs            # Device (pads, two keyboard layouts) -> Intent per frame (DeviceIntents); Rumble -> pad
   audio.rs            # synthesises WAVs at startup; plays Sfx messages (deduped per frame); BT_SHOT/BT_MUTE mute
   dev.rs              # BT_SHOT smoke hook: auto-join, start stage, screenshot, log average fps, quit
   game/
@@ -54,7 +54,7 @@ Update          ├─ title / pause / results / game-over menus read DeviceInte
                    ─▶ fly_bullets ──Hit──▶ resolve_hits ─▶ powerup::pickup ─▶ check_end
                          │  │                    │
                          │  └── Terrain.dirty ───┼──────────────▶ gfx::world::sync_terrain (spawn/despawn chips)
-                         └────── Fx / Sfx ───────┘──────────────▶ gfx::fx (particles, shake)   audio::play (PostUpdate)
+                         └──── Fx / Sfx / Rumble ┘──────────────▶ gfx::fx (particles, shake)   audio::play, input::rumble (PostUpdate)
                 after(Sim): gfx::world attach_* (Added<T>) + tank_looks/shield_rings/... ; ui::hud::refresh
 ```
 

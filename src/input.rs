@@ -1,8 +1,10 @@
 //! Devices -> per-frame `Intent`. Controllers first; two keyboard layouts so two people can share
 //! one keyboard. Everything downstream reads `DeviceIntents` / `Intents`, never raw input.
 
+use crate::game::{Rumble, Session};
 use crate::geom::Dir;
-use bevy::input::gamepad::{Gamepad, GamepadButton};
+use crate::settings::Settings;
+use bevy::input::gamepad::{Gamepad, GamepadButton, GamepadRumbleIntensity, GamepadRumbleRequest};
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 
@@ -59,7 +61,7 @@ pub fn merge(a: Intent, b: Intent) -> Intent {
 const STICK_DEAD_ZONE: f32 = 0.5;
 
 pub fn plugin(app: &mut App) {
-    app.init_resource::<DeviceIntents>().add_systems(PreUpdate, gather.after(bevy::input::InputSystems));
+    app.init_resource::<DeviceIntents>().add_systems(PreUpdate, gather.after(bevy::input::InputSystems)).add_systems(PostUpdate, rumble);
 }
 
 fn keys_dir(keys: &ButtonInput<KeyCode>, map: [KeyCode; 4], pressed: bool) -> Option<Dir> {
@@ -114,5 +116,19 @@ fn gather(
     ));
     for (e, pad) in &pads {
         out.0.push((Device::Pad(e), pad_intent(pad, sticks.entry(e).or_default())));
+    }
+}
+
+/// Gameplay `Rumble` -> the slot's controller (keyboards and vibration-off just drop it).
+fn rumble(settings: Res<Settings>, session: Res<Session>, mut events: MessageReader<Rumble>, mut out: MessageWriter<GamepadRumbleRequest>) {
+    for r in events.read() {
+        let Some(Device::Pad(gamepad)) = session.slots.get(r.slot).and_then(|s| s.as_ref()).map(|s| s.device) else { continue };
+        if settings.vibration {
+            out.write(GamepadRumbleRequest::Add {
+                gamepad,
+                duration: std::time::Duration::from_secs_f32(r.secs),
+                intensity: GamepadRumbleIntensity { strong_motor: r.strong, weak_motor: r.weak },
+            });
+        }
     }
 }

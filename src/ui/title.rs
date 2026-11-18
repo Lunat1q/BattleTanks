@@ -32,6 +32,12 @@ fn reset_session(mut session: ResMut<Session>, devices: Res<DeviceIntents>) {
 }
 
 fn spawn(mut commands: Commands, session: Res<Session>, gfx: Res<Gfx>) {
+    // Version in the corner, so a TV screenshot says which build it was.
+    commands.spawn((
+        text(concat!("v", env!("CARGO_PKG_VERSION")), 2.4, DIM),
+        Node { position_type: PositionType::Absolute, bottom: vh(1.5), right: vh(2), ..default() },
+        DespawnOnExit(Screen::Title),
+    ));
     commands.spawn((screen_root(), DespawnOnExit(Screen::Title))).with_children(|root| {
         root.spawn(Node { align_items: AlignItems::Center, column_gap: vh(4), ..default() }).with_children(|row| {
             let tank = |slot: usize, color| {

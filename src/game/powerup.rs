@@ -37,6 +37,7 @@ pub fn pickup(
     enemies: Query<(Entity, &Transform), With<Enemy>>,
     mut fx: MessageWriter<Fx>,
     mut sfx: MessageWriter<Sfx>,
+    mut rumble: MessageWriter<Rumble>,
 ) {
     for (pe, power, ptf) in &powerups {
         let prect = rect_at(ptf.translation.xy(), TILE);
@@ -47,6 +48,7 @@ pub fn pickup(
         let Team::Player(p) = tank.team else { continue };
         commands.entity(pe).despawn();
         sfx.write(Sfx::PowerPick);
+        rumble.write(Rumble::tick(p));
         fx.write(Fx { kind: FxKind::Points(rules::POWERUP_POINTS), pos: ptf.translation.xy() });
         let mut extra = session.add_score(p, rules::POWERUP_POINTS);
         match power.0 {

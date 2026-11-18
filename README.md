@@ -3,6 +3,10 @@
 Two-player couch tank game: defend your base, clear 20 enemy tanks per stage. Built with Rust + [Bevy](https://bevy.org/).
 Made for playing on a TV with two controllers; two people can also share a keyboard.
 
+## Download
+
+Grab `BattleTanks.exe` from the [latest release](https://github.com/Lunat1q/BattleTanks/releases/latest) — it's the whole game.
+
 ## Build
 
 Requires Rust (stable). From the repo root:
@@ -33,7 +37,7 @@ TV can launch it. The game starts borderless fullscreen with the mouse cursor hi
 | Back / leave | B | Backspace | Backspace |
 | Pause | Start | Esc | Esc |
 
-**SETTINGS** on the title screen: FPS limit (default 60), VSync, fullscreen, volume, screen shake and an FPS counter, saved to `%APPDATA%\BattleTanks\settings.txt`.
+**SETTINGS** on the title screen: FPS limit (default 60), VSync, fullscreen, volume, screen shake, FPS counter, friendly fire and controller vibration, saved to `%APPDATA%\BattleTanks\settings.txt`.
 
 Quit from the title (**EXIT**) or the pause menu (**EXIT GAME**). `F11` / `Alt+Enter` toggles fullscreen;
 `--windowed` starts in a window. Set `BT_MUTE=1` to start without sound.

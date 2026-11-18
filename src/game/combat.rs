@@ -4,6 +4,7 @@ use super::stage::{BASE_POS, spawn_player};
 use super::*;
 use crate::geom::{TILE, overlaps, rect_at};
 use crate::rng::Rng;
+use crate::settings::Settings;
 use crate::terrain::{Impact, Terrain};
 use bevy::math::Rect;
 
@@ -18,8 +19,13 @@ pub struct Hit {
 }
 
 /// Can a bullet from `shooter` hit a tank of `target` (owner excluded elsewhere)?
-pub fn can_hit(shooter: Team, target: Team) -> bool {
-    !matches!((shooter, target), (Team::Enemy, Team::Enemy))
+/// Player-on-player hits (paralyze) only with friendly fire on.
+pub fn can_hit(shooter: Team, target: Team, friendly_fire: bool) -> bool {
+    match (shooter, target) {
+        (Team::Enemy, Team::Enemy) => false,
+        (Team::Player(_), Team::Player(_)) => friendly_fire,
+        _ => true,
+    }
 }
 
 /// Do two bullets cancel each other? Only across sides.
@@ -37,6 +43,8 @@ pub fn fly_bullets(
     mut hits: MessageWriter<Hit>,
     mut fx: MessageWriter<Fx>,
     mut sfx: MessageWriter<Sfx>,
+    mut rumble: MessageWriter<Rumble>,
+    settings: Res<Settings>,
 ) {
     let dt = time.delta_secs().min(0.05);
     let targets: Vec<(Entity, Team, Rect)> = tanks.iter().map(|(e, t, tf)| (e, t.team, rect_at(tf.translation.xy(), TILE))).collect();
@@ -52,7 +60,9 @@ pub fn fly_bullets(
         for _ in 0..steps {
             pos += b.dir.vec() * (total / steps as f32);
             let r = rect_at(pos, BULLET_SIZE);
-            if let Some(&(t, _, _)) = targets.iter().find(|(t, team, tr)| *t != b.owner && can_hit(b.team, *team) && overlaps(r, *tr)) {
+            if let Some(&(t, _, _)) =
+                targets.iter().find(|(t, team, tr)| *t != b.owner && can_hit(b.team, *team, settings.friendly_fire) && overlaps(r, *tr))
+            {
                 hits.write(Hit { target: t, by: b.team });
                 gone = true;
                 break;
@@ -62,6 +72,7 @@ pub fn fly_bullets(
                     run.base_alive = false;
                     fx.write(Fx { kind: FxKind::BaseBoom, pos: BASE_POS });
                     sfx.write(Sfx::BaseBoom);
+                    rumble.write_batch([Rumble::base_lost(0), Rumble::base_lost(1)]);
                 }
                 gone = true;
                 break;
@@ -118,6 +129,7 @@ pub fn resolve_hits(
     powerups: Query<Entity, With<PowerUp>>,
     mut fx: MessageWriter<Fx>,
     mut sfx: MessageWriter<Sfx>,
+    mut rumble: MessageWriter<Rumble>,
 ) {
     let mut dead: Vec<Entity> = Vec::new();
     for hit in hits.read() {
@@ -150,9 +162,11 @@ pub fn resolve_hits(
                 fx.write(Fx { kind: FxKind::TankBoom, pos });
                 fx.write(Fx { kind: FxKind::Points(points), pos });
                 sfx.write(Sfx::EnemyBoom);
+                rumble.write(Rumble::tick(p));
             }
-            (Team::Player(_), Team::Player(_), _) if !shielded => {
+            (Team::Player(target), Team::Player(_), _) if !shielded => {
                 commands.entity(hit.target).insert(Paralyzed(rules::PARALYZE_TIME));
+                rumble.write(Rumble::stunned(target));
                 sfx.write(Sfx::ArmorHit);
             }
             (Team::Player(p), Team::Enemy, _) if !shielded => {
@@ -160,6 +174,7 @@ pub fn resolve_hits(
                 commands.entity(hit.target).try_despawn();
                 fx.write(Fx { kind: FxKind::TankBoom, pos });
                 sfx.write(Sfx::PlayerBoom);
+                rumble.write(Rumble::death(p));
                 player_lost_tank(&mut commands, &mut session, p);
             }
             _ => {}
@@ -185,10 +200,13 @@ mod tests {
 
     #[test]
     fn friendly_fire_rules() {
-        assert!(can_hit(Team::Player(0), Team::Enemy));
-        assert!(can_hit(Team::Player(0), Team::Player(1)), "players paralyze each other");
-        assert!(can_hit(Team::Enemy, Team::Player(1)));
-        assert!(!can_hit(Team::Enemy, Team::Enemy));
+        for ff in [true, false] {
+            assert!(can_hit(Team::Player(0), Team::Enemy, ff));
+            assert!(can_hit(Team::Enemy, Team::Player(1), ff));
+            assert!(!can_hit(Team::Enemy, Team::Enemy, ff));
+        }
+        assert!(can_hit(Team::Player(0), Team::Player(1), true), "players paralyze each other");
+        assert!(!can_hit(Team::Player(0), Team::Player(1), false), "friendly fire off: bullets pass");
         assert!(opposing(Team::Enemy, Team::Player(0)));
         assert!(!opposing(Team::Player(0), Team::Player(1)));
         assert!(!opposing(Team::Enemy, Team::Enemy));
