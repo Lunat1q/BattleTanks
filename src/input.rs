@@ -1,0 +1,118 @@
+//! Devices -> per-frame `Intent`. Controllers first; two keyboard layouts so two people can share
+//! one keyboard. Everything downstream reads `DeviceIntents` / `Intents`, never raw input.
+
+use crate::geom::Dir;
+use bevy::input::gamepad::{Gamepad, GamepadButton};
+use bevy::platform::collections::HashMap;
+use bevy::prelude::*;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum Device {
+    /// WASD + Space/F, Esc pauses.
+    KeysLeft,
+    /// Arrows + Enter/Right Ctrl/Numpad 0, Esc pauses.
+    KeysRight,
+    Pad(Entity),
+}
+
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
+pub struct Intent {
+    /// Held movement direction.
+    pub dir: Option<Dir>,
+    pub fire: bool,
+    pub fire_pressed: bool,
+    /// A / Space / Enter just pressed (menus, join).
+    pub confirm: bool,
+    /// B / Backspace just pressed.
+    pub back: bool,
+    /// Start / Esc just pressed.
+    pub start: bool,
+    /// Direction just pressed (menu navigation).
+    pub nav: Option<Dir>,
+}
+
+/// Intent of every connected device this frame (title screen joins from these).
+#[derive(Resource, Default)]
+pub struct DeviceIntents(pub Vec<(Device, Intent)>);
+
+impl DeviceIntents {
+    pub fn get(&self, d: Device) -> Intent {
+        self.0.iter().find(|(dev, _)| *dev == d).map(|(_, i)| *i).unwrap_or_default()
+    }
+    pub fn connected(&self, d: Device) -> bool {
+        self.0.iter().any(|(dev, _)| *dev == d)
+    }
+}
+
+pub fn merge(a: Intent, b: Intent) -> Intent {
+    Intent {
+        dir: a.dir.or(b.dir),
+        fire: a.fire || b.fire,
+        fire_pressed: a.fire_pressed || b.fire_pressed,
+        confirm: a.confirm || b.confirm,
+        back: a.back || b.back,
+        start: a.start || b.start,
+        nav: a.nav.or(b.nav),
+    }
+}
+
+const STICK_DEAD_ZONE: f32 = 0.5;
+
+pub fn plugin(app: &mut App) {
+    app.init_resource::<DeviceIntents>().add_systems(PreUpdate, gather.after(bevy::input::InputSystems));
+}
+
+fn keys_dir(keys: &ButtonInput<KeyCode>, map: [KeyCode; 4], pressed: bool) -> Option<Dir> {
+    let check = |k| if pressed { keys.pressed(k) } else { keys.just_pressed(k) };
+    // Latest-wins would be nicer; ponytail: fixed priority is fine for 4-way tanks.
+    Dir::ALL.into_iter().zip(map).find(|&(_, k)| check(k)).map(|(d, _)| d)
+}
+
+fn keyboard(keys: &ButtonInput<KeyCode>, moves: [KeyCode; 4], fire: &[KeyCode], back: KeyCode) -> Intent {
+    Intent {
+        dir: keys_dir(keys, moves, true),
+        fire: keys.any_pressed(fire.iter().copied()),
+        fire_pressed: keys.any_just_pressed(fire.iter().copied()),
+        confirm: keys.any_just_pressed(fire.iter().copied()),
+        back: keys.just_pressed(back),
+        start: keys.just_pressed(KeyCode::Escape),
+        nav: keys_dir(keys, moves, false),
+    }
+}
+
+fn pad_intent(pad: &Gamepad, last_stick: &mut Option<Dir>) -> Intent {
+    use GamepadButton::*;
+    let dpad = [DPadUp, DPadDown, DPadLeft, DPadRight];
+    let dpad_dir = Dir::ALL.into_iter().zip(dpad).find(|&(_, b)| pad.pressed(b)).map(|(d, _)| d);
+    let stick = Dir::from_vec(pad.left_stick(), STICK_DEAD_ZONE);
+    let stick_edge = if stick != *last_stick { stick } else { None };
+    *last_stick = stick;
+    let fire = [South, West, RightTrigger, RightTrigger2];
+    Intent {
+        dir: dpad_dir.or(stick),
+        fire: fire.iter().any(|&b| pad.pressed(b)),
+        fire_pressed: fire.iter().any(|&b| pad.just_pressed(b)),
+        confirm: pad.just_pressed(South),
+        back: pad.just_pressed(East),
+        start: pad.just_pressed(Start),
+        nav: Dir::ALL.into_iter().zip(dpad).find(|&(_, b)| pad.just_pressed(b)).map(|(d, _)| d).or(stick_edge),
+    }
+}
+
+fn gather(
+    keys: Res<ButtonInput<KeyCode>>,
+    pads: Query<(Entity, &Gamepad)>,
+    mut sticks: Local<HashMap<Entity, Option<Dir>>>,
+    mut out: ResMut<DeviceIntents>,
+) {
+    use KeyCode::*;
+    out.0.clear();
+    out.0.push((Device::KeysLeft, keyboard(&keys, [KeyW, KeyS, KeyA, KeyD], &[Space, KeyF], Backspace)));
+    out.0.push((
+        Device::KeysRight,
+        keyboard(&keys, [ArrowUp, ArrowDown, ArrowLeft, ArrowRight], &[Enter, NumpadEnter, ControlRight, Numpad0], Backspace),
+    ));
+    for (e, pad) in &pads {
+        out.0.push((Device::Pad(e), pad_intent(pad, sticks.entry(e).or_default())));
+    }
+}
