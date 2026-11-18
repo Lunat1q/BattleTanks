@@ -10,12 +10,13 @@
 //! ```
 //! Cells as in classic maps (`.#@~%-`), plus `=` fortress wall and `G` gate (both unbreakable).
 //! Markers are drawn as full squares so mirroring keeps them whole: `EE/EE` enemy, `TT/TT` turret,
-//! `MMM` x3 mini-boss, `BBBB` x4 boss (exactly one). A gate opens once every turret nearest to it
+//! `MMM` x3 mini-boss, `BBBB` x4 boss (exactly one), `LL/LL` stashed extra tank, `SS/SS` stashed star (draw
+//! the brick walls around a stash yourself; a test checks every stash is sealed). A gate opens once every turret nearest to it
 //! (vertically) is destroyed; a dead turret's spot becomes wall.
 
 use crate::geom::{CELL, CELLS, SUBS};
 use crate::rng::Rng;
-use crate::rules::{CITY_BONUS_EVERY, CITY_DISTRICTS, EnemyKind, Rank};
+use crate::rules::{CITY_BONUS_EVERY, CITY_DISTRICTS, EnemyKind, PowerKind, Rank};
 use crate::terrain::{Terrain, Tile};
 use bevy::math::Vec2;
 
@@ -55,14 +56,23 @@ pub struct District {
     pub spawns: Vec<Spawn>,
     /// Gate sub-cells per bastion.
     pub gates: Vec<Vec<(usize, usize)>>,
+    /// Power-ups waiting behind brick from the start: centre, kind.
+    pub stashes: Vec<(Vec2, PowerKind)>,
 }
 
-fn marker(ch: char) -> Option<(Rank, usize)> {
+enum Mark {
+    Enemy(Rank),
+    Stash(PowerKind),
+}
+
+fn marker(ch: char) -> Option<(Mark, usize)> {
     match ch {
-        'E' => Some((Rank::Normal, 2)),
-        'T' => Some((Rank::Turret, 2)),
-        'M' => Some((Rank::Mini, 3)),
-        'B' => Some((Rank::Boss, 4)),
+        'E' => Some((Mark::Enemy(Rank::Normal), 2)),
+        'T' => Some((Mark::Enemy(Rank::Turret), 2)),
+        'M' => Some((Mark::Enemy(Rank::Mini), 3)),
+        'B' => Some((Mark::Enemy(Rank::Boss), 4)),
+        'L' => Some((Mark::Stash(PowerKind::Tank), 2)),
+        'S' => Some((Mark::Stash(PowerKind::Star), 2)),
         _ => None,
     }
 }
@@ -105,12 +115,13 @@ pub fn parse(src: &str, seed: u64) -> Result<District, String> {
     let mut ter = Terrain::new(h * 2);
     let mut claimed = vec![false; h * CELLS];
     let mut spawns = Vec::new();
+    let mut stashes = Vec::new();
     let mut gate_cells = Vec::new();
     for r in 0..h {
         for c in 0..CELLS {
             let ch = rows[r][c];
             let tile = match ch {
-                '.' | 'E' | 'T' | 'M' | 'B' => Tile::Empty,
+                '.' | 'E' | 'T' | 'M' | 'B' | 'L' | 'S' => Tile::Empty,
                 '#' => Tile::Brick,
                 '@' => Tile::Steel,
                 '~' => Tile::Water,
@@ -126,7 +137,7 @@ pub fn parse(src: &str, seed: u64) -> Result<District, String> {
             if ch == 'G' {
                 gate_cells.push((c, r));
             }
-            let Some((rank, n)) = marker(ch) else { continue };
+            let Some((mark, n)) = marker(ch) else { continue };
             if claimed[r * CELLS + c] {
                 continue;
             }
@@ -141,7 +152,10 @@ pub fn parse(src: &str, seed: u64) -> Result<District, String> {
             }
             let half = n as f32 * CELL / 2.0;
             let pos = Vec2::new(c as f32 * CELL + half, (h - r - n) as f32 * CELL + half);
-            spawns.push(Spawn { rank, kind: EnemyKind::Basic, pos, bastion: None, bonus: false });
+            match mark {
+                Mark::Enemy(rank) => spawns.push(Spawn { rank, kind: EnemyKind::Basic, pos, bastion: None, bonus: false }),
+                Mark::Stash(kind) => stashes.push((pos, kind)),
+            }
         }
     }
     // Player starts are always open.
@@ -187,7 +201,7 @@ pub fn parse(src: &str, seed: u64) -> Result<District, String> {
         return Err(format!("gate {} has no turret, it would never open", i + 1));
     }
     ter.dirty.clear();
-    Ok(District { mix, terrain: ter, spawns, gates })
+    Ok(District { mix, terrain: ter, spawns, gates, stashes })
 }
 
 pub fn weighted(mix: &[usize; 4], rng: &mut Rng) -> EnemyKind {
@@ -334,6 +348,37 @@ mod tests {
         assert!(parse(&format!("{base}E............\n{}", rows(21)), 0).err().unwrap().contains("square"));
         assert!(parse(&format!("{base}=====GG======\n{}", rows(21)), 0).err().unwrap().contains("no turret"));
         assert!(parse(&format!("name X\nmix 1 0 0 0\n{}", rows(26)), 0).err().unwrap().contains("boss"));
+    }
+
+    #[test]
+    fn every_district_has_sealed_stashes() {
+        for n in 1..=CITY_DISTRICTS {
+            let d = load(n);
+            for k in [PowerKind::Tank, PowerKind::Star] {
+                assert!(d.stashes.iter().any(|s| s.1 == k), "district {n} has no {k:?} stash");
+            }
+            for &(pos, _) in &d.stashes {
+                // The ring of sub-cells just outside the 16x16 square must all be brick.
+                let (x0, y0) = ((pos.x / 4.0) as usize - 3, (pos.y / 4.0) as usize - 3);
+                for y in y0..y0 + 6 {
+                    for x in x0..x0 + 6 {
+                        let edge = x == x0 || y == y0 || x == x0 + 5 || y == y0 + 5;
+                        assert!(!edge || d.terrain.get(x, y) == Tile::Brick, "district {n}: stash at {pos} open at sub ({x}, {y})");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn stash_markers_hold_power_ups() {
+        let mut src = String::from("name Test\nmix 1 0 0 0\n");
+        src += &"...........BB\n".repeat(4);
+        src += &".............\n".repeat(17);
+        src += "....####.....\n....#LL#.....\n....#LL#.....\n....####.....\n.............\n";
+        let d = parse(&src, 1).unwrap();
+        assert_eq!(d.stashes, [(Vec2::new(48.0, 24.0), PowerKind::Tank), (Vec2::new(160.0, 24.0), PowerKind::Tank)], "mirrored");
+        assert_eq!(d.spawns.len(), 1, "a stash is not an enemy");
     }
 
     #[test]

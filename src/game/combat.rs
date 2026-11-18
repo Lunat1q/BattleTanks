@@ -132,10 +132,11 @@ pub fn resolve_hits(
     view: Res<View>,
     terrain: Res<Terrain>,
     mut tanks: Query<(&Tank, &Transform, Option<&mut Enemy>, Has<Shield>)>,
-    powerups: Query<Entity, With<PowerUp>>,
+    powerups: Query<Entity, (With<PowerUp>, Without<Stash>)>,
     mut fx: MessageWriter<Fx>,
     mut sfx: MessageWriter<Sfx>,
     mut rumble: MessageWriter<Rumble>,
+    settings: Res<crate::settings::Settings>,
 ) {
     let mut dead: Vec<Entity> = Vec::new();
     let city = session.mode == Mode::City;
@@ -190,20 +191,22 @@ pub fn resolve_hits(
                 sfx.write(Sfx::PlayerBoom);
                 rumble.write(Rumble::death(p));
                 let at = respawn_point(p, view.bottom, &terrain);
-                player_lost_tank(&mut commands, &mut session, p, at);
+                player_lost_tank(&mut commands, &mut session, p, at, settings.keep_power);
             }
             _ => {}
         }
     }
 }
 
-/// A player's tank is gone: lose stars, use a spare tank or drop out.
-pub fn player_lost_tank(commands: &mut Commands, session: &mut Session, p: usize, respawn_at: Vec2) {
+/// A player's tank is gone: lose stars (unless KEEP POWER), use a spare tank or drop out.
+pub fn player_lost_tank(commands: &mut Commands, session: &mut Session, p: usize, respawn_at: Vec2, keep_power: bool) {
     let Some(slot) = session.slots[p].as_mut() else { return };
-    slot.level = 0;
+    if !keep_power {
+        slot.level = 0;
+    }
     if slot.lives > 0 {
         slot.lives -= 1;
-        spawn_player(commands, p, 0, respawn_at);
+        spawn_player(commands, p, slot.level, respawn_at);
     } else {
         slot.out = true;
     }

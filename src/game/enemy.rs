@@ -71,7 +71,8 @@ pub fn think(
             };
             let roll = rng.f32();
             tank.want = Some(choose_dir(pos, target, tank.dir, tank.blocked, roll, rng.f32()));
-            ai.turn_in = if tank.blocked { rng.range(0.2, 0.8) } else { rng.range(0.8, 3.0) };
+            let (t0, t1) = if tank.blocked { (0.2, 0.8) } else { ai.kind.turn_gap() };
+            ai.turn_in = rng.range(t0, t1);
             if tank.blocked && rng.chance(0.5) {
                 ai.fire_in = 0.0; // shoot what is in the way
             }

@@ -77,6 +77,25 @@ impl Session {
         extra
     }
 
+    /// Player `p` is out but the partner has a spare tank to give.
+    pub fn can_borrow(&self, p: usize) -> bool {
+        self.slots[p].as_ref().is_some_and(|s| s.out) && self.slots[1 - p].as_ref().is_some_and(|s| s.lives > 0)
+    }
+
+    /// Player `p` takes one of the partner's spare tanks and is back in. False if there is none to take.
+    pub fn borrow(&mut self, p: usize) -> bool {
+        if !self.can_borrow(p) {
+            return false;
+        }
+        if let Some(mate) = self.slots[1 - p].as_mut() {
+            mate.lives -= 1;
+        }
+        if let Some(me) = self.slots[p].as_mut() {
+            me.out = false;
+        }
+        true
+    }
+
     /// This frame's intent for a player slot (empty if the slot is unused).
     pub fn intent(&self, slot: usize, devices: &DeviceIntents) -> Intent {
         self.slots[slot].as_ref().map(|s| devices.get(s.device)).unwrap_or_default()
@@ -196,6 +215,10 @@ pub struct Base;
 #[derive(Component)]
 pub struct PowerUp(pub PowerKind);
 
+/// A City Run power-up placed in a brick stash: stays put when a new drop appears.
+#[derive(Component)]
+pub struct Stash;
+
 /// Visual event for `gfx`.
 #[derive(Message, Clone, Copy)]
 pub struct Fx {
@@ -288,6 +311,7 @@ pub fn plugin(app: &mut App) {
             (
                 stage::spawn_enemies,
                 stage::tick_timers,
+                stage::borrow_life,
                 tank::player_control,
                 enemy::think,
                 tank::drive,

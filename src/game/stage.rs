@@ -172,6 +172,25 @@ pub fn tick_timers(
     }
 }
 
+/// A player who is out presses A to take one of the partner's spare tanks (any mode).
+pub fn borrow_life(
+    mut commands: Commands,
+    mut session: ResMut<Session>,
+    devices: Res<DeviceIntents>,
+    run: Res<StageRun>,
+    view: Res<View>,
+    terrain: Res<Terrain>,
+    mut sfx: MessageWriter<Sfx>,
+) {
+    for p in 0..2 {
+        if run.phase == Phase::Play && session.intent(p, &devices).confirm && session.borrow(p) {
+            let level = session.slots[p].as_ref().map_or(0, |s| s.level);
+            spawn_player(&mut commands, p, level, respawn_point(p, view.bottom, &terrain));
+            sfx.write(Sfx::ExtraLife);
+        }
+    }
+}
+
 pub fn check_end(
     mut run: ResMut<StageRun>,
     session: Res<Session>,
@@ -243,6 +262,20 @@ fn watch_controllers(mut session: ResMut<Session>, devices: Res<DeviceIntents>, 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_out_player_can_borrow_a_spare_tank() {
+        let slot = |lives, out| Some(Slot { lives, out, ..Slot::new(Device::KeysLeft) });
+        let mut s = Session { slots: [slot(0, true), slot(2, false)], ..default() };
+        assert!(!s.can_borrow(1), "player 2 is still in");
+        assert!(s.borrow(0));
+        assert_eq!((s.slots[0].as_ref().unwrap().out, s.slots[1].as_ref().unwrap().lives), (false, 1));
+        assert!(!s.borrow(0), "only while out");
+        let mut s = Session { slots: [slot(0, true), slot(0, false)], ..default() };
+        assert!(!s.borrow(0), "partner has nothing to spare");
+        let mut solo = Session { slots: [slot(0, true), None], ..default() };
+        assert!(!solo.borrow(0));
+    }
 
     #[test]
     fn respawn_finds_open_ground_at_the_bottom_of_the_view() {

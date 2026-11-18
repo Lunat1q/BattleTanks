@@ -11,3 +11,4 @@ android/app/build/
 android/app/src/main/jniLibs/
 android/local.properties
 assets/music/*.mp3
+!docs/screenshots/*.png

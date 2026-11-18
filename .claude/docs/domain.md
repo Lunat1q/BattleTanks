@@ -20,7 +20,10 @@ All numbers live in `src/rules.rs` unless noted.
 
 ### Players
 - 2 spare tanks (3 total); +1 every 20 000 points; tank power-up +1.
-- Star levels: 0 slow bullet · 1 fast bullet · 2 two bullets · 3 breaks steel / digs deeper. Dying resets to 0.
+- **Borrowing** (both modes): a player who is out presses A (fire/confirm) to take one of the partner's spare
+  tanks and respawn at once. The HUD shows `A: BORROW A TANK` while that is possible.
+- Star levels: 0 slow bullet · 1 fast bullet · 2 two bullets · 3 breaks steel / digs deeper. Dying resets to 0
+  (unless KEEP POWER is on in Settings).
 - Respawn shield 3 s; helmet 10 s. Hit by the other player → paralyzed 3 s (no move/fire), no damage — only with FRIENDLY FIRE on.
 - Fire on press, auto-repeat every 0.25 s while held, capped by bullets in flight.
 
@@ -28,13 +31,13 @@ All numbers live in `src/rules.rs` unless noted.
 | Type (results label) | Speed | Bullet | HP | Points |
 |---|---|---|---|---|
 | Basic (LIGHT) | 30 | slow | 1 | 100 |
-| Fast (SCOUT) | 66 | slow | 1 | 200 |
+| Fast (SCOUT) | 54 | slow | 1 | 200 |
 | Power (GUNNER) | 40 | fast | 1 | 300 |
 | Armor (HEAVY) | 32 | medium | 4 | 400 |
 
 - Spawn points top-left/centre/right in turn; skip an occupied one. Interval 3.2 s − 0.06·stage − 0.4 in 2P (≥ 1 s).
 - At most 4 on the field (1P) / 6 (2P). Enemies #4, #11, #18 flash red and drop a power-up when first hit.
-- AI: on a timer or when blocked, 45 % head for a target (base 65 %, nearest player 35 %) along the longer
+- AI: on a timer (0.8–3 s; scouts 1.4–4 s so they don't jitter) or when blocked, 45 % head for a target (base 65 %, nearest player 35 %) along the longer
   axis, else weighted wander (down 40 %, left/right 20 % each, up 20 %); never re-picks a blocked heading.
   Fires every 0.4–1.6 s, and right away half the time it gets blocked. Enemy bullets pass through enemies.
 
@@ -88,6 +91,7 @@ Title → SETTINGS (any controller or keyboard; left/right or A changes, B back)
 | SCREEN SHAKE | ON/OFF | ON | comfort on a big TV |
 | SHOW FPS | ON/OFF | OFF | smoothed FPS, top-right, every screen |
 | FRIENDLY FIRE | ON/OFF | ON | ON = classic (players paralyze each other); OFF = player bullets pass through the other player |
+| KEEP POWER | ON/OFF | OFF | ON = losing a tank keeps your star level (City Run districts still start at 0) |
 | VIBRATION | ON/OFF | ON | rumble on the slot's own pad: own tank destroyed (strong), paralyzed (medium), base lost (everyone, long), kill / power-up (short tick) |
 
 Controller disconnect → game pauses with a note; any unassigned controller pressing A takes over the slot.
@@ -100,7 +104,11 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
 - A district is 15 screens tall (district 1) up to ~24 (district 10). Only one field-sized slice is visible: the
   `View`. It follows the lead player (kept at 55 % height) but never drops the trailing tank off the bottom and
   never scrolls back down. Tanks can't leave the view; bullets pop at its edges.
-- Every district starts fresh: 2 spare tanks each, star level 0 (upgrades don't carry over). Score carries on.
+- Every district starts fresh: 3 spare tanks each (one more than classic), star level 0 (upgrades don't carry
+  over). Score carries on.
+- **Stashes**: brick boxes holding a power-up from the start (`SS` star, `LL` extra tank in the map file; the
+  half-row mirroring makes a pair, one per side). Shoot in to collect. Every district has a star pair low down
+  and a tank pair further up; a new enemy drop never replaces a stash (tested: `city_map::tests`).
   All players out → game over → back to the map to retry.
 - No base. Enemies hunt the nearest player. Placed enemies wake (sparkle) once fully in view; every 5th placed
   enemy carries a power-up. Reinforcements drop in at the top every 7 s − 0.35·district − 1 s in 2P (≥ 2.5 s),
@@ -117,11 +125,14 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
   gate cuts the boss off (`city_map::tests`).
 
 ## Music (`music.rs`, ADR 0007)
-One track at a time, chosen by screen: title + settings `menu_music`, City Run map `menu_music_alternative`,
-results `victory`, game over `loss`. In a stage: classic stages 1–10 slow, 11–20 medium, 21–30 fast (by map, so
-laps restart slow); City Run districts 1–3 slow, 4–7 medium, 8–10 fast; odd/even stages alternate the two
-slow/medium variants. In City Run a live mini-boss switches to `hardfight`, the boss to `bossfight`, and back
-when it dies. Tracks restart when they end; the pause menu pauses the music. Jingles (stage start, game over)
+All tracks are normalised to −16 LUFS (linear gain from the MP3 master, see Operational lessons for the
+command). One track at a time, chosen by screen: title + settings `menu_music`, City Run map `menu_music_alternative`,
+results `victory`, game over `loss`. In a stage the screen picks a **pool** and the
+music walks through it: when a track ends the next one in the pool starts (no track twice in a row unless the
+pool has one). Classic stages 1–10 slow (2 tracks), 11–20 medium (2), 21–30 fast (4), by map so laps restart
+slow; City Run districts 1–3 slow+medium, 4–7 medium+fast 1–2, 8–10 fast. The stage number picks the opening
+track, so consecutive stages start differently. In City Run a live mini-boss switches to the `hardfight`
+pair, the boss to the `bossfight` pair, and back when it dies. the pause menu pauses the music. Jingles (stage start, game over)
 play over it.
 
 ## Known gaps / deliberate omissions
@@ -154,4 +165,5 @@ play over it.
 | 10 fps on the Sony Bravia (Mali-G57), CPU idle | Bevy's default 4x MSAA + bloom passes at 1080p, each ~halving fps on a TV GPU | `Msaa::Off` everywhere (sprites are pre-anti-aliased), bloom PC-only: 56 fps |
 | Android smoke runs froze after one frame | TV screensaver (dream) took over during unattended runs; hidden app stops rendering | `FLAG_KEEP_SCREEN_ON` in `MainActivity`; `adb shell input keyevent KEYCODE_WAKEUP` before a run |
 | Looping music would hold ~55 MB per song | rodio `repeat_infinite` buffers every decoded sample | play once (DESPAWN), respawn when it ends |
+| New track failed `every_track_decodes` (`UnrecognizedFormat`) | MP3 cover art became a Theora video stream in the .ogg | encode with `ffmpeg -i x.mp3 -map 0:a -vn -map_metadata -1 -af volume=<-16 − measured LUFS>dB -ar 44100 -c:a libvorbis -q:a 1 x.ogg` (measure with `-af loudnorm=print_format=json -f null -`) |
 | `adb pull /sdcard/...` "no such file" from Git Bash | MSYS rewrites the remote path to `C:/Program Files/Git/sdcard/...` | prefix `MSYS_NO_PATHCONV=1` |

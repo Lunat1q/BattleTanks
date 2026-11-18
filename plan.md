@@ -114,6 +114,14 @@ Same game, second target. The Windows exe keeps working at every step (checks gr
 - [ ] One tag builds both: `BattleTanks.exe` on the GitHub release (never the APK/AAB on GitHub); the AAB goes to Play
 - [ ] Docs: CLAUDE.md commands (Android build/smoke), architecture tree (`android/`, `src/android.rs`), domain controls (TV remote, Steam Controller), lessons
 
+### M7 — Couch feedback (v0.4.0) ✅
+- [x] Music normalised to −16 LUFS; 5 new tracks (fast 2–4, hardfight 2, bossfight 2); pools rotate when a track ends
+- [x] Borrow a spare tank from the partner when out (both modes); HUD hint
+- [x] Scouts slower (66 → 54) and less twitchy (longer turn gap)
+- [x] City Run: +1 spare tank at district start; brick stashes with a star pair and an extra-tank pair per district
+- [x] Setting KEEP POWER (stars survive losing a tank)
+- [x] README screenshots (`docs/screenshots`, smoke hook)
+
 ### Next ideas (not started — confirm before building)
 - [ ] Persist hi-score (small file in `%APPDATA%`)
 - [ ] Steam grid artwork (capsule/hero images)

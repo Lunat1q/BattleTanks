@@ -28,15 +28,15 @@ src/
   rules.rs            # every gameplay number: speeds, timers, enemy stats, gun levels, scoring    [pure]
   terrain.rs          # 52-wide sub-cell grid, any height; tank blocking, bullet impact strip, Wall/Gate, base ring, dirty list [pure]
   levels.rs           # parse stage files, force spawns/base clear, rosters, harder laps         [pure]
-  city_map.rs         # parse district files: tall terrain, placed enemies/turrets/minis/boss, gates [pure]
+  city_map.rs         # parse district files: tall terrain, placed enemies/turrets/minis/boss, gates, stashes [pure]
   input.rs            # Device (pads, two keyboard layouts) -> Intent per frame (DeviceIntents); Rumble -> pad; TvRemote marker
   android_pads.rs     # Android only (+ tests): JNI queue -> Bevy GamepadConnection/RawGamepad events (gilrs stand-in); rumble -> Java
   audio.rs            # synthesises WAVs at startup; plays Sfx messages (deduped per frame); BT_SHOT/BT_MUTE mute
-  music.rs            # one music track at a time: pick(screen, mode, stage, boss up) [pure]; restarts on end, pauses with the game
+  music.rs            # one track at a time: pick(screen, mode, stage, boss up) -> pool, next() on end [pure]; pauses with the game
   dev.rs              # BT_SHOT smoke hook: auto-join, start stage, screenshot, log average fps, quit
   game/
     mod.rs            # Screen state, Mode, Session/Slot, StageRun, View, components, Fx/Sfx messages, Sim schedule
-    stage.rs          # OnEnter build (classic or city), spawn_enemy, respawn point, timers, win/lose, pause, pad loss
+    stage.rs          # OnEnter build (classic or city), spawn_enemy, respawn point, timers, borrow a tank, win/lose, pause, pad loss
     city.rs           # City Run: scroll the View, wake placed enemies, reinforcements, turret->gate, cull, Progress save
     tank.rs           # player_control (intent -> want/trigger), drive (collisions, snap, ice), fire
     enemy.rs          # think: choose_dir (pure) + random fire, freeze; turrets aim at the nearest player
@@ -70,7 +70,7 @@ Update          ├─ title / pause / results / game-over menus read DeviceInte
                 ├─ stage: watch_controllers ─▶ toggle_pause ─▶ advance_phase (Intro→Play, Won/Lost→next Screen)
                 │
                 └─ Sim (only: Screen::Stage, !Paused, phase != Intro), chained:
-                   spawn_enemies ─▶ tick_timers ─▶ [city: scroll ─▶ wake ─▶ reinforce ─▶ watch ─▶ cull] ─▶ player_control ─▶ enemy::think ─▶ drive ─▶ fire
+                   spawn_enemies ─▶ tick_timers ─▶ [city: scroll ─▶ wake ─▶ reinforce ─▶ watch ─▶ cull] ─▶ borrow_life ─▶ player_control ─▶ enemy::think ─▶ drive ─▶ fire
                    ─▶ fly_bullets ──Hit──▶ resolve_hits ─▶ powerup::pickup ─▶ check_end
                          │  │                    │
                          │  └── Terrain.dirty ───┼──────────────▶ gfx::world::sync_terrain (spawn/despawn chips)

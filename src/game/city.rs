@@ -64,7 +64,8 @@ pub fn plugin(app: &mut App) {
         );
 }
 
-/// Builds district `session.stage`: resets lives and power (every district starts fresh), returns its terrain.
+/// Builds district `session.stage`: resets lives and power (every district starts fresh), fills the stashes,
+/// returns its terrain.
 pub fn setup(commands: &mut Commands, session: &mut Session) -> Terrain {
     let d = city_map::load(session.stage);
     let mut guards = vec![0; d.gates.len()];
@@ -81,8 +82,11 @@ pub fn setup(commands: &mut Commands, session: &mut Session) -> Terrain {
         boss_down: false,
         reinforce_in: rules::reinforce_interval(session.stage, session.players()),
     });
+    for &(pos, kind) in &d.stashes {
+        commands.spawn((PowerUp(kind), Stash, Transform::from_translation(pos.extend(0.0)), DespawnOnExit(Screen::Stage)));
+    }
     for slot in session.slots.iter_mut().flatten() {
-        slot.lives = rules::START_LIVES;
+        slot.lives = rules::CITY_START_LIVES;
         slot.level = 0;
         slot.out = false;
     }

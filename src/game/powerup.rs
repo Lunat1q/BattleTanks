@@ -19,11 +19,11 @@ pub fn random_spot(rng: &mut Rng) -> Vec2 {
 const CITY_POWERS: [rules::PowerKind; 5] =
     [rules::PowerKind::Helmet, rules::PowerKind::Clock, rules::PowerKind::Star, rules::PowerKind::Grenade, rules::PowerKind::Tank];
 
-/// Drops a power-up in the view (`bottom` up). `city`: City Run terrain, so the drop lands where a tank can drive.
+/// Drops a power-up in the view, replacing the last drop (stashes stay) (`bottom` up). `city`: City Run terrain, so the drop lands where a tank can drive.
 pub fn spawn_random(
     commands: &mut Commands,
     rng: &mut Rng,
-    existing: &Query<Entity, With<PowerUp>>,
+    existing: &Query<Entity, (With<PowerUp>, Without<Stash>)>,
     sfx: &mut MessageWriter<Sfx>,
     bottom: f32,
     city: Option<&Terrain>,

@@ -5,6 +5,11 @@
 Two-player couch tank game: defend your base, clear 20 enemy tanks per stage across 30 stages. Or play **City Run**: ten long scrolling districts with fortress gates, mini-bosses and a boss at the end of each. Built with Rust + [Bevy](https://bevy.org/).
 Made for playing on a TV with two controllers; two people can also share a keyboard.
 
+| | |
+|---|---|
+| ![Title screen](docs/screenshots/title.png) | ![Classic stage](docs/screenshots/classic.png) |
+| ![City Run district map](docs/screenshots/city-map.png) | ![City Run district](docs/screenshots/city-run.png) |
+
 ## Download
 
 Grab `BattleTanks.exe` from the [latest release](https://github.com/Lunat1q/BattleTanks/releases/latest) — it's the whole game.
@@ -39,7 +44,9 @@ TV can launch it. The game starts borderless fullscreen with the mouse cursor hi
 | Back / leave | B | Backspace | Backspace |
 | Pause | Start | Esc | Esc |
 
-**SETTINGS** on the title screen: FPS limit (default 60), VSync, fullscreen, volume, screen shake, FPS counter, friendly fire and controller vibration, saved to `%APPDATA%\BattleTanks\settings.txt`.
+**SETTINGS** on the title screen: FPS limit (default 60), VSync, fullscreen, sound and music volume, screen shake, FPS counter, friendly fire, controller vibration and keep power (stars survive losing a tank), saved to `%APPDATA%\BattleTanks\settings.txt`.
+
+Out of tanks while your partner still has spares? Press **A** to borrow one.
 
 Quit from the title (**EXIT**) or the pause menu (**EXIT GAME**). `F11` / `Alt+Enter` toggles fullscreen;
 `--windowed` starts in a window. Set `BT_MUTE=1` to start without sound.

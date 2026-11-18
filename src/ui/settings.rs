@@ -24,7 +24,7 @@ fn spawn(mut commands: Commands, mut sel: ResMut<Sel>) {
         root.spawn(text("SETTINGS", 10.0, GOLD));
         root.spawn(Node { height: vh(2), ..default() });
         for i in 0..ROWS {
-            root.spawn((text("", 4.4, INK), MenuLine(i)));
+            root.spawn((text("", 4.0, INK), MenuLine(i)));
         }
         root.spawn(Node { height: vh(2), ..default() });
         root.spawn(text("left / right to change   B to go back", 2.6, DIM));

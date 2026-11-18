@@ -2,6 +2,8 @@
 
 pub const PLAYER_SPEED: f32 = 48.0;
 pub const START_LIVES: u32 = 2; // spare tanks, so 3 tanks in total
+/// City Run districts start with one spare more: they are long and have no stage breaks.
+pub const CITY_START_LIVES: u32 = START_LIVES + 1;
 pub const EXTRA_LIFE_EVERY: u32 = 20_000;
 pub const POWERUP_POINTS: u32 = 500;
 pub const ENEMIES_PER_STAGE: usize = 20;
@@ -37,10 +39,14 @@ impl EnemyKind {
     pub fn speed(self) -> f32 {
         match self {
             EnemyKind::Basic => 30.0,
-            EnemyKind::Fast => 66.0,
+            EnemyKind::Fast => 54.0,
             EnemyKind::Power => 40.0,
             EnemyKind::Armor => 32.0,
         }
+    }
+    /// Seconds between unforced heading changes, (min, max). Scouts commit longer so they don't jitter.
+    pub fn turn_gap(self) -> (f32, f32) {
+        if self == EnemyKind::Fast { (1.4, 4.0) } else { (0.8, 3.0) }
     }
     pub fn bullet_speed(self) -> f32 {
         match self {
@@ -224,5 +230,13 @@ mod tests {
         assert_eq!(EnemyKind::Basic.points(), 100);
         assert_eq!(EnemyKind::Armor.points(), 400);
         assert_eq!(EnemyKind::Armor.hp(), 4);
+    }
+
+    #[test]
+    fn scouts_are_quick_but_not_twitchy() {
+        let fastest = EnemyKind::ALL.iter().max_by(|a, b| a.speed().total_cmp(&b.speed())).unwrap();
+        assert_eq!(*fastest, EnemyKind::Fast);
+        assert!(EnemyKind::Fast.speed() < 1.2 * PLAYER_SPEED, "a player can still chase one down");
+        assert!(EnemyKind::Fast.turn_gap().0 > EnemyKind::Basic.turn_gap().0);
     }
 }

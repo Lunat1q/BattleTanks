@@ -92,7 +92,11 @@ fn refresh(
         let s = match *hud {
             Hud::Lives(i) => session.slots[i].as_ref().map(|s| format!("x {}", s.lives)),
             Hud::Score(i) => session.slots[i].as_ref().map(|s| format!("{:>7}", s.score)),
-            Hud::Level(i) => session.slots[i].as_ref().map(|s| if s.out { "OUT".into() } else { format!("POWER {}", s.level) }),
+            Hud::Level(i) => session.slots[i].as_ref().map(|s| match s.out {
+                true if session.can_borrow(i) => "A: BORROW A TANK".into(),
+                true => "OUT".into(),
+                false => format!("POWER {}", s.level),
+            }),
             Hud::Stage => Some(session.stage.to_string()),
             Hud::Hi => Some(format!("HI {}", session.hi_score)),
         };
