@@ -9,7 +9,8 @@ Cargo.toml            # bevy 0.20 (2d, ui, bevy_audio, wav, png); dev deps opt-l
 levels/NN.txt         # 30 stage maps, baked into the exe with include_str! (format in levels.rs)
 levels/city/NN.txt    # 10 City Run districts, 15-24 screens tall (format in city_map.rs)
 src/
-  main.rs             # loads Settings first so the window opens in the saved mode; plugin list
+  main.rs             # Windows exe: calls battle_tanks::run()
+  lib.rs              # run(): loads Settings first so the window opens in the saved mode; plugin list; Android #[bevy_main]
   geom.rs             # units (SUB 4, CELL 8, TILE 16, FIELD 208), Dir, rect overlap, grid snap  [pure]
   rng.rs              # xorshift64* Resource: below/range/chance/pick/shuffle                     [pure]
   settings.rs         # Settings (fps, vsync, fullscreen, volume, shake, show_fps, friendly_fire, vibration) <-> %APPDATA%\BattleTanks\settings.txt;

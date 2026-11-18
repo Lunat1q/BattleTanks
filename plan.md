@@ -55,10 +55,12 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 Same game, second target. The Windows exe keeps working at every step (checks green after each phase).
 
 **A. One crate, two targets** (no behaviour change on Windows)
-- [ ] `src/lib.rs` with `pub fn run()`; `main.rs` calls it; `[lib] crate-type = ["cdylib", "rlib"]`
-- [ ] `build.rs` icon step only when `CARGO_CFG_TARGET_OS == "windows"`
-- [ ] `settings::data_file()` on Android uses `AndroidApp::internal_data_path()` (now `%APPDATA%`, which is `None` there)
-- [ ] Android-only deps: bevy `android-game-activity` + `gles` (fallback for TVs with weak Vulkan), `jni`
+- [x] `src/lib.rs` with `pub fn run()` + `#[bevy_main]`; `main.rs` calls it; Android builds the cdylib with
+  `cargo rustc --crate-type cdylib` (no cdylib on Windows builds)
+- [x] `build.rs` icon step already MSVC-only, so it skips Android
+- [x] `settings::data_file()` on Android uses `AndroidApp::internal_data_path()`
+- [x] Android-only bevy feature `android-game-activity`; `cargo ndk -t arm64-v8a check --lib` passes. Vulkan only for now
+  (Bevy 0.20 has no `gles` feature; add a direct `wgpu` dep with `gles` if a TV box lacks Vulkan). `jni` comes with phase C
 
 **B. Hello TV**
 - [ ] `android/` Gradle project: `MainActivity extends GameActivity`, `minSdk` 26, `targetSdk` = what Play currently requires

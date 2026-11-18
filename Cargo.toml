@@ -9,6 +9,11 @@ license = "PolyForm-Noncommercial-1.0.0"
 winit = { version = "0.30", default-features = false }
 bevy = { version = "0.20.1", default-features = false, features = ["2d", "ui", "bevy_audio", "wav", "png"] }
 
+# Android TV (ADR 0006): GameActivity host. Rendering is Vulkan only (bevy_render's wgpu backends).
+# ponytail: no GLES fallback; if a TV box lacks Vulkan, add `wgpu = { version = "30", default-features = false, features = ["gles"] }` here.
+[target.'cfg(target_os = "android")'.dependencies]
+bevy = { version = "0.20.1", default-features = false, features = ["android-game-activity"] }
+
 # Fast-enough debug builds: our code lightly optimised, dependencies fully.
 [profile.dev]
 opt-level = 1

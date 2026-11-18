@@ -124,9 +124,13 @@ impl Settings {
     }
 }
 
-/// A file in `%APPDATA%\BattleTanks` (settings, City Run progress).
+/// A file in `%APPDATA%\BattleTanks` (settings, City Run progress); on Android the app's private data folder.
 pub fn data_file(name: &str) -> Option<PathBuf> {
-    std::env::var_os("APPDATA").map(|d| PathBuf::from(d).join("BattleTanks").join(name))
+    #[cfg(target_os = "android")]
+    let dir = bevy::android::ANDROID_APP.get().and_then(|app| app.internal_data_path());
+    #[cfg(not(target_os = "android"))]
+    let dir = std::env::var_os("APPDATA").map(|d| PathBuf::from(d).join("BattleTanks"));
+    dir.map(|d| d.join(name))
 }
 
 fn path() -> Option<PathBuf> {
