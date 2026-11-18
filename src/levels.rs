@@ -140,6 +140,12 @@ pub fn load(n: usize) -> Stage {
     let mut roster: Vec<EnemyKind> = EnemyKind::ALL.iter().zip(counts).flat_map(|(&k, c)| std::iter::repeat_n(k, c)).collect();
     // Deterministic per stage, so a stage always plays the same.
     Rng::new(n as u64 * 7919).shuffle(&mut roster);
+    // The opening wave (one per spawn point) is the stage's weakest tanks, so nothing fast rushes in before
+    // players have moved.
+    for i in 0..3 {
+        let j = (i..roster.len()).min_by_key(|&j| roster[j].index()).unwrap();
+        roster.swap(i, j);
+    }
     Stage { terrain, roster }
 }
 
@@ -177,6 +183,45 @@ mod tests {
             for spawn in [(0, 24), (12, 24), (24, 24), (8, 0), (16, 0)] {
                 assert!(reachable(&ter, spawn)[target], "levels/{:02}.txt: spawn {spawn:?} is walled off from the base", i + 1);
             }
+        }
+    }
+
+    /// Shots a bullet fired straight down from the centre spawn needs before it reaches the base ring:
+    /// each shot clears one 4-deep row of the 16-wide strip (sub-cells 24..28). Steel counts as a full cover.
+    fn centre_lane_cover(ter: &Terrain) -> usize {
+        let mut shots = 0;
+        for y in 6..48 {
+            let row: Vec<Tile> = (24..28).map(|x| ter.get(x, y)).collect();
+            if row.contains(&Tile::Steel) {
+                return usize::MAX;
+            }
+            shots += row.contains(&Tile::Brick) as usize;
+        }
+        shots
+    }
+
+    #[test]
+    fn centre_spawn_has_no_free_shot_at_the_base() {
+        // Regression: stage 1 had an open column from the centre spawn, so an enemy killed the base
+        // in 3 shots (2 ring rows + base) before players could react.
+        let open: Vec<String> = STAGES
+            .iter()
+            .enumerate()
+            .map(|(i, src)| (i + 1, centre_lane_cover(&parse(src).unwrap().0)))
+            .filter(|&(_, cover)| cover < 4)
+            .map(|(n, cover)| format!("levels/{n:02}.txt ({cover} brick rows)"))
+            .collect();
+        assert!(open.is_empty(), "centre lane too open above the base ring: {open:?}");
+    }
+
+    #[test]
+    fn stages_open_with_their_weakest_tanks() {
+        // Regression: stage 1's shuffle sent a SCOUT first.
+        for n in 1..=stage_count() * 2 {
+            let roster: Vec<usize> = load(n).roster.iter().map(|k| k.index()).collect();
+            let mut sorted = roster.clone();
+            sorted.sort();
+            assert_eq!(roster[..3], sorted[..3], "stage {n} opening wave");
         }
     }
 

@@ -24,7 +24,7 @@ All numbers live in `src/rules.rs` unless noted.
 - Respawn shield 3 s; helmet 10 s. Hit by the other player → paralyzed 3 s (no move/fire), no damage — only with FRIENDLY FIRE on.
 - Fire on press, auto-repeat every 0.25 s while held, capped by bullets in flight.
 
-### Enemies (20 per stage, roster per stage file, shuffled deterministically per stage number)
+### Enemies (20 per stage, roster per stage file, shuffled deterministically per stage number; the first 3 spawns are the roster's weakest)
 | Type (results label) | Speed | Bullet | HP | Points |
 |---|---|---|---|---|
 | Basic (LIGHT) | 30 | slow | 1 | 100 |
@@ -55,6 +55,8 @@ all 20 destroyed → 3 s → results tally → next stage. Base lost or every pl
 **Map rule (tested):** from every enemy and player spawn, a 16×16 tank must be able to reach the base treating
 bricks as open and steel/water as walls (`levels::tests::every_spawn_can_reach_the_base`). Watch for: a water gap
 that exits straight into steel, and 1-cell (8-unit) open bands between obstacle rows — a tank needs 2 cells.
+**Centre lane (tested):** the 16-wide column under the centre spawn needs ≥ 4 brick rows (or steel) above the base
+ring, so an enemy can't shoot the base from its spawn (`levels::tests::centre_spawn_has_no_free_shot_at_the_base`).
 
 ## Controls
 | | Controller | Keyboard P1 | Keyboard P2 |
@@ -130,4 +132,6 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
 | New stages walled spawns off from the base | bridge exits into steel; 1-cell open bands between blob rows | reachability test over all stages |
 | City map had a river nobody could cross | two stacked bridges not overlapping (tank needs a 2-cell column through both) | `city_map` reachability test |
 | Map markers doubled (two bosses) | half rows are mirrored | draw single markers centred on cols 11–14 or as full 26-char rows |
+| Enemy killed the base from the centre spawn in 3 shots (stage 1 + 13 more) | open centre column, ring only 2 rows thick | centre-lane cover test over all stages |
+| A SCOUT rushed in as stage 1's first enemy | roster shuffle can put any kind first | opening wave = 3 weakest, tested |
 | Smoke runs blasted sound in the room | audio always on | audio plugin skips when `BT_SHOT` / `BT_MUTE` is set |
