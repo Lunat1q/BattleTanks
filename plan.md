@@ -59,7 +59,7 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 
 ## Current state
 
-City Run added (v0.3.0): 10 districts, district map, smoke screenshots checked for the map, a district start, a
+City Run added, released as v0.3.0 on GitHub: 10 districts, district map, smoke screenshots checked for the map, a district start, a
 bastion and a boss arena. Not yet played on the couch.
 
 M1–M3 done, plus Settings (FPS limit — owner saw ~1000 fps — volume, fullscreen, shake, FPS counter); all checks green (fmt, clippy, 30 tests, released as v0.1.0,
