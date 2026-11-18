@@ -9,12 +9,13 @@ src/
   main.rs             # window (borderless fullscreen / --windowed), plugin list, F11 + Alt+Enter toggle
   geom.rs             # units (SUB 4, CELL 8, TILE 16, FIELD 208), Dir, rect overlap, grid snap  [pure]
   rng.rs              # xorshift64* Resource: below/range/chance/pick/shuffle                     [pure]
+  settings.rs         # Settings (fps_limit, vsync) <-> %APPDATA%\BattleTanks\settings.txt; frame limiter in Last
   rules.rs            # every gameplay number: speeds, timers, enemy stats, gun levels, scoring    [pure]
   terrain.rs          # 52x52 sub-cell grid, tank blocking, bullet impact strip, base ring, dirty list [pure]
   levels.rs           # parse stage files, force spawns/base clear, rosters, harder laps         [pure]
   input.rs            # Device (pads, two keyboard layouts) -> Intent per frame (DeviceIntents)
   audio.rs            # synthesises WAVs at startup; plays Sfx messages (deduped per frame); BT_SHOT/BT_MUTE mute
-  dev.rs              # BT_SHOT smoke hook: auto-join, start stage, screenshot, quit
+  dev.rs              # BT_SHOT smoke hook: auto-join, start stage, screenshot, log average fps, quit
   game/
     mod.rs            # Screen state, Session/Slot, StageRun, components, Fx/Sfx messages, Sim schedule
     stage.rs          # OnEnter build, enemy spawner, timers (shield/spawn/freeze/shovel), win/lose, pause, pad loss
@@ -32,7 +33,8 @@ src/
     fx.rs             # Fx messages -> particles, score pop-ups (Text2d), camera shake
   ui/
     mod.rs            # text() in vh units, colours, menu helpers
-    title.rs          # join/leave slots, START / STAGE <n> / EXIT
+    title.rs          # join/leave slots, START / STAGE <n> / SETTINGS / EXIT
+    settings.rs       # FPS LIMIT / VSYNC / BACK; saves on every change
     hud.rs            # side panels: lives, score, power, enemy reserve icons, stage flag
     screens.rs        # stage banner, pause menu (+ pad-lost note), results tally, game over
 ```
@@ -58,10 +60,10 @@ Update          ├─ title / pause / results / game-over menus read DeviceInte
 ## State machine
 
 ```
-Title ──START──▶ Stage ──all 20 killed──▶ Results ──A / 10 s──▶ Stage (n+1)
-  ▲                │
-  │                └──base destroyed or everyone out──▶ GameOver ──A──▶ Title
-  └────────────── pause menu "QUIT TO TITLE" ◀──────────┘
+Settings ◀──SETTINGS / B──▶ Title ──START──▶ Stage ──all 20 killed──▶ Results ──A / 10 s──▶ Stage (n+1)
+                             ▲                │
+                             │                └──base destroyed or everyone out──▶ GameOver ──A──▶ Title
+                             └────────────── pause menu "QUIT TO TITLE" ◀──────────┘
 ```
 
 `StageRun.phase` inside `Screen::Stage`: `Intro` (banner, frozen) → `Play` → `Won` | `Lost` (3 s, world keeps

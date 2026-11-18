@@ -19,6 +19,7 @@ pub enum Screen {
     Stage,
     Results,
     GameOver,
+    Settings,
 }
 
 pub struct Slot {

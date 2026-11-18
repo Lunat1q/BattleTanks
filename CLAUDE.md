@@ -24,7 +24,7 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 - **Agents build and test; they don't play.** The only allowed run is the smoke hook above (auto-joins two
   keyboard players, screenshots, exits by itself; sound is muted while `BT_SHOT` is set, `BT_MUTE=1` mutes
   any run). Use it after visual or startup changes and *look at the PNG*.
-  `BT_STAGE=0` screenshots the title. Write screenshots to the scratchpad, never the repo.
+  `BT_STAGE=0` screenshots the title. It logs `smoke: N fps average` on exit. Write screenshots to the scratchpad, never the repo.
 
 ## Tech stack
 

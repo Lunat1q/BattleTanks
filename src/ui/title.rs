@@ -16,7 +16,7 @@ struct TitleMenu {
 #[derive(Component)]
 struct SlotLine(usize);
 
-const ITEMS: usize = 3; // START, STAGE, EXIT
+const ITEMS: usize = 4; // START, STAGE, SETTINGS, EXIT
 
 pub fn plugin(app: &mut App) {
     app.insert_resource(TitleMenu { sel: 0, stage: 1 })
@@ -120,7 +120,8 @@ fn input(
                 sfx.write(Sfx::MenuPick);
                 next.set(Screen::Stage);
             }
-            2 => {
+            2 => next.set(Screen::Settings),
+            3 => {
                 exit.write(AppExit::Success);
             }
             _ => {}
@@ -135,6 +136,7 @@ fn refresh(menu: Res<TitleMenu>, session: Res<Session>, mut lines: Query<(&mut T
                 0 if session.players() == 0 => "PRESS A TO JOIN".to_string(),
                 0 => "START".to_string(),
                 1 => format!("STAGE  < {} >", menu.stage),
+                2 => "SETTINGS".to_string(),
                 _ => "EXIT".to_string(),
             };
             set_text(&mut t, menu_label(menu.sel == *i, &label));

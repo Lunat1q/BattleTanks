@@ -60,6 +60,13 @@ After the last map the maps loop; each lap converts 4 weaker enemies into strong
 | Pause | Start | Esc | Esc |
 | Fullscreen | — | F11 / Alt+Enter | |
 
+## Settings
+Title → SETTINGS (any controller or keyboard; left/right or A changes, B back). Saved on every change to
+`%APPDATA%\BattleTanks\settings.txt` (`fps_limit=60`, `vsync=true`); bad or missing values fall back to defaults.
+- **FPS LIMIT** 30 / 60 / 90 / 120 / 144 / 165 / 240 / OFF, default 60 (matches a 60 Hz stream). Enforced by our own
+  limiter (sleep, then spin the last 1.5 ms) at the end of each frame, so it works even when VSync is ignored.
+- **VSYNC** ON (`AutoVsync`) / OFF (`AutoNoVsync`), default ON.
+
 Controller disconnect → game pauses with a note; any unassigned controller pressing A takes over the slot.
 
 ## Known gaps / deliberate omissions
@@ -79,4 +86,5 @@ Controller disconnect → game pauses with a note; any unassigned controller pre
 | Startup panic "Resource does not exist" | `OnEnter(Title)` runs before `PreStartup` commands apply | build `Gfx` in the plugin fn, not a startup system |
 | One Esc press joined both keyboard slots | Esc is "start" on both layouts | join only on confirm, never on start |
 | Armor enemy looked like player 2 | green tint shared with 2P | enemy palette never uses gold/green |
+| ~1000 fps on the owner's PC despite `AutoVsync` | VSync not honoured (driver override / streaming setup) | own FPS limiter in Settings, default 60 |
 | Smoke runs blasted sound in the room | audio always on | audio plugin skips when `BT_SHOT` / `BT_MUTE` is set |

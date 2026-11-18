@@ -12,6 +12,7 @@ mod input;
 mod levels;
 mod rng;
 mod rules;
+mod settings;
 mod terrain;
 mod ui;
 
@@ -27,13 +28,14 @@ fn main() {
                 title: "Battle Tanks".into(),
                 mode: if windowed { WindowMode::Windowed } else { WindowMode::BorderlessFullscreen(MonitorSelection::Primary) },
                 resolution: (1600, 900).into(),
+                // VSync / FPS limit come from `settings` (applied on the first frame).
                 present_mode: PresentMode::AutoVsync,
                 ..default()
             }),
             primary_cursor_options: Some(CursorOptions { visible: false, ..default() }),
             ..default()
         }))
-        .add_plugins((gfx::plugin, audio::plugin, input::plugin, game::plugin, ui::plugin, dev::plugin))
+        .add_plugins((settings::plugin, gfx::plugin, audio::plugin, input::plugin, game::plugin, ui::plugin, dev::plugin))
         .add_systems(Update, toggle_fullscreen)
         .run();
 }

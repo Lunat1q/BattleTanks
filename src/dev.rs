@@ -14,12 +14,13 @@ struct Shot {
     at: f32,
     t: f32,
     taken: bool,
+    frames: u32,
 }
 
 pub fn plugin(app: &mut App) {
     let Ok(path) = std::env::var("BT_SHOT") else { return };
     let num = |k: &str, d: f32| std::env::var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(d);
-    app.insert_resource(Shot { path, stage: num("BT_STAGE", 1.0) as usize, at: num("BT_SHOT_AT", 7.0), t: 0.0, taken: false })
+    app.insert_resource(Shot { path, stage: num("BT_STAGE", 1.0) as usize, at: num("BT_SHOT_AT", 7.0), t: 0.0, taken: false, frames: 0 })
         .add_systems(Update, run);
 }
 
@@ -33,6 +34,7 @@ fn run(
     mut exit: MessageWriter<AppExit>,
 ) {
     shot.t += time.delta_secs();
+    shot.frames += 1;
     if shot.stage > 0 && *state.get() == Screen::Title && session.players() == 0 {
         session.slots = [Some(Slot::new(Device::KeysLeft)), Some(Slot::new(Device::KeysRight))];
         session.stage = shot.stage;
@@ -43,6 +45,7 @@ fn run(
         commands.spawn(Screenshot::primary_window()).observe(save_to_disk(shot.path.clone()));
     }
     if shot.t > shot.at + 1.5 {
+        info!("smoke: {:.0} fps average", shot.frames as f32 / shot.t);
         exit.write(AppExit::Success);
     }
 }

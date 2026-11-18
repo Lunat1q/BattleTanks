@@ -33,5 +33,7 @@ TV can launch it. The game starts borderless fullscreen with the mouse cursor hi
 | Back / leave | B | Backspace | Backspace |
 | Pause | Start | Esc | Esc |
 
+**SETTINGS** on the title screen: FPS limit (default 60) and VSync, saved to `%APPDATA%\BattleTanks\settings.txt`.
+
 Quit from the title (**EXIT**) or the pause menu (**EXIT GAME**). `F11` / `Alt+Enter` toggles fullscreen;
 `--windowed` starts in a window. Set `BT_MUTE=1` to start without sound.
