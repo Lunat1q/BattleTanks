@@ -83,7 +83,8 @@ Title → SETTINGS (any controller or keyboard; left/right or A changes, B back)
 | FPS LIMIT | 30/60/90/120/144/165/240/OFF | 60 | own limiter (sleep, spin last 1.5 ms) — works even when VSync is ignored |
 | VSYNC | ON/OFF | ON | `AutoVsync` / `AutoNoVsync` |
 | FULLSCREEN | ON/OFF | ON | borderless; F11 / Alt+Enter flips and saves it; `--windowed` forces OFF (saved if you then change a setting) |
-| VOLUME | 0–100 % in 10s | 80 % | 0 skips playback entirely |
+| SOUND FX | 0–100 % in 10s | 80 % | sound effects (`volume=` in the file); 0 skips playback entirely |
+| MUSIC | 0–100 % in 10s | 60 % | music track volume, changes live; 0 stops the music |
 | SCREEN SHAKE | ON/OFF | ON | comfort on a big TV |
 | SHOW FPS | ON/OFF | OFF | smoothed FPS, top-right, every screen |
 | FRIENDLY FIRE | ON/OFF | ON | ON = classic (players paralyze each other); OFF = player bullets pass through the other player |
@@ -115,9 +116,17 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
 - Map rule (tested): from the start, every mini-boss and the boss is reachable with gates open, and closing any one
   gate cuts the boss off (`city_map::tests`).
 
+## Music (`music.rs`, ADR 0007)
+One track at a time, chosen by screen: title + settings `menu_music`, City Run map `menu_music_alternative`,
+results `victory`, game over `loss`. In a stage: classic stages 1–10 slow, 11–20 medium, 21–30 fast (by map, so
+laps restart slow); City Run districts 1–3 slow, 4–7 medium, 8–10 fast; odd/even stages alternate the two
+slow/medium variants. In City Run a live mini-boss switches to `hardfight`, the boss to `bossfight`, and back
+when it dies. Tracks restart when they end; the pause menu pauses the music. Jingles (stage start, game over)
+play over it.
+
 ## Known gaps / deliberate omissions
 - Hi-score lives for the session only (not saved).
-- No music loop, no Steam grid artwork (the exe and window do have an icon).
+- No Steam grid artwork (the exe and window do have an icon).
 - Results tally is static (no count-up animation).
 - Grenade-killed spawning enemies leave their sparkle to finish (cosmetic).
 - Keyboard layouts share Esc and Backspace; both act for whoever is joined on the keyboard.
@@ -144,4 +153,5 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
 | Smoke runs blasted sound in the room | audio always on | audio plugin skips when `BT_SHOT` / `BT_MUTE` is set |
 | 10 fps on the Sony Bravia (Mali-G57), CPU idle | Bevy's default 4x MSAA + bloom passes at 1080p, each ~halving fps on a TV GPU | `Msaa::Off` everywhere (sprites are pre-anti-aliased), bloom PC-only: 56 fps |
 | Android smoke runs froze after one frame | TV screensaver (dream) took over during unattended runs; hidden app stops rendering | `FLAG_KEEP_SCREEN_ON` in `MainActivity`; `adb shell input keyevent KEYCODE_WAKEUP` before a run |
+| Looping music would hold ~55 MB per song | rodio `repeat_infinite` buffers every decoded sample | play once (DESPAWN), respawn when it ends |
 | `adb pull /sdcard/...` "no such file" from Git Bash | MSYS rewrites the remote path to `C:/Program Files/Git/sdcard/...` | prefix `MSYS_NO_PATHCONV=1` |

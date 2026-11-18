@@ -7,7 +7,7 @@ license = "PolyForm-Noncommercial-1.0.0"
 [dependencies]
 # Only for `Icon` (window/taskbar icon); same version Bevy already builds.
 winit = { version = "0.30", default-features = false }
-bevy = { version = "0.20.1", default-features = false, features = ["2d", "ui", "bevy_audio", "wav", "png"] }
+bevy = { version = "0.20.1", default-features = false, features = ["2d", "ui", "bevy_audio", "wav", "vorbis", "png"] }
 
 # Android TV (ADR 0006): GameActivity host. Rendering is Vulkan only (bevy_render's wgpu backends).
 # ponytail: no GLES fallback; if a TV box lacks Vulkan, add `wgpu = { version = "30", default-features = false, features = ["gles"] }` here.

@@ -1,5 +1,5 @@
 //! Player settings, saved to `%APPDATA%\BattleTanks\settings.txt`: video (FPS limit, VSync, fullscreen),
-//! volume, screen shake, FPS counter, friendly fire, controller vibration. Also owns the frame limiter, the F11 toggle and the FPS overlay.
+//! sound and music volume, screen shake, FPS counter, friendly fire, controller vibration. Also owns the frame limiter, the F11 toggle and the FPS overlay.
 
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
@@ -18,6 +18,8 @@ pub struct Settings {
     pub fullscreen: bool,
     /// 0..=100 percent, steps of 10.
     pub volume: u32,
+    /// Music volume, 0..=100 percent, steps of 10 (independent of `volume`).
+    pub music: u32,
     pub shake: bool,
     pub show_fps: bool,
     /// Players' bullets paralyze each other (classic). Off: they pass through.
@@ -32,6 +34,7 @@ impl Default for Settings {
             vsync: true,
             fullscreen: true,
             volume: 80,
+            music: 60,
             shake: true,
             show_fps: false,
             friendly_fire: true,
@@ -41,7 +44,13 @@ impl Default for Settings {
 }
 
 /// Menu rows, in order. The settings screen adds BACK after these.
-pub const ITEMS: [&str; 8] = ["FPS LIMIT", "VSYNC", "FULLSCREEN", "VOLUME", "SCREEN SHAKE", "SHOW FPS", "FRIENDLY FIRE", "VIBRATION"];
+pub const ITEMS: [&str; 9] =
+    ["FPS LIMIT", "VSYNC", "FULLSCREEN", "SOUND FX", "MUSIC", "SCREEN SHAKE", "SHOW FPS", "FRIENDLY FIRE", "VIBRATION"];
+
+/// One 10 % step of a volume, clamped to 0..=100.
+fn step(v: u32, up: bool) -> u32 {
+    if up { (v + 10).min(100) } else { v.saturating_sub(10) }
+}
 
 fn on_off(b: bool) -> &'static str {
     if b { "ON" } else { "OFF" }
@@ -51,6 +60,7 @@ impl Settings {
     /// `key=value` lines; unknown keys and bad values fall back to defaults.
     pub fn parse(text: &str) -> Self {
         let mut s = Settings::default();
+        let pct = |v: &str, d: u32| v.parse::<u32>().map(|n| n.min(100) / 10 * 10).unwrap_or(d);
         let flag = |v: &str, d: bool| match v {
             "true" => true,
             "false" => false,
@@ -62,7 +72,8 @@ impl Settings {
                 "fps_limit" => s.fps_limit = v.parse().ok().filter(|f| FPS_CHOICES.contains(f)).unwrap_or(s.fps_limit),
                 "vsync" => s.vsync = flag(v, s.vsync),
                 "fullscreen" => s.fullscreen = flag(v, s.fullscreen),
-                "volume" => s.volume = v.parse::<u32>().map(|n| n.min(100) / 10 * 10).unwrap_or(s.volume),
+                "volume" => s.volume = pct(v, s.volume),
+                "music" => s.music = pct(v, s.music),
                 "shake" => s.shake = flag(v, s.shake),
                 "show_fps" => s.show_fps = flag(v, s.show_fps),
                 "friendly_fire" => s.friendly_fire = flag(v, s.friendly_fire),
@@ -75,8 +86,16 @@ impl Settings {
 
     pub fn serialize(&self) -> String {
         format!(
-            "fps_limit={}\nvsync={}\nfullscreen={}\nvolume={}\nshake={}\nshow_fps={}\nfriendly_fire={}\nvibration={}\n",
-            self.fps_limit, self.vsync, self.fullscreen, self.volume, self.shake, self.show_fps, self.friendly_fire, self.vibration
+            "fps_limit={}\nvsync={}\nfullscreen={}\nvolume={}\nmusic={}\nshake={}\nshow_fps={}\nfriendly_fire={}\nvibration={}\n",
+            self.fps_limit,
+            self.vsync,
+            self.fullscreen,
+            self.volume,
+            self.music,
+            self.shake,
+            self.show_fps,
+            self.friendly_fire,
+            self.vibration
         )
     }
 
@@ -90,11 +109,12 @@ impl Settings {
             }
             1 => self.vsync = !self.vsync,
             2 => self.fullscreen = !self.fullscreen,
-            3 => self.volume = if forward { (self.volume + 10).min(100) } else { self.volume.saturating_sub(10) },
-            4 => self.shake = !self.shake,
-            5 => self.show_fps = !self.show_fps,
-            6 => self.friendly_fire = !self.friendly_fire,
-            7 => self.vibration = !self.vibration,
+            3 => self.volume = step(self.volume, forward),
+            4 => self.music = step(self.music, forward),
+            5 => self.shake = !self.shake,
+            6 => self.show_fps = !self.show_fps,
+            7 => self.friendly_fire = !self.friendly_fire,
+            8 => self.vibration = !self.vibration,
             _ => {}
         }
     }
@@ -107,10 +127,11 @@ impl Settings {
             1 => on_off(self.vsync).into(),
             2 => on_off(self.fullscreen).into(),
             3 => format!("{}%", self.volume),
-            4 => on_off(self.shake).into(),
-            5 => on_off(self.show_fps).into(),
-            6 => on_off(self.friendly_fire).into(),
-            7 => on_off(self.vibration).into(),
+            4 => format!("{}%", self.music),
+            5 => on_off(self.shake).into(),
+            6 => on_off(self.show_fps).into(),
+            7 => on_off(self.friendly_fire).into(),
+            8 => on_off(self.vibration).into(),
             _ => String::new(),
         }
     }
@@ -235,6 +256,7 @@ mod tests {
             vsync: false,
             fullscreen: false,
             volume: 30,
+            music: 90,
             shake: false,
             show_fps: true,
             friendly_fire: false,
@@ -244,6 +266,7 @@ mod tests {
         assert_eq!(Settings::parse("fps_limit=77\nvsync=maybe\nvolume=loud\nnoise"), Settings::default());
         assert_eq!(Settings::parse("volume=250").volume, 100);
         assert_eq!(Settings::parse("volume=47").volume, 40);
+        assert_eq!(Settings::parse("music=101").music, 100);
         assert_eq!(Settings::parse(""), Settings::default());
     }
 
@@ -267,7 +290,9 @@ mod tests {
             s.adjust(3, false);
         }
         assert_eq!(s.value(3), "0%");
-        for item in [1, 2, 4, 5, 6, 7] {
+        s.adjust(4, false);
+        assert_eq!(s.value(4), "50%");
+        for item in [1, 2, 5, 6, 7, 8] {
             let before = s.value(item);
             s.adjust(item, true);
             assert_ne!(s.value(item), before, "item {item}");

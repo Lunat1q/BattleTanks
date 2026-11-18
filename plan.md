@@ -97,7 +97,7 @@ Same game, second target. The Windows exe keeps working at every step (checks gr
 
 **E. Android polish**
 - [ ] Lifecycle: going to the background auto-pauses the stage, stops audio, and restores both on resume
-- [ ] Settings: hide FULLSCREEN and VSYNC on Android (the OS owns them); keep FPS LIMIT, VOLUME, SHAKE, VIBRATION, FRIENDLY FIRE
+- [ ] Settings: hide FULLSCREEN and VSYNC on Android (the OS owns them); keep FPS LIMIT, SOUND FX, MUSIC, SHAKE, VIBRATION, FRIENDLY FIRE
 - [x] Performance on the Bravia: 10 → 56 fps by dropping MSAA (everywhere) and bloom (Android); recheck in a busy City Run boss fight
 
 **F. Google Play**
@@ -117,7 +117,7 @@ Same game, second target. The Windows exe keeps working at every step (checks gr
 ### Next ideas (not started — confirm before building)
 - [ ] Persist hi-score (small file in `%APPDATA%`)
 - [ ] Steam grid artwork (capsule/hero images)
-- [ ] Background music loop
+- [x] Background music: owner's 11 tracks, embedded Ogg Vorbis, per screen / stage tier / boss (ADR 0007)
 - [ ] Results-screen count-up animation like the classic tally
 
 ## Current state

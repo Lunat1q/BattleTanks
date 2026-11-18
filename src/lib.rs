@@ -14,6 +14,7 @@ mod geom;
 mod gfx;
 mod input;
 mod levels;
+mod music;
 mod rng;
 mod rules;
 mod settings;
@@ -43,7 +44,7 @@ pub fn run() {
         ..default()
     }))
     .insert_resource(settings)
-    .add_plugins((settings::plugin, gfx::plugin, audio::plugin, input::plugin, game::plugin, ui::plugin, dev::plugin));
+    .add_plugins((settings::plugin, gfx::plugin, audio::plugin, music::plugin, input::plugin, game::plugin, ui::plugin, dev::plugin));
     #[cfg(target_os = "android")]
     app.add_plugins(android_pads::plugin);
     app.run();
