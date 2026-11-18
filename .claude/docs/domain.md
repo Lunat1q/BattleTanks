@@ -65,6 +65,12 @@ ring, so an enemy can't shoot the base from its spawn (`levels::tests::centre_sp
 | Fire / confirm | A (also X, RB, RT fire) | Space / F | Enter / Right Ctrl / Num 0 |
 | Back / leave slot | B | Backspace | Backspace |
 | Pause | Start | Esc | Esc |
+
+Android TV: the **TV remote** is one more controller (D-pad, OK = A, Back = B; Back also toggles pause in a stage,
+since a remote has no Start; Play/Pause or Menu = Start). Back on the title with nobody joined exits to the TV home.
+Xbox and other standard pads work through Android; the **2026 Steam Controller** (Bluetooth LE, or USB puck/cable)
+through our own driver while the game is in front (needs the "nearby devices" permission once); its left trackpad
+steers like the stick.
 | Fullscreen | Settings | F11 / Alt+Enter | |
 
 ## Settings

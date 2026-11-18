@@ -109,6 +109,11 @@ fn input(
             nav.nav = nav.nav.or(intent.nav);
         }
     }
+    // Android TV convention (and Play's TV review): Back on the app's first screen goes home. Only with nobody
+    // joined, so a joined player's Back still just leaves their slot.
+    if cfg!(target_os = "android") && joined.is_empty() && devices.0.iter().any(|(_, i)| i.back) {
+        exit.write(AppExit::Success);
+    }
     match nav.nav {
         Some(Dir::Up) => menu.sel = (menu.sel + ITEMS - 1) % ITEMS,
         Some(Dir::Down) => menu.sel = (menu.sel + 1) % ITEMS,

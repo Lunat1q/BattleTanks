@@ -216,7 +216,7 @@ fn toggle_pause(
     mut paused: ResMut<Paused>,
     mut sfx: MessageWriter<Sfx>,
 ) {
-    let start = (0..2).any(|i| session.intent(i, &devices).start);
+    let start = (0..2).any(|i| session.intent(i, &devices).start || session.intent(i, &devices).pause);
     let lost = session.slots.iter().flatten().any(|s| !devices.connected(s.device));
     if start && !lost && matches!(run.phase, Phase::Play | Phase::Won) {
         paused.0 = !paused.0;

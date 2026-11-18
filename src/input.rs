@@ -29,6 +29,9 @@ pub struct Intent {
     pub back: bool,
     /// Start / Esc just pressed.
     pub start: bool,
+    /// Toggles pause like Start: Back on a TV remote, which has no Start. Only the stage reads it, so Back keeps
+    /// meaning "back" in other menus; the pause menu ignores a Back that set this, so it isn't handled twice.
+    pub pause: bool,
     /// Direction just pressed (menu navigation).
     pub nav: Option<Dir>,
 }
@@ -54,11 +57,16 @@ pub fn merge(a: Intent, b: Intent) -> Intent {
         confirm: a.confirm || b.confirm,
         back: a.back || b.back,
         start: a.start || b.start,
+        pause: a.pause || b.pause,
         nav: a.nav.or(b.nav),
     }
 }
 
 const STICK_DEAD_ZONE: f32 = 0.5;
+
+/// A gamepad that is really a TV remote (Android, `android_pads`): Back doubles as pause.
+#[derive(Component)]
+pub struct TvRemote;
 
 pub fn plugin(app: &mut App) {
     app.init_resource::<DeviceIntents>().add_systems(PreUpdate, gather.after(bevy::input::InputSystems)).add_systems(PostUpdate, rumble);
@@ -78,11 +86,12 @@ fn keyboard(keys: &ButtonInput<KeyCode>, moves: [KeyCode; 4], fire: &[KeyCode], 
         confirm: keys.any_just_pressed(fire.iter().copied()),
         back: keys.just_pressed(back),
         start: keys.just_pressed(KeyCode::Escape),
+        pause: false,
         nav: keys_dir(keys, moves, false),
     }
 }
 
-fn pad_intent(pad: &Gamepad, last_stick: &mut Option<Dir>) -> Intent {
+fn pad_intent(pad: &Gamepad, remote: bool, last_stick: &mut Option<Dir>) -> Intent {
     use GamepadButton::*;
     let dpad = [DPadUp, DPadDown, DPadLeft, DPadRight];
     let dpad_dir = Dir::ALL.into_iter().zip(dpad).find(|&(_, b)| pad.pressed(b)).map(|(d, _)| d);
@@ -97,13 +106,14 @@ fn pad_intent(pad: &Gamepad, last_stick: &mut Option<Dir>) -> Intent {
         confirm: pad.just_pressed(South),
         back: pad.just_pressed(East),
         start: pad.just_pressed(Start),
+        pause: remote && pad.just_pressed(East),
         nav: Dir::ALL.into_iter().zip(dpad).find(|&(_, b)| pad.just_pressed(b)).map(|(d, _)| d).or(stick_edge),
     }
 }
 
 fn gather(
     keys: Res<ButtonInput<KeyCode>>,
-    pads: Query<(Entity, &Gamepad)>,
+    pads: Query<(Entity, &Gamepad, Has<TvRemote>)>,
     mut sticks: Local<HashMap<Entity, Option<Dir>>>,
     mut out: ResMut<DeviceIntents>,
 ) {
@@ -114,8 +124,8 @@ fn gather(
         Device::KeysRight,
         keyboard(&keys, [ArrowUp, ArrowDown, ArrowLeft, ArrowRight], &[Enter, NumpadEnter, ControlRight, Numpad0], Backspace),
     ));
-    for (e, pad) in &pads {
-        out.0.push((Device::Pad(e), pad_intent(pad, sticks.entry(e).or_default())));
+    for (e, pad, remote) in &pads {
+        out.0.push((Device::Pad(e), pad_intent(pad, remote, sticks.entry(e).or_default())));
     }
 }
 

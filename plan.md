@@ -75,6 +75,8 @@ Same game, second target. The Windows exe keeps working at every step (checks gr
 - [ ] `AppExit` (title EXIT, pause → EXIT GAME) finishes the activity (smoke exit returned to the launcher; check from a pad in phase C)
 
 **C. Controllers: standard pads + TV remote** (Java hub → JNI → Bevy raw gamepad events)
+- [x] Built: `PadHub.java` + `src/android_pads.rs` (no `jni` crate: plain `extern "system"` exports, Java polls rumble),
+  GilrsPlugin disabled on Android, `TvRemote` + `Intent.pause`, title Back exits on Android; Rust mapping + Java parsing tests
 - [ ] `PadHub.java`: consume `SOURCE_GAMEPAD|JOYSTICK|DPAD` key/motion events; stable id per `InputDevice`; connect/disconnect via `InputManager.InputDeviceListener`
 - [ ] Mapping: A/B/X/Y, shoulders, triggers (`AXIS_LTRIGGER/RTRIGGER`, fall back to `AXIS_BRAKE/GAS`), sticks, hat → D-pad, Start/Select;
   TV remote = pad with D-pad, centre = South, Back = East (Back must never quit the activity during play)
@@ -84,6 +86,8 @@ Same game, second target. The Windows exe keeps working at every step (checks gr
 - [ ] Check on hardware: Xbox Series (BT + USB), Xbox One, DualSense, generic HID, TV remote; two pads at once; unplug → pause → takeover still works
 
 **D. Steam Controller (2026 "Triton")**: bring over the owner's own driver from moonlight-android PR #623
+- [x] Built: `TritonReport` (pure parse + trackpad → stick, JUnit), `SteamPad` base, `SteamPadBle`, `SteamPadUsb`, `SteamPads`
+  (bonded BLE, ACL reconnect, USB attach/permission; start on resume, stop on pause); lizard-mode events swallowed
 - [ ] Copy `SteamTritonController` (report parsing), `SteamControllerBle`, `SteamControllerUsb` and their test, re-headed under this repo's
   licence (owner's code; nothing else from Moonlight), protocol checked against SDL's Triton driver (zlib)
 - [ ] Driver feeds `PadHub` like any pad: lizard mode off, swallow its duplicate mouse/keyboard events, left trackpad → left stick

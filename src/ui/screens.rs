@@ -125,7 +125,7 @@ fn pause_menu(
     if input.nav.is_some() {
         sfx.write(Sfx::MenuMove);
     }
-    if input.back && lost.is_empty() {
+    if input.back && !input.pause && lost.is_empty() {
         paused.0 = false;
     }
     if input.confirm {

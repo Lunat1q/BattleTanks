@@ -40,6 +40,7 @@ dependencies {
     // Must match the GameActivity version android-activity 0.6 was written against (its README).
     implementation("androidx.games:games-activity:4.4.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
+    testImplementation("junit:junit:4.13.2")
 }
 
 // Builds the game for both TV ABIs (many TVs run 32-bit ARM) into jniLibs. Always the Cargo release profile:
