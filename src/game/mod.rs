@@ -1,0 +1,328 @@
+//! Gameplay: shared components/resources, screen states and the simulation schedule.
+//! Logic entities carry no sprites; `gfx` attaches visuals when they appear.
+
+pub mod city;
+pub mod combat;
+pub mod enemy;
+pub mod powerup;
+pub mod stage;
+pub mod tank;
+
+use crate::geom::Dir;
+use crate::input::{Device, DeviceIntents, Intent};
+use crate::rules::{self, EnemyKind, GunStats, PowerKind, Rank};
+use bevy::prelude::*;
+
+#[derive(States, Default, Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Screen {
+    #[default]
+    Title,
+    Stage,
+    Results,
+    GameOver,
+    Settings,
+    /// City Run district map: pick an unlocked district.
+    CityMap,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Mode {
+    /// 30 single-screen stages defending the base.
+    #[default]
+    Classic,
+    /// 10 tall scrolling districts, each ending in a boss.
+    City,
+}
+
+pub struct Slot {
+    pub device: Device,
+    /// Spare tanks.
+    pub lives: u32,
+    pub score: u32,
+    /// Star level 0..=3, lost on death.
+    pub level: u8,
+    /// No lives left this game.
+    pub out: bool,
+    /// Kills per `EnemyKind` this stage.
+    pub kills: [u32; 4],
+}
+
+impl Slot {
+    pub fn new(device: Device) -> Self {
+        Slot { device, lives: rules::START_LIVES, score: 0, level: 0, out: false, kills: [0; 4] }
+    }
+}
+
+#[derive(Resource, Default)]
+pub struct Session {
+    pub slots: [Option<Slot>; 2],
+    pub mode: Mode,
+    /// Current stage (Classic) or district (City), 1-based.
+    pub stage: usize,
+    pub hi_score: u32,
+}
+
+impl Session {
+    pub fn players(&self) -> usize {
+        self.slots.iter().flatten().count()
+    }
+
+    /// Adds points; returns extra lives earned.
+    pub fn add_score(&mut self, slot: usize, points: u32) -> u32 {
+        let Some(s) = self.slots[slot].as_mut() else { return 0 };
+        let extra = rules::extra_lives(s.score, s.score + points);
+        s.lives += extra;
+        s.score += points;
+        self.hi_score = self.hi_score.max(s.score);
+        extra
+    }
+
+    /// Player `p` is out but the partner has a spare tank to give.
+    pub fn can_borrow(&self, p: usize) -> bool {
+        self.slots[p].as_ref().is_some_and(|s| s.out) && self.slots[1 - p].as_ref().is_some_and(|s| s.lives > 0)
+    }
+
+    /// Player `p` takes one of the partner's spare tanks and is back in. False if there is none to take.
+    pub fn borrow(&mut self, p: usize) -> bool {
+        if !self.can_borrow(p) {
+            return false;
+        }
+        if let Some(mate) = self.slots[1 - p].as_mut() {
+            mate.lives -= 1;
+        }
+        if let Some(me) = self.slots[p].as_mut() {
+            me.out = false;
+        }
+        true
+    }
+
+    /// This frame's intent for a player slot (empty if the slot is unused).
+    pub fn intent(&self, slot: usize, devices: &DeviceIntents) -> Intent {
+        self.slots[slot].as_ref().map(|s| devices.get(s.device)).unwrap_or_default()
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Phase {
+    /// Stage banner, nothing moves.
+    Intro,
+    Play,
+    /// All enemies gone; short victory lap before results.
+    Won,
+    /// Base destroyed or everyone out; world keeps running briefly.
+    Lost,
+}
+
+#[derive(Resource)]
+pub struct StageRun {
+    pub phase: Phase,
+    pub timer: f32,
+    pub roster: Vec<EnemyKind>,
+    pub next_enemy: usize,
+    pub spawn_timer: f32,
+    pub spawn_point: usize,
+    pub freeze: f32,
+    pub shovel: f32,
+    pub base_alive: bool,
+}
+
+#[derive(Resource, Default)]
+pub struct Paused(pub bool);
+
+/// Visible slice of the field: `bottom..bottom + FIELD`. Always 0 on a classic stage; City Run scrolls it.
+/// Tanks can't leave it and bullets pop at its edges.
+#[derive(Resource, Default)]
+pub struct View {
+    pub bottom: f32,
+}
+
+impl View {
+    pub fn top(&self) -> f32 {
+        self.bottom + crate::geom::FIELD
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Team {
+    Player(usize),
+    Enemy,
+}
+
+#[derive(Component)]
+pub struct Tank {
+    pub team: Team,
+    pub dir: Dir,
+    /// Direction the driver wants this frame (`None` = stop).
+    pub want: Option<Dir>,
+    pub speed: f32,
+    pub moving: bool,
+    /// Could not move the full distance last frame.
+    pub blocked: bool,
+    /// Ice slide time left.
+    pub slide: f32,
+    /// Distance driven, drives tread animation.
+    pub odometer: f32,
+    /// Side of the square hit box (16; City Run bosses are bigger).
+    pub size: f32,
+}
+
+impl Tank {
+    pub fn new(team: Team, dir: Dir, speed: f32) -> Self {
+        Tank { team, dir, want: None, speed, moving: false, blocked: false, slide: 0.0, odometer: 0.0, size: crate::geom::TILE }
+    }
+}
+
+#[derive(Component)]
+pub struct Gun {
+    pub stats: GunStats,
+    pub trigger: bool,
+    pub cooldown: f32,
+}
+
+#[derive(Component)]
+pub struct Enemy {
+    pub kind: EnemyKind,
+    pub rank: Rank,
+    pub hp: u32,
+    pub max_hp: u32,
+    pub bonus: bool,
+    pub turn_in: f32,
+    pub fire_in: f32,
+}
+
+#[derive(Component)]
+pub struct Shield(pub f32);
+#[derive(Component)]
+pub struct Paralyzed(pub f32);
+#[derive(Component)]
+pub struct Spawning(pub f32);
+/// Short white flash after taking a non-lethal hit.
+#[derive(Component)]
+pub struct HitFlash(pub f32);
+
+#[derive(Component)]
+pub struct Bullet {
+    pub owner: Entity,
+    pub team: Team,
+    pub dir: Dir,
+    pub speed: f32,
+    pub power: bool,
+}
+
+#[derive(Component)]
+pub struct Base;
+
+#[derive(Component)]
+pub struct PowerUp(pub PowerKind);
+
+/// A City Run power-up placed in a brick stash: stays put when a new drop appears.
+#[derive(Component)]
+pub struct Stash;
+
+/// Visual event for `gfx`.
+#[derive(Message, Clone, Copy)]
+pub struct Fx {
+    pub kind: FxKind,
+    pub pos: Vec2,
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum FxKind {
+    Muzzle(Dir),
+    BulletPop,
+    Bricks,
+    Sparks,
+    TankBoom,
+    BaseBoom,
+    Points(u32),
+}
+
+/// Controller vibration for a player slot; `input` sends it to that slot's pad if vibration is on.
+#[derive(Message, Clone, Copy, PartialEq, Debug)]
+pub struct Rumble {
+    pub slot: usize,
+    pub strong: f32,
+    pub weak: f32,
+    pub secs: f32,
+}
+
+impl Rumble {
+    /// Own tank destroyed.
+    pub fn death(slot: usize) -> Self {
+        Rumble { slot, strong: 0.9, weak: 0.6, secs: 0.45 }
+    }
+    /// Base destroyed: everyone feels it.
+    pub fn base_lost(slot: usize) -> Self {
+        Rumble { slot, strong: 1.0, weak: 1.0, secs: 0.9 }
+    }
+    /// Paralyzed by the other player.
+    pub fn stunned(slot: usize) -> Self {
+        Rumble { slot, strong: 0.4, weak: 0.5, secs: 0.3 }
+    }
+    /// Small confirmation: a kill, a power-up.
+    pub fn tick(slot: usize) -> Self {
+        Rumble { slot, strong: 0.0, weak: 0.45, secs: 0.12 }
+    }
+}
+
+/// Sound event for `audio`.
+#[derive(Message, Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum Sfx {
+    Shoot,
+    Brick,
+    Steel,
+    ArmorHit,
+    EnemyBoom,
+    PlayerBoom,
+    BaseBoom,
+    PowerAppear,
+    PowerPick,
+    ExtraLife,
+    Pause,
+    StageStart,
+    GameOver,
+    MenuMove,
+    MenuPick,
+    GateOpen,
+    BossBoom,
+}
+
+#[derive(SystemSet, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Sim;
+
+/// The world simulates: on a stage, not paused, past the intro banner.
+pub fn sim_running(screen: Res<State<Screen>>, paused: Res<Paused>, run: Option<Res<StageRun>>) -> bool {
+    *screen.get() == Screen::Stage && !paused.0 && run.is_some_and(|r| r.phase != Phase::Intro)
+}
+
+pub fn plugin(app: &mut App) {
+    app.init_state::<Screen>()
+        .init_resource::<Session>()
+        .init_resource::<Paused>()
+        .init_resource::<View>()
+        .insert_resource(crate::rng::Rng::from_time())
+        .add_message::<Fx>()
+        .add_message::<Sfx>()
+        .add_message::<combat::Hit>()
+        .add_message::<Rumble>()
+        .configure_sets(Update, Sim.run_if(sim_running))
+        .add_systems(
+            Update,
+            (
+                stage::spawn_enemies,
+                stage::tick_timers,
+                stage::borrow_life,
+                tank::player_control,
+                enemy::think,
+                tank::drive,
+                tank::fire,
+                combat::fly_bullets,
+                combat::resolve_hits,
+                powerup::pickup,
+                stage::check_end,
+            )
+                .chain()
+                .in_set(Sim),
+        )
+        .add_plugins((stage::plugin, city::plugin));
+}
