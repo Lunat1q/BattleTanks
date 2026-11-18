@@ -92,4 +92,5 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
   `android/app/build/outputs/apk/release/app-release.apk` to `<folder>\BattleTanks.apk`), where `<folder>` is the single line in the
   gitignored `target_game_folder.env` (the owner's local game folder; skip if the file is absent). Then commit straight to `main` and
   push. Releases: bump `version` in `Cargo.toml` (shown on the title), tag `vX.Y.Z`, `gh release create` with
-  the release exe attached as `BattleTanks.exe` (no branches/PRs unless asked, no AI co-author trailers).
+  the release exe attached as `BattleTanks.exe` — **never attach the APK/AAB to a GitHub release** (no branches/PRs unless asked,
+  no AI co-author trailers).

@@ -111,7 +111,7 @@ Same game, second target. The Windows exe keeps working at every step (checks gr
 - [ ] Opt in to the Android TV form factor in Play Console → TV quality review (remote navigation, banner, no touch prompts, Back behaviour)
 
 **G. Release flow**
-- [ ] One tag builds both: `BattleTanks.exe` + `BattleTanks.apk` (sideload) on the GitHub release; the AAB goes to Play
+- [ ] One tag builds both: `BattleTanks.exe` on the GitHub release (never the APK/AAB on GitHub); the AAB goes to Play
 - [ ] Docs: CLAUDE.md commands (Android build/smoke), architecture tree (`android/`, `src/android.rs`), domain controls (TV remote, Steam Controller), lessons
 
 ### Next ideas (not started — confirm before building)
