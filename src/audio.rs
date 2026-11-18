@@ -6,6 +6,7 @@ use crate::settings::Settings;
 use bevy::audio::{AudioPlayer, AudioSource, PlaybackSettings, Volume};
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
+use bevy::window::AppLifecycle;
 use std::f32::consts::TAU;
 
 const RATE: u32 = 22_050;
@@ -13,12 +14,16 @@ const RATE: u32 = 22_050;
 #[derive(Resource)]
 struct Sounds(HashMap<Sfx, Handle<AudioSource>>);
 
+/// A playing sound effect (music has its own entities).
+#[derive(Component)]
+struct Ringing;
+
 pub fn plugin(app: &mut App) {
     // Silent for smoke runs (`BT_SHOT`) and on request (`BT_MUTE=1`), so testing doesn't blast the room.
     if std::env::var_os("BT_SHOT").is_some() || std::env::var_os("BT_MUTE").is_some() {
         return;
     }
-    app.add_systems(Startup, build).add_systems(PostUpdate, play);
+    app.add_systems(Startup, build).add_systems(PostUpdate, (hush, play));
 }
 
 /// 16-bit mono PCM WAV.
@@ -159,14 +164,35 @@ fn play(mut commands: Commands, sounds: Option<Res<Sounds>>, settings: Res<Setti
         }
         played.push(s);
         if let Some(h) = sounds.0.get(&s) {
-            commands.spawn((AudioPlayer(h.clone()), PlaybackSettings::DESPAWN.with_volume(Volume::Linear(volume))));
+            commands.spawn((Ringing, AudioPlayer(h.clone()), PlaybackSettings::DESPAWN.with_volume(Volume::Linear(volume))));
         }
+    }
+}
+
+/// Cut the effects still ringing when the app goes to the background (the audio thread keeps playing while the OS
+/// suspends the app; they are short, so stopping beats resuming them).
+fn hush(mut commands: Commands, mut lifecycle: MessageReader<AppLifecycle>, voices: Query<Entity, With<Ringing>>) {
+    if lifecycle.read().filter_map(|&e| crate::game::stage::backgrounded(e)).any(|away| away) {
+        voices.iter().for_each(|e| commands.entity(e).despawn());
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn going_to_the_background_cuts_ringing_effects() {
+        let mut app = App::new();
+        app.add_message::<AppLifecycle>().add_systems(Update, hush);
+        let e = app.world_mut().spawn(Ringing).id();
+        app.world_mut().write_message(AppLifecycle::Running);
+        app.update();
+        assert!(app.world().get_entity(e).is_ok());
+        app.world_mut().write_message(AppLifecycle::WillSuspend);
+        app.update();
+        assert!(app.world().get_entity(e).is_err());
+    }
 
     #[test]
     fn wav_header_matches_data() {

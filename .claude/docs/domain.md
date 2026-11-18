@@ -93,7 +93,7 @@ Title → SETTINGS (any controller or keyboard; left/right or A changes, B back)
 
 A host that owns the window (`Platform::host_window`) hides VSYNC and FULLSCREEN.
 
-Leaving the game (Home, another app, TV off) pauses a live stage and holds the music; on return the pause menu waits.
+Leaving the game (Home, another app, TV off) pauses a live stage, holds the music and cuts sound effects still ringing; on return the pause menu waits.
 
 Controller disconnect → game pauses with a note; any unassigned controller pressing A takes over the slot.
 
@@ -145,7 +145,6 @@ play over it.
 - Variable timestep (dt clamped 0.05 s) rather than fixed; fine at 60 fps vsync, revisit if behaviour drifts
   at very low frame rates.
 - No online play, no AI teammate, no level editor (maps are plain text).
-- Sound effects already playing finish when the app goes to the background (only music is held).
 - City Run: no boss HP bar (bosses fade to grey as they take damage); district maps are assembled from a
   shared set of section blocks, so long districts repeat streets; the view never scrolls back down.
 
