@@ -95,6 +95,20 @@ impl Canvas {
         }
     }
 
+    /// Composite a smaller `top` over this canvas with its top-left corner at pixel `(x, y)`; clipped.
+    /// Only the icon/banner writer (a test) needs it so far.
+    #[cfg(test)]
+    pub fn blit(&mut self, top: &Canvas, x: usize, y: usize) {
+        for j in 0..top.h.min(self.h.saturating_sub(y)) {
+            for i in 0..top.w.min(self.w.saturating_sub(x)) {
+                let (s, d) = (top.px[j * top.w + i], &mut self.px[(y + j) * self.w + x + i]);
+                for k in 0..4 {
+                    d[k] = s[k] + d[k] * (1.0 - s[3]);
+                }
+            }
+        }
+    }
+
     pub fn size(&self) -> (u32, u32) {
         (self.w as u32, self.h as u32)
     }
@@ -215,6 +229,17 @@ mod tests {
         let alpha_at = |i: usize, j: usize| data[(j * 16 + i) * 4 + 3];
         assert_eq!(alpha_at(8, 8), 255);
         assert_eq!(alpha_at(0, 0), 0);
+    }
+
+    #[test]
+    fn blit_places_and_clips() {
+        let mut big = Canvas::new(4.0, 4.0, 1.0);
+        let mut dot = Canvas::new(2.0, 2.0, 1.0);
+        dot.fill(|_| gray(1.0));
+        big.blit(&dot, 3, 1); // half of it hangs off the right edge
+        let a = big.rgba8();
+        let alpha = |i: usize, j: usize| a[(j * 4 + i) * 4 + 3];
+        assert_eq!((alpha(3, 1), alpha(3, 2), alpha(2, 1), alpha(3, 0)), (255, 255, 0, 0));
     }
 
     #[test]

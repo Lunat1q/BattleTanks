@@ -22,6 +22,44 @@ pub fn paint(px: u32) -> Canvas {
     c
 }
 
+/// 5x7 pixel glyphs for the banner title; `#` = lit. Only the letters it needs.
+#[cfg(test)]
+const GLYPHS: [(char, [&str; 7]); 8] = [
+    ('A', [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"]),
+    ('B', ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."]),
+    ('E', ["#####", "#....", "#....", "####.", "#....", "#....", "#####"]),
+    ('K', ["#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"]),
+    ('L', ["#....", "#....", "#....", "#....", "#....", "#....", "#####"]),
+    ('N', ["#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#", "#...#"]),
+    ('S', [".####", "#....", "#....", ".###.", "....#", "....#", "####."]),
+    ('T', ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."]),
+];
+
+/// Android TV launcher banner, `320k x 180k` px (k = 2 for xhdpi): the icon tile beside "BATTLE / TANKS".
+#[cfg(test)]
+pub fn banner(k: usize) -> Canvas {
+    let mut c = Canvas::new(320.0, 180.0, k as f32);
+    c.fill(|p| mix(rgb(0.05, 0.07, 0.13), rgb(0.14, 0.19, 0.34), 0.5 + p.y / 180.0));
+    c.blit(&paint(140 * k as u32), 16 * k, 20 * k);
+    let cell = 4.0; // banner units per glyph pixel
+    for (line, word) in ["BATTLE", "TANKS"].iter().enumerate() {
+        let top = 50.0 + line as f32 * 44.0;
+        for (n, ch) in word.chars().enumerate() {
+            let rows = GLYPHS.iter().find(|g| g.0 == ch).expect("glyph").1;
+            for (r, row) in rows.iter().enumerate() {
+                for (col, _) in row.chars().enumerate().filter(|(_, b)| *b == '#') {
+                    // Canvas origin is the centre, y up.
+                    let x = 170.0 + (n * 6 + col) as f32 * cell - 160.0 + cell / 2.0;
+                    let y = 90.0 - (top + r as f32 * cell + cell / 2.0);
+                    let at = Vec2::new(x, y);
+                    c.paint(|p| sd_box(p, at, Vec2::splat(cell / 2.0)), |_| rgb(0.98, 0.80, 0.34));
+                }
+            }
+        }
+    }
+    c
+}
+
 /// ICO file with one 32-bit BMP image per `(size, rgba)` entry. Test-only: it feeds `assets/icon.ico`.
 #[cfg(test)]
 pub fn ico(images: &[(u32, Vec<u8>)]) -> Vec<u8> {
@@ -102,22 +140,29 @@ mod tests {
         assert_eq!(u32::from_le_bytes(data[first_offset..first_offset + 4].try_into().unwrap()), 40);
     }
 
+    fn save_png(c: &Canvas, path: &str) {
+        let (w, h) = c.size();
+        let img = Image::new(
+            bevy::render::render_resource::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+            bevy::render::render_resource::TextureDimension::D2,
+            c.rgba8(),
+            bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
+            bevy::asset::RenderAssetUsages::all(),
+        );
+        std::fs::create_dir_all(std::path::Path::new(path).parent().unwrap()).unwrap();
+        img.try_into_dynamic().unwrap().save(path).unwrap();
+    }
+
     #[test]
-    #[ignore = "writes assets/icon.ico; run when the icon art changes"]
+    #[ignore = "writes assets/icon.ico and the Android launcher images; run when the icon art changes"]
     fn write_icon_file() {
         let images: Vec<(u32, Vec<u8>)> = [16, 24, 32, 48, 64, 128, 256].iter().map(|&s| (s, paint(s).rgba8())).collect();
         std::fs::create_dir_all("assets").unwrap();
         std::fs::write("assets/icon.ico", ico(&images)).unwrap();
         // A PNG preview for eyeballing in reviews/screenshots.
-        let big = paint(256);
-        let (w, h) = big.size();
-        let img = Image::new(
-            bevy::render::render_resource::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
-            bevy::render::render_resource::TextureDimension::D2,
-            big.rgba8(),
-            bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
-            bevy::asset::RenderAssetUsages::all(),
-        );
-        img.try_into_dynamic().unwrap().save("assets/icon.png").unwrap();
+        save_png(&paint(256), "assets/icon.png");
+        let res = "android/app/src/main/res";
+        save_png(&paint(192), &format!("{res}/mipmap-xxxhdpi/ic_launcher.png"));
+        save_png(&banner(2), &format!("{res}/drawable-xhdpi/banner.png"));
     }
 }

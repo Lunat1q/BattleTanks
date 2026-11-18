@@ -63,13 +63,14 @@ Same game, second target. The Windows exe keeps working at every step (checks gr
   (Bevy 0.20 has no `gles` feature; add a direct `wgpu` dep with `gles` if a TV box lacks Vulkan). `jni` comes with phase C
 
 **B. Hello TV**
-- [ ] `android/` Gradle project: `MainActivity extends GameActivity`, `minSdk` 26, `targetSdk` = what Play currently requires
-  (API 36 from Aug 2026, check in Play Console), ABIs `arm64-v8a` + `armeabi-v7a` (many TVs, e.g. Sony Bravia, run 32-bit ARM)
-- [ ] TV manifest: `LEANBACK_LAUNCHER`, `uses-feature android.software.leanback` / `touchscreen required=false` /
-  `android.hardware.gamepad required=false`, landscape, 320×180 banner painted by `gfx/icon.rs` like the exe icon
-- [ ] Build: `cargo ndk -t arm64-v8a -t armeabi-v7a -o android/app/src/main/jniLibs build --release --lib`, then `gradlew assembleDebug`
-- [ ] 16 KB page alignment (NDK r28+ default; check with `zipalign -c -P 16`)
-- [ ] Smoke on the Android TV emulator: debug-only intent extras → `BT_SHOT`/`BT_STAGE`/`BT_SHOT_AT`, pull the PNG with `adb`
+- [x] `android/` Gradle project (AGP 9.5.1, Gradle 9.9.1): `MainActivity extends GameActivity` (games-activity 4.4.0),
+  `minSdk` 26, `targetSdk` 36, ABIs `arm64-v8a` + `armeabi-v7a` (many TVs, e.g. Sony Bravia, run 32-bit ARM)
+- [x] TV manifest: `LEANBACK_LAUNCHER`, leanback required (TV-only listing), touchscreen/gamepad not required,
+  sensorLandscape, configChanges for keyboard/navigation; 320×180 banner + launcher icon painted by `gfx/icon.rs`
+- [x] Build: Gradle `cargoNdk` task (`cargo ndk ... rustc --lib --release --crate-type cdylib`) before `preBuild`; APK ~100 MB
+  (two ABIs, uncompressed .so; Play splits per ABI). ponytail: no size tuning yet, try `opt-level = "s"` for Android if it matters
+- [x] 16 KB page alignment: LOAD segments 0x4000, `zipalign -c -P 16` OK
+- [ ] Smoke on the owner's TV box over adb: debug-only intent extras → `BT_SHOT`/`BT_STAGE`/`BT_SHOT_AT`, pull the PNG
 - [ ] `AppExit` (title EXIT, pause → EXIT GAME) finishes the activity
 
 **C. Controllers: standard pads + TV remote** (Java hub → JNI → Bevy raw gamepad events)

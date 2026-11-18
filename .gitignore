@@ -3,3 +3,10 @@
 !assets/icon.png
 target_game_folder.env
 .codegraph/
+!android/app/src/main/res/**/*.png
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/app/src/main/jniLibs/
+android/local.properties
