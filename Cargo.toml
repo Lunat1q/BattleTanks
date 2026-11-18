@@ -2,6 +2,7 @@
 name = "battle_tanks"
 version = "0.1.0"
 edition = "2024"
+license = "PolyForm-Noncommercial-1.0.0"
 
 [dependencies]
 bevy = { version = "0.20.1", default-features = false, features = ["2d", "ui", "bevy_audio", "wav", "png"] }

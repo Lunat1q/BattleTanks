@@ -41,3 +41,7 @@ TV can launch it. The game starts borderless fullscreen with the mouse cursor hi
 
 Quit from the title (**EXIT**) or the pause menu (**EXIT GAME**). `F11` / `Alt+Enter` toggles fullscreen;
 `--windowed` starts in a window. Set `BT_MUTE=1` to start without sound.
+
+## License
+
+[PolyForm Noncommercial 1.0.0](LICENSE.md): free for personal, hobby and other noncommercial use; commercial use needs permission.
