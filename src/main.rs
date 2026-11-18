@@ -17,39 +17,24 @@ mod terrain;
 mod ui;
 
 use bevy::prelude::*;
-use bevy::window::{CursorOptions, MonitorSelection, PresentMode, WindowMode};
+use bevy::window::CursorOptions;
 
 fn main() {
-    // `--windowed` for desk testing; the TV build runs borderless fullscreen.
-    let windowed = std::env::args().any(|a| a == "--windowed");
+    // Loaded before the app so the window opens in the saved mode (`--windowed` forces a window).
+    let settings = settings::load();
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Battle Tanks".into(),
-                mode: if windowed { WindowMode::Windowed } else { WindowMode::BorderlessFullscreen(MonitorSelection::Primary) },
+                mode: settings.window_mode(),
                 resolution: (1600, 900).into(),
-                // VSync / FPS limit come from `settings` (applied on the first frame).
-                present_mode: PresentMode::AutoVsync,
+                present_mode: settings.present_mode(),
                 ..default()
             }),
             primary_cursor_options: Some(CursorOptions { visible: false, ..default() }),
             ..default()
         }))
+        .insert_resource(settings)
         .add_plugins((settings::plugin, gfx::plugin, audio::plugin, input::plugin, game::plugin, ui::plugin, dev::plugin))
-        .add_systems(Update, toggle_fullscreen)
         .run();
-}
-
-/// F11 / Alt+Enter toggles fullscreen.
-fn toggle_fullscreen(keys: Res<ButtonInput<KeyCode>>, mut windows: Query<&mut Window>) {
-    let alt_enter = keys.pressed(KeyCode::AltLeft) && keys.just_pressed(KeyCode::Enter);
-    if !(keys.just_pressed(KeyCode::F11) || alt_enter) {
-        return;
-    }
-    for mut w in &mut windows {
-        w.mode = match w.mode {
-            WindowMode::Windowed => WindowMode::BorderlessFullscreen(MonitorSelection::Current),
-            _ => WindowMode::Windowed,
-        };
-    }
 }

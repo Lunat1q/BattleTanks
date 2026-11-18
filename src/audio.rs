@@ -2,6 +2,7 @@
 
 use crate::game::Sfx;
 use crate::rng::Rng;
+use crate::settings::Settings;
 use bevy::audio::{AudioPlayer, AudioSource, PlaybackSettings, Volume};
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
@@ -135,8 +136,13 @@ fn build(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {
     commands.insert_resource(Sounds(map));
 }
 
-fn play(mut commands: Commands, sounds: Option<Res<Sounds>>, mut events: MessageReader<Sfx>) {
+fn play(mut commands: Commands, sounds: Option<Res<Sounds>>, settings: Res<Settings>, mut events: MessageReader<Sfx>) {
     let Some(sounds) = sounds else { return };
+    let volume = settings.volume as f32 / 100.0;
+    if volume <= 0.0 {
+        events.clear();
+        return;
+    }
     let mut played: Vec<Sfx> = Vec::new();
     for &s in events.read() {
         if played.contains(&s) {
@@ -144,7 +150,7 @@ fn play(mut commands: Commands, sounds: Option<Res<Sounds>>, mut events: Message
         }
         played.push(s);
         if let Some(h) = sounds.0.get(&s) {
-            commands.spawn((AudioPlayer(h.clone()), PlaybackSettings::DESPAWN.with_volume(Volume::Linear(0.8))));
+            commands.spawn((AudioPlayer(h.clone()), PlaybackSettings::DESPAWN.with_volume(Volume::Linear(volume))));
         }
     }
 }

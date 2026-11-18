@@ -1,5 +1,5 @@
 //! Agent/dev smoke hook: `BT_SHOT=out.png` auto-joins two keyboard players, starts `BT_STAGE`
-//! (default 1; 0 = stay on the title), saves a screenshot after `BT_SHOT_AT` seconds (default 7) and quits.
+//! (default 1; 0 = stay on the title, or `BT_SCREEN=settings`), saves a screenshot after `BT_SHOT_AT` seconds (default 7) and quits.
 //! Inert unless the env var is set.
 
 use crate::game::{Screen, Session, Slot};
@@ -39,6 +39,9 @@ fn run(
         session.slots = [Some(Slot::new(Device::KeysLeft)), Some(Slot::new(Device::KeysRight))];
         session.stage = shot.stage;
         next.set(Screen::Stage);
+    }
+    if shot.stage == 0 && *state.get() == Screen::Title && std::env::var("BT_SCREEN").as_deref() == Ok("settings") {
+        next.set(Screen::Settings);
     }
     if shot.t > shot.at && !shot.taken {
         shot.taken = true;

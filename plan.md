@@ -25,7 +25,7 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Pad navigation everywhere (stick edge + D-pad), Start pause, pause menu with resume/title/exit
 - [x] Controller disconnect auto-pauses; any free pad pressing A takes over the slot
 - [x] HUD side panels sized in `vh` for 16:9 TVs
-- [x] Settings screen: FPS limit (default 60) + VSync, saved in `%APPDATA%`
+- [x] Settings screen: FPS limit (default 60), VSync, fullscreen, volume, screen shake, FPS counter; saved in `%APPDATA%`
 
 ### M3 — Looks & sound ✅ (first pass)
 - [x] SDF painter; procedural tanks (8 models, tread animation), bricks, steel, water (3 frames), trees, ice, ground
@@ -48,7 +48,7 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 
 ## Current state
 
-M1–M3 done, plus Settings (FPS limit — owner saw ~1000 fps); all checks green (fmt, clippy, 29 tests,
+M1–M3 done, plus Settings (FPS limit — owner saw ~1000 fps — volume, fullscreen, shake, FPS counter); all checks green (fmt, clippy, 30 tests,
 release build). Limiter measured at 59 fps (60 cap) and 140 fps (144 cap) in smoke runs. Smoke screenshots verified for the title
 and stages 1, 2, 4, 5. Not yet played with real controllers — that's the first M4 step.
 

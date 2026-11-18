@@ -58,14 +58,19 @@ After the last map the maps loop; each lap converts 4 weaker enemies into strong
 | Fire / confirm | A (also X, RB, RT fire) | Space / F | Enter / Right Ctrl / Num 0 |
 | Back / leave slot | B | Backspace | Backspace |
 | Pause | Start | Esc | Esc |
-| Fullscreen | — | F11 / Alt+Enter | |
+| Fullscreen | Settings | F11 / Alt+Enter | |
 
 ## Settings
 Title → SETTINGS (any controller or keyboard; left/right or A changes, B back). Saved on every change to
-`%APPDATA%\BattleTanks\settings.txt` (`fps_limit=60`, `vsync=true`); bad or missing values fall back to defaults.
-- **FPS LIMIT** 30 / 60 / 90 / 120 / 144 / 165 / 240 / OFF, default 60 (matches a 60 Hz stream). Enforced by our own
-  limiter (sleep, then spin the last 1.5 ms) at the end of each frame, so it works even when VSync is ignored.
-- **VSYNC** ON (`AutoVsync`) / OFF (`AutoNoVsync`), default ON.
+`%APPDATA%\BattleTanks\settings.txt` as `key=value` lines; bad or missing values fall back to defaults.
+| Setting | Values | Default | Notes |
+|---|---|---|---|
+| FPS LIMIT | 30/60/90/120/144/165/240/OFF | 60 | own limiter (sleep, spin last 1.5 ms) — works even when VSync is ignored |
+| VSYNC | ON/OFF | ON | `AutoVsync` / `AutoNoVsync` |
+| FULLSCREEN | ON/OFF | ON | borderless; F11 / Alt+Enter flips and saves it; `--windowed` forces OFF (saved if you then change a setting) |
+| VOLUME | 0–100 % in 10s | 80 % | 0 skips playback entirely |
+| SCREEN SHAKE | ON/OFF | ON | comfort on a big TV |
+| SHOW FPS | ON/OFF | OFF | smoothed FPS, top-right, every screen |
 
 Controller disconnect → game pauses with a note; any unassigned controller pressing A takes over the slot.
 

@@ -6,10 +6,11 @@
 Cargo.toml            # bevy 0.20 (2d, ui, bevy_audio, wav, png); dev deps opt-level 3; release thin LTO + strip
 levels/NN.txt         # stage maps, baked into the exe with include_str! (format in levels.rs)
 src/
-  main.rs             # window (borderless fullscreen / --windowed), plugin list, F11 + Alt+Enter toggle
+  main.rs             # loads Settings first so the window opens in the saved mode; plugin list
   geom.rs             # units (SUB 4, CELL 8, TILE 16, FIELD 208), Dir, rect overlap, grid snap  [pure]
   rng.rs              # xorshift64* Resource: below/range/chance/pick/shuffle                     [pure]
-  settings.rs         # Settings (fps_limit, vsync) <-> %APPDATA%\BattleTanks\settings.txt; frame limiter in Last
+  settings.rs         # Settings (fps, vsync, fullscreen, volume, shake, show_fps) <-> %APPDATA%\BattleTanks\settings.txt;
+                      # apply to window, F11 toggle, FPS overlay, frame limiter in Last
   rules.rs            # every gameplay number: speeds, timers, enemy stats, gun levels, scoring    [pure]
   terrain.rs          # 52x52 sub-cell grid, tank blocking, bullet impact strip, base ring, dirty list [pure]
   levels.rs           # parse stage files, force spawns/base clear, rosters, harder laps         [pure]
@@ -34,7 +35,7 @@ src/
   ui/
     mod.rs            # text() in vh units, colours, menu helpers
     title.rs          # join/leave slots, START / STAGE <n> / SETTINGS / EXIT
-    settings.rs       # FPS LIMIT / VSYNC / BACK; saves on every change
+    settings.rs       # rows from settings::ITEMS + BACK; saves on every change
     hud.rs            # side panels: lives, score, power, enemy reserve icons, stage flag
     screens.rs        # stage banner, pause menu (+ pad-lost note), results tally, game over
 ```

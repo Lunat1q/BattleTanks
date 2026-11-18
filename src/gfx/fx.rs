@@ -183,10 +183,16 @@ fn update_particles(
     }
 }
 
-fn shake_camera(time: Res<Time>, mut shake: ResMut<Shake>, mut rng: ResMut<Rng>, mut cam: Query<&mut Transform, With<MainCamera>>) {
+fn shake_camera(
+    time: Res<Time>,
+    settings: Res<crate::settings::Settings>,
+    mut shake: ResMut<Shake>,
+    mut rng: ResMut<Rng>,
+    mut cam: Query<&mut Transform, With<MainCamera>>,
+) {
     let Ok(mut tf) = cam.single_mut() else { return };
     shake.0 = (shake.0 - time.delta_secs() * 1.6).max(0.0);
-    let k = shake.0 * shake.0 * 3.5;
+    let k = if settings.shake { shake.0 * shake.0 * 3.5 } else { 0.0 };
     tf.translation.x = 104.0 + rng.range(-k, k);
     tf.translation.y = 104.0 + rng.range(-k, k);
 }
