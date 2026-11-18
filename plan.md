@@ -70,8 +70,9 @@ Same game, second target. The Windows exe keeps working at every step (checks gr
 - [x] Build: Gradle `cargoNdk` task (`cargo ndk ... rustc --lib --release --crate-type cdylib`) before `preBuild`; APK ~100 MB
   (two ABIs, uncompressed .so; Play splits per ABI). ponytail: no size tuning yet, try `opt-level = "s"` for Android if it matters
 - [x] 16 KB page alignment: LOAD segments 0x4000, `zipalign -c -P 16` OK
-- [ ] Smoke on the owner's TV box over adb: debug-only intent extras → `BT_SHOT`/`BT_STAGE`/`BT_SHOT_AT`, pull the PNG
-- [ ] `AppExit` (title EXIT, pause → EXIT GAME) finishes the activity
+- [x] Smoke on the owner's TV box (Sony Bravia 4K AE2, Android 14, 32-bit, Mali-G57 Vulkan 1.3) over adb: title + stage 2 render right at 1080p
+- [x] Keep the screen on in-game (`FLAG_KEEP_SCREEN_ON`)
+- [ ] `AppExit` (title EXIT, pause → EXIT GAME) finishes the activity (smoke exit returned to the launcher; check from a pad in phase C)
 
 **C. Controllers: standard pads + TV remote** (Java hub → JNI → Bevy raw gamepad events)
 - [ ] `PadHub.java`: consume `SOURCE_GAMEPAD|JOYSTICK|DPAD` key/motion events; stable id per `InputDevice`; connect/disconnect via `InputManager.InputDeviceListener`
@@ -93,7 +94,7 @@ Same game, second target. The Windows exe keeps working at every step (checks gr
 **E. Android polish**
 - [ ] Lifecycle: going to the background auto-pauses the stage, stops audio, and restores both on resume
 - [ ] Settings: hide FULLSCREEN and VSYNC on Android (the OS owns them); keep FPS LIMIT, VOLUME, SHAKE, VIBRATION, FRIENDLY FIRE
-- [ ] Performance on a weak TV box (bloom/HDR cost on GLES); add a LOW EFFECTS setting only if it misses 60 fps
+- [x] Performance on the Bravia: 10 → 56 fps by dropping MSAA (everywhere) and bloom (Android); recheck in a busy City Run boss fight
 
 **F. Google Play**
 - [ ] Developer account (one-time fee, identity check). New personal accounts must run a **closed test with 12+ testers for 14 days**

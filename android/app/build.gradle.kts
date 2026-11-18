@@ -44,14 +44,18 @@ dependencies {
 
 // Builds the game for both TV ABIs (many TVs run 32-bit ARM) into jniLibs. Always the Cargo release profile:
 // a debug Bevy .so is hundreds of MB and too slow to play.
+// `-Pabis=armeabi-v7a` builds one ABI for quick device tests (the owner's Bravia is 32-bit).
+val abis = (findProperty("abis") as String? ?: "arm64-v8a,armeabi-v7a").split(",")
 val cargoNdk by tasks.registering(Exec::class) {
     workingDir = rootProject.file("..")
     commandLine(
-        "cargo", "ndk", "-t", "arm64-v8a", "-t", "armeabi-v7a", "-P", "26",
-        "-o", file("src/main/jniLibs").absolutePath,
-        "rustc", "--lib", "--release", "--crate-type", "cdylib",
+        listOf("cargo", "ndk") + abis.flatMap { listOf("-t", it) } + listOf(
+            "-P", "26", "-o", file("src/main/jniLibs").absolutePath,
+            "rustc", "--lib", "--release", "--crate-type", "cdylib",
+        ),
     )
     doFirst {
+        delete("src/main/jniLibs") // no stale ABI left behind by a `-Pabis=` test build
         environment("ANDROID_NDK_HOME", androidComponents.sdkComponents.ndkDirectory.get().asFile.absolutePath)
     }
 }

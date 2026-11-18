@@ -4,6 +4,7 @@ import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
 import android.system.ErrnoException;
 import android.system.Os;
+import android.view.WindowManager;
 
 import com.google.androidgamesdk.GameActivity;
 
@@ -29,5 +30,7 @@ public class MainActivity extends GameActivity {
             }
         }
         super.onCreate(savedInstanceState); // starts the native game thread, which reads the env
+        // No screensaver mid-game: the TV's dream would hide (and so freeze) the game, e.g. during the title attract or a long pause.
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 }

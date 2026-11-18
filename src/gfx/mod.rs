@@ -11,6 +11,7 @@ mod world;
 
 use crate::rules::{EnemyKind, PowerKind, Rank};
 use bevy::camera::ScalingMode;
+#[cfg(not(target_os = "android"))]
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
 
@@ -141,6 +142,12 @@ fn spawn_camera(mut commands: Commands) {
             ..OrthographicProjection::default_2d()
         }),
         Transform::from_xyz(104.0, 104.0, 0.0),
+        // Sprites are quads with painter-anti-aliased textures, so MSAA adds nothing visible, yet on a TV-class
+        // Mali (Sony Bravia, Mali-G57) Bevy's default 4x halved the frame rate.
+        Msaa::Off,
+        // ponytail: bloom is PC-only. On the Bravia it cost 56 -> 26 fps (34 with 128 px mips); a setting if a strong
+        // Android box (e.g. Shield) should get the glow too.
+        #[cfg(not(target_os = "android"))]
         Bloom { intensity: 0.12, ..Bloom::NATURAL },
     ));
 }

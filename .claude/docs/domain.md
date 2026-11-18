@@ -118,6 +118,7 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
 - Variable timestep (dt clamped 0.05 s) rather than fixed; fine at 60 fps vsync, revisit if behaviour drifts
   at very low frame rates.
 - No online play, no AI teammate, no level editor (maps are plain text).
+- Android: no bloom glow (too slow on TV GPUs); controllers not wired yet (gilrs has no Android backend, M6 phase C).
 - City Run: no boss HP bar (bosses fade to grey as they take damage); district maps are assembled from a
   shared set of section blocks, so long districts repeat streets; the view never scrolls back down.
 
@@ -135,3 +136,6 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
 | Enemy killed the base from the centre spawn in 3 shots (stage 1 + 13 more) | open centre column, ring only 2 rows thick | centre-lane cover test over all stages |
 | A SCOUT rushed in as stage 1's first enemy | roster shuffle can put any kind first | opening wave = 3 weakest, tested |
 | Smoke runs blasted sound in the room | audio always on | audio plugin skips when `BT_SHOT` / `BT_MUTE` is set |
+| 10 fps on the Sony Bravia (Mali-G57), CPU idle | Bevy's default 4x MSAA + bloom passes at 1080p, each ~halving fps on a TV GPU | `Msaa::Off` everywhere (sprites are pre-anti-aliased), bloom PC-only: 56 fps |
+| Android smoke runs froze after one frame | TV screensaver (dream) took over during unattended runs; hidden app stops rendering | `FLAG_KEEP_SCREEN_ON` in `MainActivity`; `adb shell input keyevent KEYCODE_WAKEUP` before a run |
+| `adb pull /sdcard/...` "no such file" from Git Bash | MSYS rewrites the remote path to `C:/Program Files/Git/sdcard/...` | prefix `MSYS_NO_PATHCONV=1` |
