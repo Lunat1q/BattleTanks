@@ -32,6 +32,8 @@ pub fn choose_dir(pos: Vec2, target: Vec2, current: Dir, blocked: bool, roll: f3
 pub fn think(
     time: Res<Time>,
     run: Res<StageRun>,
+    session: Res<Session>,
+    base: Query<(), With<Base>>,
     mut rng: ResMut<Rng>,
     players: Query<(&Transform, &Tank), (Without<Enemy>, Without<Spawning>)>,
     mut enemies: Query<(&Transform, &mut Tank, &mut Gun, &mut Enemy), Without<Spawning>>,
@@ -46,13 +48,26 @@ pub fn think(
             continue;
         }
         let pos = tf.translation.xy();
+        let nearest = player_pos.iter().copied().min_by(|a, b| a.distance(pos).total_cmp(&b.distance(pos)));
+        let (lo, hi) = ai.rank.fire_gap(session.stage);
+        if ai.rank == Rank::Turret {
+            // Bolted to the wall: swing the gun towards the nearest player and keep shooting.
+            if let Some(p) = nearest {
+                tank.dir = choose_dir(pos, p, tank.dir, false, 0.0, 0.0);
+            }
+            ai.fire_in -= dt;
+            gun.trigger = nearest.is_some() && ai.fire_in <= 0.0;
+            if gun.trigger {
+                ai.fire_in = rng.range(lo, hi);
+            }
+            continue;
+        }
         ai.turn_in -= dt;
         if tank.blocked || ai.turn_in <= 0.0 || tank.want.is_none() {
-            // Mostly the base; sometimes the nearest player.
-            let target = if rng.chance(0.35) && !player_pos.is_empty() {
-                *player_pos.iter().min_by(|a, b| a.distance(pos).total_cmp(&b.distance(pos))).unwrap()
-            } else {
-                BASE_POS
+            // Mostly the base; sometimes the nearest player. No base (City Run): always the players.
+            let target = match nearest {
+                Some(p) if base.is_empty() || rng.chance(0.35) => p,
+                _ => BASE_POS,
             };
             let roll = rng.f32();
             tank.want = Some(choose_dir(pos, target, tank.dir, tank.blocked, roll, rng.f32()));
@@ -64,7 +79,7 @@ pub fn think(
         ai.fire_in -= dt;
         gun.trigger = ai.fire_in <= 0.0;
         if gun.trigger {
-            ai.fire_in = rng.range(0.4, 1.6);
+            ai.fire_in = rng.range(lo, hi);
         }
     }
 }

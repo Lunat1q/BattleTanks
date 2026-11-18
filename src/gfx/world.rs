@@ -1,12 +1,13 @@
 //! Sprites for logic entities: terrain sub-cells, tanks, bullets, base, power-ups.
 
-use super::{Gfx, enemy_color, player_color, z};
+use super::{Gfx, player_color, rank_color, z};
 use crate::game::*;
-use crate::geom::{SUB, SUBS};
+use crate::geom::{FIELD, SUB, SUBS};
+use crate::rules::Rank;
 use crate::terrain::{Terrain, Tile};
 use bevy::prelude::*;
 
-/// Terrain sprite per sub-cell, rebuilt each stage.
+/// Terrain sprite per sub-cell, rebuilt each stage (empty until the first sync builds the floor).
 #[derive(Resource, Default)]
 struct TerrainSprites(Vec<Option<Entity>>);
 
@@ -21,7 +22,7 @@ struct HasRing(Entity);
 const SUB_PX: f32 = 32.0;
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(OnEnter(Screen::Stage), spawn_floor).add_systems(
+    app.add_systems(OnEnter(Screen::Stage), |mut commands: Commands| commands.insert_resource(TerrainSprites::default())).add_systems(
         Update,
         (sync_terrain, animate_water, attach_tanks, tank_looks, shield_rings, attach_bullets, base_look, powerup_looks)
             .run_if(in_state(Screen::Stage))
@@ -29,23 +30,37 @@ pub fn plugin(app: &mut App) {
     );
 }
 
-fn spawn_floor(mut commands: Commands, gfx: Res<Gfx>) {
-    commands.insert_resource(TerrainSprites(vec![None; SUBS * SUBS]));
-    let center = Vec3::new(104.0, 104.0, z::GROUND);
+/// Border plus ground, the 208-unit ground texture stacked up a tall City Run map.
+fn spawn_floor(commands: &mut Commands, gfx: &Gfx, height: f32) {
     commands.spawn((
-        Sprite { color: Color::srgb(0.22, 0.25, 0.30), custom_size: Some(Vec2::splat(212.0)), ..default() },
-        Transform::from_translation(center - Vec3::Z * 0.1),
+        Sprite { color: Color::srgb(0.22, 0.25, 0.30), custom_size: Some(Vec2::new(FIELD + 4.0, height + 4.0)), ..default() },
+        Transform::from_xyz(FIELD / 2.0, height / 2.0, z::GROUND - 0.1),
         DespawnOnExit(Screen::Stage),
     ));
-    commands.spawn((
-        Sprite { image: gfx.ground.clone(), custom_size: Some(Vec2::splat(208.0)), ..default() },
-        Transform::from_translation(center),
-        DespawnOnExit(Screen::Stage),
-    ));
+    let mut y = 0.0;
+    while y < height {
+        let h = (height - y).min(FIELD);
+        let px = 4.0; // ground texture pixels per unit
+        commands.spawn((
+            Sprite {
+                image: gfx.ground.clone(),
+                custom_size: Some(Vec2::new(FIELD, h)),
+                rect: Some(Rect::new(0.0, (FIELD - h) * px, FIELD * px, FIELD * px)),
+                ..default()
+            },
+            Transform::from_xyz(FIELD / 2.0, y + h / 2.0, z::GROUND),
+            DespawnOnExit(Screen::Stage),
+        ));
+        y += h;
+    }
 }
 
 fn sync_terrain(mut commands: Commands, gfx: Res<Gfx>, terrain: Option<ResMut<Terrain>>, mut sprites: ResMut<TerrainSprites>) {
     let Some(mut terrain) = terrain else { return };
+    if sprites.0.is_empty() {
+        sprites.0 = vec![None; SUBS * terrain.rows()];
+        spawn_floor(&mut commands, &gfx, terrain.height());
+    }
     if terrain.dirty.is_empty() {
         return;
     }
@@ -54,20 +69,24 @@ fn sync_terrain(mut commands: Commands, gfx: Res<Gfx>, terrain: Option<ResMut<Te
         if let Some(old) = sprites.0[i].take() {
             commands.entity(old).try_despawn();
         }
-        let (image, depth) = match terrain.get(x, y) {
+        let plain = Color::WHITE;
+        let (image, depth, color) = match terrain.get(x, y) {
             Tile::Empty => continue,
-            Tile::Brick => (gfx.brick.clone(), z::WALL),
-            Tile::Steel => (gfx.steel.clone(), z::WALL),
-            Tile::Water => (gfx.water[0].clone(), z::FLOOR),
-            Tile::Ice => (gfx.ice.clone(), z::FLOOR),
-            Tile::Trees => (gfx.trees.clone(), z::TREES),
+            Tile::Brick => (gfx.brick.clone(), z::WALL, plain),
+            Tile::Steel => (gfx.steel.clone(), z::WALL, plain),
+            Tile::Water => (gfx.water[0].clone(), z::FLOOR, plain),
+            Tile::Ice => (gfx.ice.clone(), z::FLOOR, plain),
+            Tile::Trees => (gfx.trees.clone(), z::TREES, plain),
+            // Fortress: dark plated steel; the gate glows warning orange.
+            Tile::Wall => (gfx.steel.clone(), z::WALL, Color::srgb(0.48, 0.45, 0.56)),
+            Tile::Gate => (gfx.steel.clone(), z::WALL, Color::srgb(1.25, 0.62, 0.28)),
         };
         // Sample the matching quarter of the 16-unit tile so patterns line up across cells.
         let (qx, qy) = ((x % 4) as f32, (3 - y % 4) as f32);
         let rect = Rect::new(qx * SUB_PX, qy * SUB_PX, (qx + 1.0) * SUB_PX, (qy + 1.0) * SUB_PX);
         let pos = Vec3::new(x as f32 * SUB + SUB / 2.0, y as f32 * SUB + SUB / 2.0, depth);
         let mut e = commands.spawn((
-            Sprite { image, rect: Some(rect), custom_size: Some(Vec2::splat(SUB)), ..default() },
+            Sprite { image, color, rect: Some(rect), custom_size: Some(Vec2::splat(SUB)), ..default() },
             Transform::from_translation(pos),
             DespawnOnExit(Screen::Stage),
         ));
@@ -89,11 +108,16 @@ fn animate_water(time: Res<Time>, gfx: Res<Gfx>, mut last: Local<usize>, mut wat
     }
 }
 
-fn attach_tanks(mut commands: Commands, gfx: Res<Gfx>, added: Query<Entity, Added<Tank>>, tanks: Query<&Transform>) {
-    for e in &added {
-        let Ok(tf) = tanks.get(e) else { continue };
-        commands.entity(e).insert((Sprite { custom_size: Some(Vec2::splat(16.0)), ..default() }, Visibility::Hidden)).with_child((
-            Sprite { image: gfx.dot.clone(), color: Color::srgba(0.0, 0.0, 0.0, 0.55), custom_size: Some(Vec2::splat(21.0)), ..default() },
+fn attach_tanks(mut commands: Commands, gfx: Res<Gfx>, added: Query<(Entity, &Tank, &Transform), Added<Tank>>) {
+    for (e, tank, tf) in &added {
+        let size = tank.size;
+        commands.entity(e).insert((Sprite { custom_size: Some(Vec2::splat(size)), ..default() }, Visibility::Hidden)).with_child((
+            Sprite {
+                image: gfx.dot.clone(),
+                color: Color::srgba(0.0, 0.0, 0.0, 0.55),
+                custom_size: Some(Vec2::splat(size * 1.3)),
+                ..default()
+            },
             Transform::from_xyz(0.0, 0.0, -0.5),
         ));
         super::fx::spawn_sparkle(&mut commands, &gfx, tf.translation.xy());
@@ -120,14 +144,20 @@ fn tank_looks(
                 (gfx.players[level.min(3)][frame].clone(), player_color(i))
             }
             (Team::Enemy, Some(e)) => {
-                let mut c = enemy_color(e.kind, e.hp);
+                let mut c = rank_color(e.rank, e.kind, e.hp, e.max_hp);
                 if e.bonus && blink {
                     c = Color::srgb(1.0, 0.32, 0.28);
                 }
                 if run.freeze > 0.0 {
                     c = c.mix(&Color::srgb(0.55, 0.8, 1.0), 0.5);
                 }
-                (gfx.enemies[e.kind.index()][frame].clone(), c)
+                let image = match e.rank {
+                    Rank::Normal => &gfx.enemies[e.kind.index()][frame],
+                    Rank::Turret => &gfx.turret,
+                    Rank::Mini => &gfx.mini[frame],
+                    Rank::Boss => &gfx.boss[frame],
+                };
+                (image.clone(), c)
             }
             (Team::Enemy, None) => continue,
         };

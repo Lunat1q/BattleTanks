@@ -90,6 +90,82 @@ impl PowerKind {
         [PowerKind::Helmet, PowerKind::Clock, PowerKind::Shovel, PowerKind::Star, PowerKind::Grenade, PowerKind::Tank];
 }
 
+/// City Run: what an enemy is beyond its `EnemyKind` (which still sets speed and bullet).
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum Rank {
+    Normal,
+    /// Bastion gun on a fortress wall: never moves, aims at the nearest player.
+    Turret,
+    /// Big tank mid-district; the camera waits until it's dead.
+    Mini,
+    /// District boss at the top of the map; killing it clears the district.
+    Boss,
+}
+
+impl Rank {
+    /// Side of the square hit box in field units.
+    pub fn size(self) -> f32 {
+        match self {
+            Rank::Normal | Rank::Turret => 16.0,
+            Rank::Mini => 24.0,
+            Rank::Boss => 32.0,
+        }
+    }
+    /// Hit points in district `d` (1-based); `Normal` uses the kind's own HP.
+    pub fn hp(self, kind: EnemyKind, d: usize) -> u32 {
+        let d = d as u32;
+        match self {
+            Rank::Normal => kind.hp(),
+            Rank::Turret => 2 + d / 3,
+            Rank::Mini => 8 + d,
+            Rank::Boss => 20 + 3 * d,
+        }
+    }
+    pub fn points(self, kind: EnemyKind) -> u32 {
+        match self {
+            Rank::Normal => kind.points(),
+            Rank::Turret => 500,
+            Rank::Mini => 1000,
+            Rank::Boss => 5000,
+        }
+    }
+    pub fn speed(self, kind: EnemyKind) -> f32 {
+        match self {
+            Rank::Normal => kind.speed(),
+            Rank::Turret => 0.0,
+            Rank::Mini => 34.0,
+            Rank::Boss => 26.0,
+        }
+    }
+    /// Bullets it may have in flight.
+    pub fn max_bullets(self) -> usize {
+        match self {
+            Rank::Normal | Rank::Turret => 1,
+            Rank::Mini => 2,
+            Rank::Boss => 3,
+        }
+    }
+    /// Seconds between shots, (min, max): later districts shoot more often.
+    pub fn fire_gap(self, d: usize) -> (f32, f32) {
+        let k = 1.0 - d.min(10) as f32 * 0.04;
+        match self {
+            Rank::Normal => (0.4, 1.6),
+            Rank::Turret => (0.9 * k, 2.2 * k),
+            Rank::Mini => (0.35 * k, 1.0 * k),
+            Rank::Boss => (0.25 * k, 0.7 * k),
+        }
+    }
+}
+
+pub const CITY_DISTRICTS: usize = 10;
+/// Every Nth enemy placed in a district carries a power-up.
+pub const CITY_BONUS_EVERY: usize = 5;
+
+/// Seconds between City Run reinforcements from the top of the view.
+pub fn reinforce_interval(district: usize, players: usize) -> f32 {
+    (7.0 - district as f32 * 0.35 - players.saturating_sub(1) as f32 * 1.0).max(2.5)
+}
+
 /// Extra lives earned by going from `old` to `new` points.
 pub fn extra_lives(old: u32, new: u32) -> u32 {
     new / EXTRA_LIFE_EVERY - old / EXTRA_LIFE_EVERY
@@ -130,6 +206,17 @@ mod tests {
     fn spawn_interval_has_a_floor() {
         assert!(spawn_interval(1, 1) > spawn_interval(1, 2));
         assert_eq!(spawn_interval(500, 2), 1.0);
+    }
+
+    #[test]
+    fn bosses_grow_with_the_district() {
+        assert!(Rank::Boss.hp(EnemyKind::Power, 10) > Rank::Boss.hp(EnemyKind::Power, 1));
+        assert!(Rank::Mini.hp(EnemyKind::Armor, 1) > EnemyKind::Armor.hp());
+        assert_eq!(Rank::Normal.hp(EnemyKind::Armor, 9), 4);
+        assert_eq!(Rank::Turret.speed(EnemyKind::Power), 0.0);
+        assert!(Rank::Boss.fire_gap(10).1 < Rank::Boss.fire_gap(1).1);
+        assert!(reinforce_interval(1, 1) > reinforce_interval(10, 2));
+        assert_eq!(reinforce_interval(100, 2), 2.5);
     }
 
     #[test]

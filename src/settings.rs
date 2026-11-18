@@ -124,8 +124,13 @@ impl Settings {
     }
 }
 
+/// A file in `%APPDATA%\BattleTanks` (settings, City Run progress).
+pub fn data_file(name: &str) -> Option<PathBuf> {
+    std::env::var_os("APPDATA").map(|d| PathBuf::from(d).join("BattleTanks").join(name))
+}
+
 fn path() -> Option<PathBuf> {
-    std::env::var_os("APPDATA").map(|d| PathBuf::from(d).join("BattleTanks").join("settings.txt"))
+    data_file("settings.txt")
 }
 
 /// Saved settings; `--windowed` on the command line forces windowed mode.

@@ -1,6 +1,7 @@
 //! Gameplay: shared components/resources, screen states and the simulation schedule.
 //! Logic entities carry no sprites; `gfx` attaches visuals when they appear.
 
+pub mod city;
 pub mod combat;
 pub mod enemy;
 pub mod powerup;
@@ -9,7 +10,7 @@ pub mod tank;
 
 use crate::geom::Dir;
 use crate::input::{Device, DeviceIntents, Intent};
-use crate::rules::{self, EnemyKind, GunStats, PowerKind};
+use crate::rules::{self, EnemyKind, GunStats, PowerKind, Rank};
 use bevy::prelude::*;
 
 #[derive(States, Default, Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -20,6 +21,17 @@ pub enum Screen {
     Results,
     GameOver,
     Settings,
+    /// City Run district map: pick an unlocked district.
+    CityMap,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Mode {
+    /// 30 single-screen stages defending the base.
+    #[default]
+    Classic,
+    /// 10 tall scrolling districts, each ending in a boss.
+    City,
 }
 
 pub struct Slot {
@@ -44,7 +56,8 @@ impl Slot {
 #[derive(Resource, Default)]
 pub struct Session {
     pub slots: [Option<Slot>; 2],
-    /// Current stage, 1-based.
+    pub mode: Mode,
+    /// Current stage (Classic) or district (City), 1-based.
     pub stage: usize,
     pub hi_score: u32,
 }
@@ -97,6 +110,19 @@ pub struct StageRun {
 #[derive(Resource, Default)]
 pub struct Paused(pub bool);
 
+/// Visible slice of the field: `bottom..bottom + FIELD`. Always 0 on a classic stage; City Run scrolls it.
+/// Tanks can't leave it and bullets pop at its edges.
+#[derive(Resource, Default)]
+pub struct View {
+    pub bottom: f32,
+}
+
+impl View {
+    pub fn top(&self) -> f32 {
+        self.bottom + crate::geom::FIELD
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Team {
     Player(usize),
@@ -117,11 +143,13 @@ pub struct Tank {
     pub slide: f32,
     /// Distance driven, drives tread animation.
     pub odometer: f32,
+    /// Side of the square hit box (16; City Run bosses are bigger).
+    pub size: f32,
 }
 
 impl Tank {
     pub fn new(team: Team, dir: Dir, speed: f32) -> Self {
-        Tank { team, dir, want: None, speed, moving: false, blocked: false, slide: 0.0, odometer: 0.0 }
+        Tank { team, dir, want: None, speed, moving: false, blocked: false, slide: 0.0, odometer: 0.0, size: crate::geom::TILE }
     }
 }
 
@@ -135,7 +163,9 @@ pub struct Gun {
 #[derive(Component)]
 pub struct Enemy {
     pub kind: EnemyKind,
+    pub rank: Rank,
     pub hp: u32,
+    pub max_hp: u32,
     pub bonus: bool,
     pub turn_in: f32,
     pub fire_in: f32,
@@ -230,6 +260,8 @@ pub enum Sfx {
     GameOver,
     MenuMove,
     MenuPick,
+    GateOpen,
+    BossBoom,
 }
 
 #[derive(SystemSet, Clone, PartialEq, Eq, Hash, Debug)]
@@ -244,6 +276,7 @@ pub fn plugin(app: &mut App) {
     app.init_state::<Screen>()
         .init_resource::<Session>()
         .init_resource::<Paused>()
+        .init_resource::<View>()
         .insert_resource(crate::rng::Rng::from_time())
         .add_message::<Fx>()
         .add_message::<Sfx>()
@@ -267,5 +300,5 @@ pub fn plugin(app: &mut App) {
                 .chain()
                 .in_set(Sim),
         )
-        .add_plugins(stage::plugin);
+        .add_plugins((stage::plugin, city::plugin));
 }

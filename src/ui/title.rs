@@ -1,7 +1,7 @@
 //! Title: players join by pressing A (or Space / Enter), then pick START. B leaves a slot.
 
 use super::*;
-use crate::game::{Screen, Session, Sfx, Slot};
+use crate::game::{Mode, Screen, Session, Sfx, Slot};
 use crate::geom::Dir;
 use crate::gfx::Gfx;
 use crate::input::{Device, DeviceIntents, Intent};
@@ -16,7 +16,7 @@ struct TitleMenu {
 #[derive(Component)]
 struct SlotLine(usize);
 
-const ITEMS: usize = 4; // START, STAGE, SETTINGS, EXIT
+const ITEMS: usize = 5; // START, STAGE, CITY RUN, SETTINGS, EXIT
 
 pub fn plugin(app: &mut App) {
     app.insert_resource(TitleMenu { sel: 0, stage: 1 })
@@ -122,12 +122,18 @@ fn input(
     if nav.confirm || nav.start {
         match menu.sel {
             0 | 1 if session.players() > 0 => {
+                session.mode = Mode::Classic;
                 session.stage = menu.stage;
                 sfx.write(Sfx::MenuPick);
                 next.set(Screen::Stage);
             }
-            2 => next.set(Screen::Settings),
-            3 => {
+            2 if session.players() > 0 => {
+                session.mode = Mode::City;
+                sfx.write(Sfx::MenuPick);
+                next.set(Screen::CityMap);
+            }
+            3 => next.set(Screen::Settings),
+            4 => {
                 exit.write(AppExit::Success);
             }
             _ => {}
@@ -142,7 +148,8 @@ fn refresh(menu: Res<TitleMenu>, session: Res<Session>, mut lines: Query<(&mut T
                 0 if session.players() == 0 => "PRESS A TO JOIN".to_string(),
                 0 => "START".to_string(),
                 1 => format!("STAGE  < {} >", menu.stage),
-                2 => "SETTINGS".to_string(),
+                2 => "CITY RUN".to_string(),
+                3 => "SETTINGS".to_string(),
                 _ => "EXIT".to_string(),
             };
             set_text(&mut t, menu_label(menu.sel == *i, &label));

@@ -1,8 +1,9 @@
 //! Agent/dev smoke hook: `BT_SHOT=out.png` auto-joins two keyboard players, starts `BT_STAGE`
-//! (default 1; 0 = stay on the title, or `BT_SCREEN=settings`), saves a screenshot after `BT_SHOT_AT` seconds (default 7) and quits.
-//! Inert unless the env var is set.
+//! (default 1; 0 = stay on the title, or `BT_SCREEN=settings` / `BT_SCREEN=city` for the district map) or City Run
+//! district `BT_CITY`, saves a screenshot after `BT_SHOT_AT` seconds (default 7) and quits. `BT_VIEW=<units>` pins the
+//! City Run view that far up the map, to look at bastions and bosses. Inert unless `BT_SHOT` is set.
 
-use crate::game::{Screen, Session, Slot};
+use crate::game::{Mode, Screen, Session, Slot, View};
 use crate::input::Device;
 use bevy::prelude::*;
 use bevy::render::view::screenshot::{Screenshot, save_to_disk};
@@ -11,6 +12,8 @@ use bevy::render::view::screenshot::{Screenshot, save_to_disk};
 struct Shot {
     path: String,
     stage: usize,
+    city: usize,
+    view: Option<f32>,
     at: f32,
     t: f32,
     taken: bool,
@@ -20,7 +23,10 @@ struct Shot {
 pub fn plugin(app: &mut App) {
     let Ok(path) = std::env::var("BT_SHOT") else { return };
     let num = |k: &str, d: f32| std::env::var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(d);
-    app.insert_resource(Shot { path, stage: num("BT_STAGE", 1.0) as usize, at: num("BT_SHOT_AT", 7.0), t: 0.0, taken: false, frames: 0 })
+    let city = num("BT_CITY", 0.0) as usize;
+    let stage = if city > 0 { 0 } else { num("BT_STAGE", 1.0) as usize };
+    let view = std::env::var("BT_VIEW").ok().and_then(|v| v.parse().ok());
+    app.insert_resource(Shot { path, stage, city, view, at: num("BT_SHOT_AT", 7.0), t: 0.0, taken: false, frames: 0 })
         .add_systems(Update, run);
 }
 
@@ -32,6 +38,7 @@ fn run(
     state: Res<State<Screen>>,
     mut next: ResMut<NextState<Screen>>,
     mut exit: MessageWriter<AppExit>,
+    mut view: ResMut<View>,
 ) {
     shot.t += time.delta_secs();
     shot.frames += 1;
@@ -40,8 +47,25 @@ fn run(
         session.stage = shot.stage;
         next.set(Screen::Stage);
     }
-    if shot.stage == 0 && *state.get() == Screen::Title && std::env::var("BT_SCREEN").as_deref() == Ok("settings") {
-        next.set(Screen::Settings);
+    let keys = || [Some(Slot::new(Device::KeysLeft)), Some(Slot::new(Device::KeysRight))];
+    if shot.city > 0 && *state.get() == Screen::Title && session.players() == 0 {
+        session.slots = keys();
+        session.mode = Mode::City;
+        session.stage = shot.city;
+        next.set(Screen::Stage);
+    }
+    if let Some(v) = shot.view.filter(|_| *state.get() == Screen::Stage) {
+        view.bottom = v;
+    }
+    if shot.stage == 0 && shot.city == 0 && *state.get() == Screen::Title {
+        match std::env::var("BT_SCREEN").as_deref() {
+            Ok("settings") => next.set(Screen::Settings),
+            Ok("city") if session.players() == 0 => {
+                session.slots = keys();
+                next.set(Screen::CityMap);
+            }
+            _ => {}
+        }
     }
     if shot.t > shot.at && !shot.taken {
         shot.taken = true;

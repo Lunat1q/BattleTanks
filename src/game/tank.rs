@@ -36,25 +36,32 @@ pub fn advance(pos: Vec2, dir: Dir, dist: f32, blocked: impl Fn(Vec2) -> bool) -
     at(lo)
 }
 
-pub fn drive(time: Res<Time>, terrain: Res<Terrain>, mut tanks: Query<(Entity, &mut Tank, &mut Transform, Has<Spawning>)>) {
+pub fn drive(
+    time: Res<Time>,
+    terrain: Res<Terrain>,
+    view: Res<View>,
+    base: Query<(), With<Base>>,
+    mut tanks: Query<(Entity, &mut Tank, &mut Transform, Has<Spawning>)>,
+) {
     let dt = time.delta_secs().min(0.05);
-    let mut rects: Vec<(Entity, Rect)> = tanks.iter().map(|(e, _, t, _)| (e, rect_at(t.translation.xy(), TILE))).collect();
-    let base = rect_at(BASE_POS, TILE);
+    let mut rects: Vec<(Entity, Rect)> = tanks.iter().map(|(e, t, tf, _)| (e, rect_at(tf.translation.xy(), t.size))).collect();
+    let base = (!base.is_empty()).then(|| rect_at(BASE_POS, TILE));
 
     for (e, mut tank, mut tf, spawning) in &mut tanks {
         if spawning {
             continue;
         }
         let mut pos = tf.translation.xy();
+        let size = tank.size;
         let others: Vec<Rect> = rects
             .iter()
-            .filter(|(o, r)| *o != e && !overlaps(*r, rect_at(pos, TILE))) // already overlapping: let them separate
+            .filter(|(o, r)| *o != e && !overlaps(*r, rect_at(pos, size))) // already overlapping: let them separate
             .map(|(_, r)| *r)
-            .chain([base])
+            .chain(base)
             .collect();
         let blocked = |p: Vec2| {
-            let r = rect_at(p, TILE);
-            terrain.blocks_tank(r) || others.iter().any(|o| overlaps(*o, r))
+            let r = rect_at(p, size);
+            terrain.blocks_tank(r) || r.min.y < view.bottom || r.max.y > view.top() || others.iter().any(|o| overlaps(*o, r))
         };
 
         let on_ice = terrain.at(pos.x, pos.y) == Tile::Ice;
@@ -85,7 +92,7 @@ pub fn drive(time: Res<Time>, terrain: Res<Terrain>, mut tanks: Query<(Entity, &
         tf.translation.x = new.x;
         tf.translation.y = new.y;
         if let Some(r) = rects.iter_mut().find(|(o, _)| *o == e) {
-            r.1 = rect_at(new, TILE);
+            r.1 = rect_at(new, size);
         }
     }
 }
@@ -104,7 +111,7 @@ pub fn fire(
         if bullets.iter().filter(|b| b.owner == e).count() >= gun.stats.max_bullets {
             continue;
         }
-        let pos = tf.translation.xy() + tank.dir.vec() * 6.0;
+        let pos = tf.translation.xy() + tank.dir.vec() * (tank.size / 2.0 - 2.0);
         commands.spawn((
             Bullet { owner: e, team: tank.team, dir: tank.dir, speed: gun.stats.bullet_speed, power: gun.stats.power },
             Transform::from_translation(pos.extend(0.0)),

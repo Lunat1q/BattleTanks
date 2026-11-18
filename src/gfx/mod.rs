@@ -1,6 +1,7 @@
 //! Rendering: procedural textures, camera, and visuals attached to logic entities.
 
 mod art_icons;
+mod art_map;
 mod art_tanks;
 mod art_world;
 pub mod canvas;
@@ -8,7 +9,7 @@ mod fx;
 mod icon;
 mod world;
 
-use crate::rules::{EnemyKind, PowerKind};
+use crate::rules::{EnemyKind, PowerKind, Rank};
 use bevy::camera::ScalingMode;
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
@@ -32,6 +33,11 @@ pub const VIEW_HEIGHT: f32 = 224.0;
 pub struct Gfx {
     pub players: Vec<[Handle<Image>; 2]>,
     pub enemies: Vec<[Handle<Image>; 2]>,
+    pub mini: [Handle<Image>; 2],
+    pub boss: [Handle<Image>; 2],
+    pub turret: Handle<Image>,
+    /// City Run district-map backdrop (pixel art).
+    pub city_backdrop: Handle<Image>,
     pub brick: Handle<Image>,
     pub steel: Handle<Image>,
     pub trees: Handle<Image>,
@@ -71,6 +77,17 @@ pub fn enemy_color(kind: EnemyKind, hp: u32) -> Color {
     }
 }
 
+/// City Run turrets and bosses: own reds (never the players' gold/green), fading to grey as they take damage.
+pub fn rank_color(rank: Rank, kind: EnemyKind, hp: u32, max_hp: u32) -> Color {
+    let full = match rank {
+        Rank::Normal => return enemy_color(kind, hp),
+        Rank::Turret => Color::srgb(0.88, 0.56, 0.50),
+        Rank::Mini => Color::srgb(0.56, 0.48, 1.0),
+        Rank::Boss => Color::srgb(0.92, 0.24, 0.32),
+    };
+    full.mix(&Color::srgb(0.78, 0.78, 0.80), 0.6 * (1.0 - hp as f32 / max_hp.max(1) as f32))
+}
+
 pub fn plugin(app: &mut App) {
     // Built right here (not in a startup system) so `Gfx` exists before the first `OnEnter`.
     let gfx = build_textures(&mut app.world_mut().resource_mut::<Assets<Image>>());
@@ -91,6 +108,10 @@ fn build_textures(images: &mut Assets<Image>) -> Gfx {
     Gfx {
         players,
         enemies,
+        mini: art_tanks::mini().map(&mut add),
+        boss: art_tanks::boss().map(&mut add),
+        turret: add(art_tanks::turret()),
+        city_backdrop: add(art_map::city_backdrop()),
         brick: add(art_world::brick()),
         steel: add(art_world::steel()),
         trees: add(art_world::trees()),

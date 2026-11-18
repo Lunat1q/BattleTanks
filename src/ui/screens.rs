@@ -1,7 +1,7 @@
 //! Stage banner, pause menu, results tally and game over.
 
 use super::*;
-use crate::game::{Paused, Phase, Screen, Session, Sfx, StageRun};
+use crate::game::{Mode, Paused, Phase, Screen, Session, Sfx, StageRun};
 use crate::geom::Dir;
 use crate::input::{DeviceIntents, Intent};
 use crate::rules::EnemyKind;
@@ -62,9 +62,21 @@ fn banner(
 ) {
     let Some(run) = run else { return };
     let Ok((mut t, mut color, parent)) = q.single_mut() else { return };
+    let city = session.mode == Mode::City;
     let (s, c, back) = match run.phase {
+        Phase::Intro if city => (
+            format!(
+                "DISTRICT {}
+{}",
+                session.stage,
+                crate::city_map::name(session.stage).to_uppercase()
+            ),
+            INK,
+            0.75,
+        ),
         Phase::Intro => (format!("STAGE {}", session.stage), INK, 0.75),
         Phase::Play => (String::new(), INK, 0.0),
+        Phase::Won if city => ("DISTRICT CLEAR".into(), GOLD, 0.0),
         Phase::Won => ("STAGE CLEAR".into(), GOLD, 0.0),
         Phase::Lost => ("GAME OVER".into(), RED, 0.35),
     };
@@ -149,10 +161,14 @@ fn table(session: &Session) -> String {
     out
 }
 
+fn place(session: &Session) -> &'static str {
+    if session.mode == Mode::City { "DISTRICT" } else { "STAGE" }
+}
+
 fn spawn_results(mut commands: Commands, session: Res<Session>, mut time: ResMut<ScreenTime>) {
     time.0 = 0.0;
     commands.spawn((screen_root(), DespawnOnExit(Screen::Results))).with_children(|r| {
-        r.spawn(text(format!("STAGE {} CLEAR", session.stage), 8.0, GOLD));
+        r.spawn(text(format!("{} {} CLEAR", place(&session), session.stage), 8.0, GOLD));
         r.spawn(text(table(&session), 3.8, INK));
         r.spawn(text("press A to continue", 3.0, DIM));
     });
@@ -162,7 +178,7 @@ fn spawn_game_over(mut commands: Commands, session: Res<Session>, mut time: ResM
     time.0 = 0.0;
     commands.spawn((screen_root(), DespawnOnExit(Screen::GameOver))).with_children(|r| {
         r.spawn(text("GAME OVER", 12.0, RED));
-        r.spawn(text(format!("reached stage {}", session.stage), 3.6, DIM));
+        r.spawn(text(format!("reached {} {}", place(&session).to_lowercase(), session.stage), 3.6, DIM));
         r.spawn(text(table(&session), 3.8, INK));
         r.spawn(text(format!("HI SCORE  {}", session.hi_score), 4.2, GOLD));
         r.spawn(text("press A", 3.0, DIM));
@@ -187,8 +203,12 @@ fn results_input(
     mut next: ResMut<NextState<Screen>>,
 ) {
     if advance_pressed(&mut time, t.delta_secs(), &session, &devices) || time.0 > 10.0 {
-        session.stage += 1;
-        next.set(Screen::Stage);
+        if session.mode == Mode::City {
+            next.set(Screen::CityMap); // pick the next district (or replay one)
+        } else {
+            session.stage += 1;
+            next.set(Screen::Stage);
+        }
     }
 }
 
@@ -200,6 +220,7 @@ fn game_over_input(
     mut next: ResMut<NextState<Screen>>,
 ) {
     if advance_pressed(&mut time, t.delta_secs(), &session, &devices) {
-        next.set(Screen::Title);
+        // City Run: back to the district map to retry.
+        next.set(if session.mode == Mode::City { Screen::CityMap } else { Screen::Title });
     }
 }

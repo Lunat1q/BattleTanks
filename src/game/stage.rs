@@ -5,7 +5,7 @@ use crate::geom::{FIELD, overlaps, rect_at};
 use crate::input::{Device, DeviceIntents};
 use crate::levels;
 use crate::rng::Rng;
-use crate::rules::{self, BONUS_CARRIERS};
+use crate::rules::{self, BONUS_CARRIERS, Rank};
 use crate::terrain::{Terrain, Tile};
 
 pub const PLAYER_SPAWNS: [Vec2; 2] = [Vec2::new(72.0, 8.0), Vec2::new(136.0, 8.0)];
@@ -19,16 +19,23 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (watch_controllers, toggle_pause, advance_phase).chain().run_if(in_state(Screen::Stage)));
 }
 
-fn setup(mut commands: Commands, mut session: ResMut<Session>, mut sfx: MessageWriter<Sfx>) {
-    let stage = levels::load(session.stage);
-    let mut terrain = stage.terrain;
+fn setup(mut commands: Commands, mut session: ResMut<Session>, mut view: ResMut<View>, mut sfx: MessageWriter<Sfx>) {
+    view.bottom = 0.0;
+    let (mut terrain, roster) = if session.mode == Mode::City {
+        (super::city::setup(&mut commands, &mut session), Vec::new())
+    } else {
+        commands.remove_resource::<super::city::CityRun>();
+        let stage = levels::load(session.stage);
+        commands.spawn((Base, Transform::from_translation(BASE_POS.extend(0.0)), DespawnOnExit(Screen::Stage)));
+        (stage.terrain, stage.roster)
+    };
     // Everything is dirty once so the renderer builds the whole map.
-    terrain.dirty = (0..crate::geom::SUBS).flat_map(|y| (0..crate::geom::SUBS).map(move |x| (x, y))).collect();
+    terrain.dirty = terrain.cells().collect();
     commands.insert_resource(terrain);
     commands.insert_resource(StageRun {
         phase: Phase::Intro,
         timer: INTRO_TIME,
-        roster: stage.roster,
+        roster,
         next_enemy: 0,
         spawn_timer: 0.0,
         spawn_point: 0,
@@ -36,26 +43,55 @@ fn setup(mut commands: Commands, mut session: ResMut<Session>, mut sfx: MessageW
         shovel: 0.0,
         base_alive: true,
     });
-    commands.spawn((Base, Transform::from_translation(BASE_POS.extend(0.0)), DespawnOnExit(Screen::Stage)));
-    for i in 0..2 {
-        if let Some(slot) = session.slots[i].as_mut() {
+    for (i, slot) in session.slots.iter_mut().enumerate() {
+        if let Some(slot) = slot.as_mut() {
             slot.kills = [0; 4];
             if !slot.out {
-                spawn_player(&mut commands, i, slot.level);
+                spawn_player(&mut commands, i, slot.level, PLAYER_SPAWNS[i]);
             }
         }
     }
     sfx.write(Sfx::StageStart);
 }
 
-pub fn spawn_player(commands: &mut Commands, slot: usize, level: u8) {
+pub fn spawn_player(commands: &mut Commands, slot: usize, level: u8, pos: Vec2) {
     commands.spawn((
         Tank::new(Team::Player(slot), Dir::Up, rules::PLAYER_SPEED),
         Gun { stats: rules::player_gun(level), trigger: false, cooldown: 0.0 },
         Spawning(rules::SPAWN_TIME),
-        Transform::from_translation(PLAYER_SPAWNS[slot].extend(0.0)),
+        Transform::from_translation(pos.extend(0.0)),
         DespawnOnExit(Screen::Stage),
     ));
+}
+
+/// Where player `slot` re-enters: its start column at the bottom of the view, or the nearest open
+/// tank-sized spot beside or above it. On a classic stage that is always the start itself.
+pub fn respawn_point(slot: usize, bottom: f32, terrain: &Terrain) -> Vec2 {
+    let x0 = PLAYER_SPAWNS[slot].x;
+    let y0 = (bottom / 8.0).ceil() * 8.0 + 8.0;
+    (0..12)
+        .flat_map(|row| [0.0, -16.0, 16.0, -32.0, 32.0, -48.0, 48.0].map(|dx| Vec2::new(x0 + dx, y0 + row as f32 * 8.0)))
+        .find(|&p| !terrain.blocks_tank(rect_at(p, 16.0)))
+        .unwrap_or(Vec2::new(x0, y0))
+}
+
+/// One enemy tank; `district` scales City Run ranks (ignored for `Normal`).
+pub fn spawn_enemy(commands: &mut Commands, kind: EnemyKind, rank: Rank, pos: Vec2, bonus: bool, district: usize, rng: &mut Rng) -> Entity {
+    let hp = rank.hp(kind, district);
+    commands
+        .spawn((
+            Tank { size: rank.size(), ..Tank::new(Team::Enemy, Dir::Down, rank.speed(kind)) },
+            Gun {
+                stats: GunStats { bullet_speed: kind.bullet_speed(), max_bullets: rank.max_bullets(), power: false },
+                trigger: false,
+                cooldown: 0.0,
+            },
+            Enemy { kind, rank, hp, max_hp: hp, bonus, turn_in: rng.range(0.5, 2.0), fire_in: rng.range(0.5, 1.5) },
+            Spawning(rules::SPAWN_TIME),
+            Transform::from_translation(pos.extend(0.0)),
+            DespawnOnExit(Screen::Stage),
+        ))
+        .id()
 }
 
 pub fn spawn_enemies(
@@ -83,20 +119,7 @@ pub fn spawn_enemies(
         return;
     }
     let kind = run.roster[run.next_enemy];
-    commands.spawn((
-        Tank::new(Team::Enemy, Dir::Down, kind.speed()),
-        Gun { stats: GunStats { bullet_speed: kind.bullet_speed(), max_bullets: 1, power: false }, trigger: false, cooldown: 0.0 },
-        Enemy {
-            kind,
-            hp: kind.hp(),
-            bonus: BONUS_CARRIERS.contains(&run.next_enemy),
-            turn_in: rng.range(0.5, 2.0),
-            fire_in: rng.range(0.5, 1.5),
-        },
-        Spawning(rules::SPAWN_TIME),
-        Transform::from_translation(pos.extend(0.0)),
-        DespawnOnExit(Screen::Stage),
-    ));
+    spawn_enemy(&mut commands, kind, Rank::Normal, pos, BONUS_CARRIERS.contains(&run.next_enemy), session.stage, &mut rng);
     run.next_enemy += 1;
     run.spawn_point += 1;
     run.spawn_timer = rules::spawn_interval(session.stage, players);
@@ -149,7 +172,13 @@ pub fn tick_timers(
     }
 }
 
-pub fn check_end(mut run: ResMut<StageRun>, session: Res<Session>, enemies: Query<(), With<Enemy>>, mut sfx: MessageWriter<Sfx>) {
+pub fn check_end(
+    mut run: ResMut<StageRun>,
+    session: Res<Session>,
+    city: Option<Res<super::city::CityRun>>,
+    enemies: Query<(), With<Enemy>>,
+    mut sfx: MessageWriter<Sfx>,
+) {
     if run.phase != Phase::Play {
         return;
     }
@@ -158,7 +187,7 @@ pub fn check_end(mut run: ResMut<StageRun>, session: Res<Session>, enemies: Quer
         run.phase = Phase::Lost;
         run.timer = rules::END_DELAY;
         sfx.write(Sfx::GameOver);
-    } else if run.next_enemy >= run.roster.len() && enemies.is_empty() {
+    } else if city.map_or(run.next_enemy >= run.roster.len() && enemies.is_empty(), |c| c.boss_down) {
         run.phase = Phase::Won;
         run.timer = rules::END_DELAY;
     }
@@ -208,5 +237,24 @@ fn watch_controllers(mut session: ResMut<Session>, devices: Res<DeviceIntents>, 
                 return;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn respawn_finds_open_ground_at_the_bottom_of_the_view() {
+        let classic = Terrain::default();
+        assert_eq!(respawn_point(0, 0.0, &classic), PLAYER_SPAWNS[0]);
+        let mut ter = Terrain::new(crate::geom::SUBS * 3);
+        for y in 75..79 {
+            for x in 16..20 {
+                ter.set(x, y, Tile::Steel); // right where player 1 would land at bottom = 293
+            }
+        }
+        let p = respawn_point(0, 293.0, &ter);
+        assert!(p.y >= 304.0 && !ter.blocks_tank(rect_at(p, 16.0)), "{p}");
     }
 }

@@ -109,10 +109,17 @@ fn recipe(s: Sfx) -> Vec<(f32, Voice)> {
         Sfx::GameOver => melody(&[(7, 0.2), (5, 0.2), (3, 0.2), (2, 0.2), (-2, 0.6)], 0.5, 0.3),
         Sfx::MenuMove => vec![(0.0, v(660.0, 660.0, 0.04, 1.0, 0.0, 0.15))],
         Sfx::MenuPick => melody(&[(7, 0.05), (19, 0.1)], 0.8, 0.22),
+        // Heavy grind then a rising chord: a bastion gate rolls open.
+        Sfx::GateOpen => {
+            let mut g = vec![(0.0, v(90.0, 60.0, 0.5, 0.6, 0.6, 0.5))];
+            g.extend(melody(&[(0, 0.1), (7, 0.1), (12, 0.25)], 0.5, 0.25).into_iter().map(|(t, n)| (t + 0.35, n)));
+            g
+        }
+        Sfx::BossBoom => vec![(0.0, v(140.0, 20.0, 1.8, 0.5, 0.85, 1.0)), (0.2, v(90.0, 25.0, 1.6, 0.2, 0.6, 0.7))],
     }
 }
 
-const ALL: [Sfx; 15] = [
+const ALL: [Sfx; 17] = [
     Sfx::Shoot,
     Sfx::Brick,
     Sfx::Steel,
@@ -128,6 +135,8 @@ const ALL: [Sfx; 15] = [
     Sfx::GameOver,
     Sfx::MenuMove,
     Sfx::MenuPick,
+    Sfx::GateOpen,
+    Sfx::BossBoom,
 ];
 
 fn build(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {

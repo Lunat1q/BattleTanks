@@ -83,6 +83,30 @@ Title → SETTINGS (any controller or keyboard; left/right or A changes, B back)
 
 Controller disconnect → game pauses with a note; any unassigned controller pressing A takes over the slot.
 
+## City Run (`game/city.rs`, `city_map.rs`, `levels/city/NN.txt`)
+Title → CITY RUN → district map (10 dots on a pixel-art city, dotted roads). Cleared = gold, next = white,
+later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved to
+`%APPDATA%\BattleTanks\city.txt` (`unlocked=N`).
+
+- A district is 15 screens tall (district 1) up to ~24 (district 10). Only one field-sized slice is visible: the
+  `View`. It follows the lead player (kept at 55 % height) but never drops the trailing tank off the bottom and
+  never scrolls back down. Tanks can't leave the view; bullets pop at its edges.
+- Every district starts fresh: 2 spare tanks each, star level 0 (upgrades don't carry over). Score carries on.
+  All players out → game over → back to the map to retry.
+- No base. Enemies hunt the nearest player. Placed enemies wake (sparkle) once fully in view; every 5th placed
+  enemy carries a power-up. Reinforcements drop in at the top every 7 s − 0.35·district − 1 s in 2P (≥ 2.5 s),
+  capped like classic (4 / 6 on screen), until the boss appears.
+- **Bastions**: a full-width fortress wall (`=`, unbreakable even at star 3) with turrets and an orange gate (`G`).
+  When every turret of a bastion is destroyed the gate opens; a dead turret's spot becomes wall.
+- **Turrets** never move, aim at the nearest player, HP 2 + d/3, 500 pts. **Mini-bosses** 24×24, HP 8 + d, 2 bullets,
+  1000 pts, drop a power-up; **boss** 32×32 at the map top, HP 20 + 3d, 3 bullets, 5000 pts. While a mini-boss or
+  the boss is alive the camera holds still. Killing the boss clears the district.
+- Power-ups: no shovel; grenade only destroys ordinary tanks. Drops land on open ground in view.
+- Difficulty per district: enemy mix (`mix` line), more bastions (3→8) and turrets per wall (2→6), more minis
+  (2→5), faster turret/boss fire.
+- Map rule (tested): from the start, every mini-boss and the boss is reachable with gates open, and closing any one
+  gate cuts the boss off (`city_map::tests`).
+
 ## Known gaps / deliberate omissions
 - Hi-score lives for the session only (not saved).
 - No music loop, no Steam grid artwork (the exe and window do have an icon).
@@ -92,6 +116,8 @@ Controller disconnect → game pauses with a note; any unassigned controller pre
 - Variable timestep (dt clamped 0.05 s) rather than fixed; fine at 60 fps vsync, revisit if behaviour drifts
   at very low frame rates.
 - No online play, no AI teammate, no level editor (maps are plain text).
+- City Run: no boss HP bar (bosses fade to grey as they take damage); district maps are assembled from a
+  shared set of section blocks, so long districts repeat streets; the view never scrolls back down.
 
 ## Operational lessons
 | Symptom | Cause | Guard |
@@ -102,4 +128,6 @@ Controller disconnect → game pauses with a note; any unassigned controller pre
 | Armor enemy looked like player 2 | green tint shared with 2P | enemy palette never uses gold/green |
 | ~1000 fps on the owner's PC despite `AutoVsync` | VSync not honoured (driver override / streaming setup) | own FPS limiter in Settings, default 60 |
 | New stages walled spawns off from the base | bridge exits into steel; 1-cell open bands between blob rows | reachability test over all stages |
+| City map had a river nobody could cross | two stacked bridges not overlapping (tank needs a 2-cell column through both) | `city_map` reachability test |
+| Map markers doubled (two bosses) | half rows are mirrored | draw single markers centred on cols 11–14 or as full 26-char rows |
 | Smoke runs blasted sound in the room | audio always on | audio plugin skips when `BT_SHOT` / `BT_MUTE` is set |

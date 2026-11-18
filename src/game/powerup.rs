@@ -15,15 +15,32 @@ pub fn random_spot(rng: &mut Rng) -> Vec2 {
     }
 }
 
-pub fn spawn_random(commands: &mut Commands, rng: &mut Rng, existing: &Query<Entity, With<PowerUp>>, sfx: &mut MessageWriter<Sfx>) {
+/// City Run has no base, so no shovel.
+const CITY_POWERS: [rules::PowerKind; 5] =
+    [rules::PowerKind::Helmet, rules::PowerKind::Clock, rules::PowerKind::Star, rules::PowerKind::Grenade, rules::PowerKind::Tank];
+
+/// Drops a power-up in the view (`bottom` up). `city`: City Run terrain, so the drop lands where a tank can drive.
+pub fn spawn_random(
+    commands: &mut Commands,
+    rng: &mut Rng,
+    existing: &Query<Entity, With<PowerUp>>,
+    sfx: &mut MessageWriter<Sfx>,
+    bottom: f32,
+    city: Option<&Terrain>,
+) {
     for e in existing {
         commands.entity(e).try_despawn();
     }
-    commands.spawn((
-        PowerUp(rng.pick(&rules::PowerKind::ALL)),
-        Transform::from_translation(random_spot(rng).extend(0.0)),
-        DespawnOnExit(Screen::Stage),
-    ));
+    let lift = Vec2::new(0.0, (bottom / CELL).ceil() * CELL);
+    let (kind, pos) = match city {
+        None => (rng.pick(&rules::PowerKind::ALL), random_spot(rng) + lift),
+        Some(ter) => {
+            // ponytail: 40 random tries, then the view centre; fine for maps that aren't mostly wall.
+            let open = (0..40).map(|_| random_spot(rng) + lift).find(|&p| !ter.blocks_tank(rect_at(p, TILE)));
+            (rng.pick(&CITY_POWERS), open.unwrap_or(lift + Vec2::splat(104.0)))
+        }
+    };
+    commands.spawn((PowerUp(kind), Transform::from_translation(pos.extend(0.0)), DespawnOnExit(Screen::Stage)));
     sfx.write(Sfx::PowerAppear);
 }
 
@@ -34,7 +51,7 @@ pub fn pickup(
     mut terrain: ResMut<Terrain>,
     powerups: Query<(Entity, &PowerUp, &Transform)>,
     mut players: Query<(Entity, &Tank, &Transform, &mut Gun), (Without<Enemy>, Without<Spawning>)>,
-    enemies: Query<(Entity, &Transform), With<Enemy>>,
+    enemies: Query<(Entity, &Transform, &Enemy)>,
     mut fx: MessageWriter<Fx>,
     mut sfx: MessageWriter<Sfx>,
     mut rumble: MessageWriter<Rumble>,
@@ -67,8 +84,8 @@ pub fn pickup(
                 }
             }
             rules::PowerKind::Grenade => {
-                // No points for grenade kills, like the classic.
-                for (e, tf) in &enemies {
+                // No points for grenade kills, like the classic. Turrets and bosses shrug it off.
+                for (e, tf, _) in enemies.iter().filter(|(_, _, en)| en.rank == rules::Rank::Normal) {
                     commands.entity(e).try_despawn();
                     fx.write(Fx { kind: FxKind::TankBoom, pos: tf.translation.xy() });
                 }

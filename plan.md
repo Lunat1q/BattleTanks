@@ -39,6 +39,12 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] App icon: exe resource (Explorer/Steam) + window/taskbar icon, painted from the game's own tank art
 - [x] Version 0.2.0 (unreleased build in the owner's game folder)
 
+### M5 — City Run ✅ (first pass)
+- [x] Tall terrain + scrolling `View` (follow lead, keep trailing tank, never back)
+- [x] 10 districts (15–24 screens), bastions with turrets + gates, mini-bosses, boss; tests for winnability and gates
+- [x] District map screen (pixel-art city backdrop), unlocks saved in `%APPDATA%`; power-ups/lives reset per district
+- [ ] Couch-test difficulty and length; boss HP bar if bosses feel like sponges
+
 ### M4 — Ship to the TV ⏳
 - [x] Release profile (thin LTO, stripped, no console window)
 - [ ] Build release exe on the gaming PC, add to Steam (see README), test through Sunshine/Moonlight with 2 pads
@@ -52,6 +58,9 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [ ] Results-screen count-up animation like the classic tally
 
 ## Current state
+
+City Run added (v0.3.0): 10 districts, district map, smoke screenshots checked for the map, a district start, a
+bastion and a boss arena. Not yet played on the couch.
 
 M1–M3 done, plus Settings (FPS limit — owner saw ~1000 fps — volume, fullscreen, shake, FPS counter); all checks green (fmt, clippy, 30 tests, released as v0.1.0,
 release build). Limiter measured at 59 fps (60 cap) and 140 fps (144 cap) in smoke runs. Smoke screenshots verified for the title

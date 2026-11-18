@@ -1,6 +1,6 @@
 //! Bullet flight (terrain, base, tanks, other bullets) and what a hit does.
 
-use super::stage::{BASE_POS, spawn_player};
+use super::stage::{BASE_POS, respawn_point, spawn_player};
 use super::*;
 use crate::geom::{TILE, overlaps, rect_at};
 use crate::rng::Rng;
@@ -38,6 +38,8 @@ pub fn fly_bullets(
     time: Res<Time>,
     mut terrain: ResMut<Terrain>,
     mut run: ResMut<StageRun>,
+    view: Res<View>,
+    base: Query<(), With<Base>>,
     mut bullets: Query<(Entity, &Bullet, &mut Transform)>,
     tanks: Query<(Entity, &Tank, &Transform), (Without<Bullet>, Without<Spawning>)>,
     mut hits: MessageWriter<Hit>,
@@ -47,8 +49,8 @@ pub fn fly_bullets(
     settings: Res<Settings>,
 ) {
     let dt = time.delta_secs().min(0.05);
-    let targets: Vec<(Entity, Team, Rect)> = tanks.iter().map(|(e, t, tf)| (e, t.team, rect_at(tf.translation.xy(), TILE))).collect();
-    let base = rect_at(BASE_POS, TILE);
+    let targets: Vec<(Entity, Team, Rect)> = tanks.iter().map(|(e, t, tf)| (e, t.team, rect_at(tf.translation.xy(), t.size))).collect();
+    let base = (!base.is_empty()).then(|| rect_at(BASE_POS, TILE));
     let mut swept: Vec<(Entity, Team, Rect)> = Vec::new();
 
     for (e, b, mut tf) in &mut bullets {
@@ -67,7 +69,7 @@ pub fn fly_bullets(
                 gone = true;
                 break;
             }
-            if overlaps(r, base) {
+            if base.is_some_and(|b| overlaps(r, b)) {
                 if run.base_alive {
                     run.base_alive = false;
                     fx.write(Fx { kind: FxKind::BaseBoom, pos: BASE_POS });
@@ -77,7 +79,9 @@ pub fn fly_bullets(
                 gone = true;
                 break;
             }
-            if let Some(impact) = terrain.bullet_hit(r, b.dir, b.power) {
+            // The edges of the view are the edges of the world (City Run scrolls it).
+            let off_view = (r.min.y < view.bottom || r.max.y > view.top()).then_some(Impact::Edge);
+            if let Some(impact) = off_view.or_else(|| terrain.bullet_hit(r, b.dir, b.power)) {
                 let player = matches!(b.team, Team::Player(_));
                 match impact {
                     Impact::Brick => {
@@ -125,6 +129,8 @@ pub fn resolve_hits(
     mut hits: MessageReader<Hit>,
     mut session: ResMut<Session>,
     mut rng: ResMut<Rng>,
+    view: Res<View>,
+    terrain: Res<Terrain>,
     mut tanks: Query<(&Tank, &Transform, Option<&mut Enemy>, Has<Shield>)>,
     powerups: Query<Entity, With<PowerUp>>,
     mut fx: MessageWriter<Fx>,
@@ -132,6 +138,7 @@ pub fn resolve_hits(
     mut rumble: MessageWriter<Rumble>,
 ) {
     let mut dead: Vec<Entity> = Vec::new();
+    let city = session.mode == Mode::City;
     for hit in hits.read() {
         if dead.contains(&hit.target) {
             continue;
@@ -140,9 +147,12 @@ pub fn resolve_hits(
         let pos = tf.translation.xy();
         match (tank.team, hit.by, enemy) {
             (Team::Enemy, Team::Player(p), Some(mut enemy)) => {
+                let drop_power = |commands: &mut Commands, rng: &mut Rng, sfx: &mut MessageWriter<Sfx>| {
+                    powerup::spawn_random(commands, rng, &powerups, sfx, view.bottom, city.then_some(&*terrain));
+                };
                 if enemy.bonus {
                     enemy.bonus = false;
-                    powerup::spawn_random(&mut commands, &mut rng, &powerups, &mut sfx);
+                    drop_power(&mut commands, &mut rng, &mut sfx);
                 }
                 enemy.hp = enemy.hp.saturating_sub(1);
                 if enemy.hp > 0 {
@@ -152,17 +162,21 @@ pub fn resolve_hits(
                 }
                 dead.push(hit.target);
                 commands.entity(hit.target).try_despawn();
-                let points = enemy.kind.points();
-                if let Some(slot) = session.slots[p].as_mut() {
+                let points = enemy.rank.points(enemy.kind);
+                if enemy.rank == Rank::Mini {
+                    drop_power(&mut commands, &mut rng, &mut sfx);
+                }
+                if let Some(slot) = session.slots[p].as_mut().filter(|_| enemy.rank == Rank::Normal) {
                     slot.kills[enemy.kind.index()] += 1;
                 }
                 if session.add_score(p, points) > 0 {
                     sfx.write(Sfx::ExtraLife);
                 }
-                fx.write(Fx { kind: FxKind::TankBoom, pos });
+                let big = matches!(enemy.rank, Rank::Mini | Rank::Boss);
+                fx.write(Fx { kind: if big { FxKind::BaseBoom } else { FxKind::TankBoom }, pos });
                 fx.write(Fx { kind: FxKind::Points(points), pos });
-                sfx.write(Sfx::EnemyBoom);
-                rumble.write(Rumble::tick(p));
+                sfx.write(if enemy.rank == Rank::Boss { Sfx::BossBoom } else { Sfx::EnemyBoom });
+                rumble.write(if big { Rumble::death(p) } else { Rumble::tick(p) });
             }
             (Team::Player(target), Team::Player(_), _) if !shielded => {
                 commands.entity(hit.target).insert(Paralyzed(rules::PARALYZE_TIME));
@@ -175,7 +189,8 @@ pub fn resolve_hits(
                 fx.write(Fx { kind: FxKind::TankBoom, pos });
                 sfx.write(Sfx::PlayerBoom);
                 rumble.write(Rumble::death(p));
-                player_lost_tank(&mut commands, &mut session, p);
+                let at = respawn_point(p, view.bottom, &terrain);
+                player_lost_tank(&mut commands, &mut session, p, at);
             }
             _ => {}
         }
@@ -183,12 +198,12 @@ pub fn resolve_hits(
 }
 
 /// A player's tank is gone: lose stars, use a spare tank or drop out.
-pub fn player_lost_tank(commands: &mut Commands, session: &mut Session, p: usize) {
+pub fn player_lost_tank(commands: &mut Commands, session: &mut Session, p: usize, respawn_at: Vec2) {
     let Some(slot) = session.slots[p].as_mut() else { return };
     slot.level = 0;
     if slot.lives > 0 {
         slot.lives -= 1;
-        spawn_player(commands, p, 0);
+        spawn_player(commands, p, 0, respawn_at);
     } else {
         slot.out = true;
     }

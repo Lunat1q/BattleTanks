@@ -130,6 +130,41 @@ pub fn enemies() -> Vec<[Image; 2]> {
     EnemyKind::ALL.iter().map(|&k| [draw(enemy_look(k), 0), draw(enemy_look(k), 1)]).collect()
 }
 
+/// City Run mini-boss and boss: heavier models, painted finer because they're drawn 24 and 32 units wide.
+const MINI: Look =
+    Look { hull: Vec2::new(5.0, 6.5), tread_w: 3.2, turret: 3.8, barrel_len: 8.0, barrel_w: 0.8, twin: true, plates: true, nose: false };
+const BOSS: Look =
+    Look { hull: Vec2::new(5.4, 6.8), tread_w: 2.6, turret: 4.3, barrel_len: 8.0, barrel_w: 0.9, twin: true, plates: true, nose: true };
+
+pub fn mini() -> [Image; 2] {
+    [0, 1].map(|f| paint(MINI, f, 12.0, 16.0).into_image())
+}
+
+pub fn boss() -> [Image; 2] {
+    [0, 1].map(|f| paint(BOSS, f, 16.0, 16.0).into_image())
+}
+
+/// Bastion gun: riveted armour plate with a domed gun, facing up like the tanks.
+pub fn turret() -> Image {
+    let mut c = Canvas::new(16.0, 16.0, PPU);
+    c.outlined(|p| sd_rbox(p, Vec2::ZERO, Vec2::splat(7.3), 1.6), 0.45, |p| gray(0.52 + 0.1 * (p.y - p.x) / 8.0));
+    c.outlined(|p| sd_rbox(p, Vec2::ZERO, Vec2::splat(5.3), 1.0), 0.3, |p| gray(0.36 + 0.08 * (p.x - p.y) / 6.0));
+    for (x, y) in [(-5.9, -5.9), (5.9, -5.9), (-5.9, 5.9), (5.9, 5.9)] {
+        c.paint(|p| sd_circle(p, Vec2::new(x, y), 0.65), |p| gray(0.6 + 0.2 * (y - p.y + p.x - x)));
+    }
+    c.outlined(|p| sd_box(p, Vec2::new(0.0, 4.2), Vec2::new(0.85, 3.6)), 0.3, |p| gray(0.5 + 0.3 * (1.0 - (p.x / 0.85).abs())));
+    c.paint(|p| sd_circle(p, Vec2::new(0.4, -0.5), 3.8), |_| [0.0, 0.0, 0.0, 0.35]);
+    c.outlined(
+        |p| sd_circle(p, Vec2::ZERO, 3.5),
+        0.4,
+        |p| {
+            let h = 1.0 - (p.distance(Vec2::new(-1.0, 1.0)) / 5.5).clamp(0.0, 1.0);
+            gray(0.55 + 0.42 * h * h)
+        },
+    );
+    c.into_image()
+}
+
 /// Top player tank model (star level 3), grey, for the app icon.
 pub fn hero(ppu: f32, span: f32) -> Canvas {
     paint(player_look(3), 0, ppu, span)

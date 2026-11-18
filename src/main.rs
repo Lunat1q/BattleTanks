@@ -4,6 +4,7 @@
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
 mod audio;
+mod city_map;
 mod dev;
 mod game;
 mod geom;
