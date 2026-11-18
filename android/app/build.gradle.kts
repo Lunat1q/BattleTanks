@@ -10,12 +10,12 @@ val cargoVersion = Regex("""(?m)^version = "(\d+)\.(\d+)\.(\d+)"""")
     .find(rootProject.file("../Cargo.toml").readText())!!.groupValues.drop(1).map { it.toInt() }
 
 android {
-    namespace = "io.github.lunat1q.battletanks"
+    namespace = "com.lunatiq.battletanks"
     compileSdk = 36
     ndkVersion = "29.0.14206865"
 
     defaultConfig {
-        applicationId = "io.github.lunat1q.battletanks"
+        applicationId = "com.lunatiq.battletanks"
         minSdk = 26
         targetSdk = 36
         versionName = cargoVersion.joinToString(".")

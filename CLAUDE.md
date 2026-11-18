@@ -20,7 +20,7 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 | Regenerate app icon | `cargo test write_icon_file -- --ignored` → `assets/icon.ico` + `icon.png` + Android launcher icon and TV banner in `android/app/src/main/res` (commit all) |
 | Smoke run + screenshot | `BT_SHOT=<scratch>/shot.png BT_STAGE=2 BT_SHOT_AT=8 ./target/debug/battle_tanks.exe --windowed` |
 | Android APK | `cd android && JAVA_HOME=<jdk-21> ./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk` (Gradle runs `cargo ndk` for arm64-v8a + armeabi-v7a, Rust always release, ~6 min) |
-| Android smoke (TV box via adb) | `adb install -r <apk>`; `adb shell am start -S -n io.github.lunat1q.battletanks/.MainActivity -e BT_SHOT shot.png -e BT_STAGE 2 -e BT_SHOT_AT 8`; `adb pull /sdcard/Android/data/io.github.lunat1q.battletanks/files/shot.png <scratch>` (debug APK only) |
+| Android smoke (TV box via adb) | `adb install -r <apk>`; `adb shell am start -S -n com.lunatiq.battletanks/.MainActivity -e BT_SHOT shot.png -e BT_STAGE 2 -e BT_SHOT_AT 8`; `adb pull /sdcard/Android/data/com.lunatiq.battletanks/files/shot.png <scratch>` (debug APK only) |
 
 - Android toolchain (owner's PC): `%LOCALAPPDATA%\Android\` holds `jdk-21.*`, `Sdk` (platform 36, build-tools 36.0.0,
   NDK 29.0.14206865); `cargo install cargo-ndk`; rustup targets `aarch64-linux-android armv7-linux-androideabi`.

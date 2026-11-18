@@ -1,4 +1,4 @@
-package io.github.lunat1q.battletanks;
+package com.lunatiq.battletanks;
 
 import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
