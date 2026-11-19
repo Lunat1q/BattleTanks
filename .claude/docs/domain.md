@@ -128,6 +128,9 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
 - A district is 15 screens tall (district 1) up to ~24 (district 10). Only one field-sized slice is visible: the
   `View`. It follows the lead player (kept at 55 % height) but never drops the trailing tank off the bottom and
   never scrolls back down. Tanks can't leave the view; bullets pop at its edges.
+- **District track** (HUD right panel, in place of the enemy reserve): a bar from the start to the boss icon on top,
+  gold up to the top of the view (how much of the district you've seen), a 1P dot left of it and a 2P dot right of it
+  at each tank's height.
 - Every district starts fresh: 3 spare tanks each (one more than classic), star level 0 (upgrades don't carry
   over). Score starts from 0 on every try (per district, like the clear time).
 - **Stashes**: brick boxes holding a power-up from the start (`SS` star, `LL` extra tank in the map file; the

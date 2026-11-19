@@ -56,7 +56,7 @@ src/
     title.rs          # join/leave slots, START / STAGE <n> / CITY RUN / SETTINGS / EXIT
     city_map.rs       # district map: 10 dots + dotted roads, pick an unlocked district
     settings.rs       # rows from settings::ITEMS + BACK; saves on every change
-    hud.rs            # side panels: lives, score, power, enemy reserve icons, stage flag
+    hud.rs            # side panels: lives, score, power, enemy reserve icons (City Run: district track), stage flag
     screens.rs        # stage banner, pause menu (+ pad-lost note), results and game over screens
     tally.rs          # results / game over table; classic count-up (tally_view pure: rows, blips, time bonus, score)
     board.rs          # Screen::Board after game over (classic) / district results (City): 7-letter name entry per player
