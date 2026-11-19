@@ -273,7 +273,7 @@ mod tests {
     }
 
     /// Per district: climb time (tenths), placed enemies, turrets, mini-bosses. The score server's
-    /// `CityRules.Districts` has the same table; change both when a district map changes.
+    /// `CityRules.Facts` (score_server repo) has the same table; change both when a district map changes.
     const CITY_FACTS: [[u32; 4]; crate::rules::CITY_DISTRICTS] = [
         [627, 82, 6, 2],
         [665, 74, 8, 2],
@@ -299,7 +299,7 @@ mod tests {
             // drive at least this far from the start row at full speed.
             let climb = ((boss_top - 0.45 * FIELD - crate::game::stage::PLAYER_SPAWNS[0].y) / PLAYER_SPEED * 10.0) as u32;
             let got = [climb, count(Rank::Normal), count(Rank::Turret), count(Rank::Mini)];
-            assert_eq!(&got, facts, "district {}: update CITY_FACTS and the server's CityRules.Districts", i + 1);
+            assert_eq!(&got, facts, "district {}: update CITY_FACTS and score_server CityRules.Facts", i + 1);
             // The server wants every turret and mini-boss dead: each turret guards a gate the boss sits behind, and a
             // live mini-boss holds the camera well below the boss.
             assert!(d.spawns.iter().all(|s| s.rank != Rank::Turret || s.bastion.is_some()), "district {}", i + 1);
