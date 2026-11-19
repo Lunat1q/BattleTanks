@@ -371,6 +371,18 @@ mod tests {
     }
 
     #[test]
+    fn streets_never_repeat() {
+        // An 8-row stretch (a third of a screen) seen twice anywhere in City Run means copied street blocks.
+        let mut seen = std::collections::HashSet::new();
+        for (i, src) in DISTRICTS.iter().enumerate() {
+            let rows: Vec<&str> = src.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with([';', 'n', 'm'])).collect();
+            for w in rows.windows(8).filter(|w| w.iter().any(|r| r.bytes().any(|c| c != b'.'))) {
+                assert!(seen.insert(w.concat()), "district {}: rows from {:?} repeat", i + 1, w[0]);
+            }
+        }
+    }
+
+    #[test]
     fn stash_markers_hold_power_ups() {
         let mut src = String::from("name Test\nmix 1 0 0 0\n");
         src += &"...........BB\n".repeat(4);

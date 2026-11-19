@@ -147,6 +147,14 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
   (2→5), faster turret/boss fire.
 - Map rule (tested): from the start, every mini-boss and the boss is reachable with gates open, and closing any one
   gate cuts the boss off (`city_map::tests`).
+- **Looks follow the name.** Maps are drawn by `city_gen` (test-only, `cargo test write_city_districts -- --ignored`)
+  from per-theme brushes: Outskirts fields, hedgerows, farms and ponds; Market Row stalls, arcades and fountain squares;
+  Canal Ward canals with bridges, terraces and locks; Old Town crooked house blocks, squares, a church and the old wall;
+  Ironworks halls, pipe runs, scrap yards and cooling ponds; Frost Park ice fields, frozen ponds and groves; Harbour
+  basins with piers, containers and cranes; Rail Yards tracks with wagons, platforms and engine sheds; Citadel Gate
+  trenches, bunkers and tank traps; The Citadel steel courtyards, brick mazes, the moat and pillar halls. Each district
+  keeps its height, turrets, minis and placed enemies (the world board's district table depends on them). No 8-row
+  stretch of street appears twice anywhere in City Run (tested).
 
 ## Music (`music.rs`, ADR 0007)
 All tracks are normalised to −16 LUFS (linear gain from the MP3 master, see Operational lessons for the
@@ -169,8 +177,7 @@ play over it.
 - Variable timestep (dt clamped 0.05 s) rather than fixed; fine at 60 fps vsync, revisit if behaviour drifts
   at very low frame rates.
 - No online play, no AI teammate, no level editor (maps are plain text). The world board is the only network use.
-- City Run: no boss HP bar (bosses fade to grey as they take damage); district maps are assembled from a
-  shared set of section blocks, so long districts repeat streets; the view never scrolls back down.
+- City Run: no boss HP bar (bosses fade to grey as they take damage); the view never scrolls back down.
 
 ## Operational lessons
 | Symptom | Cause | Guard |

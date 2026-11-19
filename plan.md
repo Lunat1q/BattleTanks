@@ -43,6 +43,7 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Tall terrain + scrolling `View` (follow lead, keep trailing tank, never back)
 - [x] 10 districts (15–24 screens), bastions with turrets + gates, mini-bosses, boss; tests for winnability and gates
 - [x] District map screen (pixel-art city backdrop), unlocks saved in `%APPDATA%`; power-ups/lives reset per district
+- [x] Districts redrawn by theme (`city_gen`): each looks like its name, no street stretch repeats (owner: copies bothered)
 - [ ] Couch-test difficulty and length; boss HP bar if bosses feel like sponges
 
 ### M4 — Ship to the TV ⏳

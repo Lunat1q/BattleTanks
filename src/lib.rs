@@ -5,6 +5,10 @@
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
 mod audio;
+#[cfg(test)]
+mod city_brushes;
+#[cfg(test)]
+mod city_gen;
 mod city_map;
 mod dev;
 mod game;

@@ -17,6 +17,7 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 | Lint | `cargo clippy --all-targets` (must be warning-free) |
 | Format | `cargo fmt` (`rustfmt.toml`: width 140) |
 | Release exe | `cargo build --release` → `target/release/battle_tanks.exe` (single file, no assets) |
+| Redraw City Run districts | `cargo test write_city_districts -- --ignored` → `levels/city/*.txt` (commit; overwrites hand edits) |
 | Regenerate app icon | `cargo test write_icon_file -- --ignored` → `assets/icon.ico` + `icon.png` (commit both) |
 | Smoke run + screenshot | `BT_SHOT=<scratch>/shot.png BT_STAGE=2 BT_SHOT_AT=8 ./target/debug/battle_tanks.exe --windowed` |
 
