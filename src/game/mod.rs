@@ -23,6 +23,8 @@ pub enum Screen {
     Settings,
     /// City Run district map: pick an unlocked district.
     CityMap,
+    /// World board: name entry and rank, after a classic game over or a City Run district clear.
+    Board,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -272,24 +274,45 @@ pub struct Rumble {
     pub strong: f32,
     pub weak: f32,
     pub secs: f32,
+    /// Seconds to wait before it starts (lets one event play a pattern of pulses).
+    pub delay: f32,
 }
 
 impl Rumble {
-    /// Own tank destroyed.
-    pub fn death(slot: usize) -> Self {
-        Rumble { slot, strong: 0.9, weak: 0.6, secs: 0.45 }
+    fn new(slot: usize, strong: f32, weak: f32, secs: f32) -> Self {
+        Rumble { slot, strong, weak, secs, delay: 0.0 }
+    }
+    /// Own tank destroyed: a "sad" falling wah-wah-wahhh, three pulses, each softer, the last one long.
+    pub fn death(slot: usize) -> [Self; 3] {
+        [
+            Rumble::new(slot, 0.85, 0.5, 0.22),
+            Rumble { delay: 0.34, ..Rumble::new(slot, 0.55, 0.3, 0.22) },
+            Rumble { delay: 0.68, ..Rumble::new(slot, 0.35, 0.15, 0.6) },
+        ]
     }
     /// Base destroyed: everyone feels it.
     pub fn base_lost(slot: usize) -> Self {
-        Rumble { slot, strong: 1.0, weak: 1.0, secs: 0.9 }
+        Rumble::new(slot, 1.0, 1.0, 0.9)
     }
     /// Paralyzed by the other player.
     pub fn stunned(slot: usize) -> Self {
-        Rumble { slot, strong: 0.4, weak: 0.5, secs: 0.3 }
+        Rumble::new(slot, 0.4, 0.5, 0.3)
     }
-    /// Small confirmation: a kill, a power-up.
+    /// Our shell hit an enemy that survived it (armour, turret, boss).
+    pub fn hit(slot: usize) -> Self {
+        Rumble::new(slot, 0.2, 0.35, 0.07)
+    }
+    /// Our shell killed an ordinary enemy.
+    pub fn kill(slot: usize) -> Self {
+        Rumble::new(slot, 0.45, 0.6, 0.15)
+    }
+    /// A mini-boss or the boss went down.
+    pub fn big_kill(slot: usize) -> Self {
+        Rumble::new(slot, 1.0, 0.8, 0.4)
+    }
+    /// Small confirmation: a power-up.
     pub fn tick(slot: usize) -> Self {
-        Rumble { slot, strong: 0.0, weak: 0.45, secs: 0.12 }
+        Rumble::new(slot, 0.0, 0.45, 0.12)
     }
 }
 

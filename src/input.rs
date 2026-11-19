@@ -130,9 +130,28 @@ fn gather(
     }
 }
 
-/// Gameplay `Rumble` -> the slot's controller (keyboards and vibration-off just drop it).
-fn rumble(settings: Res<Settings>, session: Res<Session>, mut events: MessageReader<Rumble>, mut out: MessageWriter<GamepadRumbleRequest>) {
-    for r in events.read() {
+/// Gameplay `Rumble` -> the slot's controller (keyboards and vibration-off just drop it). Delayed pulses wait in
+/// `later` (real time, so they play out over a pause or a screen change).
+fn rumble(
+    settings: Res<Settings>,
+    session: Res<Session>,
+    time: Res<Time<Real>>,
+    mut later: Local<Vec<Rumble>>,
+    mut events: MessageReader<Rumble>,
+    mut out: MessageWriter<GamepadRumbleRequest>,
+) {
+    let dt = time.delta_secs();
+    later.extend(events.read().copied());
+    let mut due = Vec::new();
+    later.retain_mut(|r| {
+        r.delay -= dt;
+        let wait = r.delay > 0.0;
+        if !wait {
+            due.push(*r);
+        }
+        wait
+    });
+    for r in &due {
         let Some(Device::Pad(gamepad)) = session.slots.get(r.slot).and_then(|s| s.as_ref()).map(|s| s.device) else { continue };
         if settings.vibration {
             out.write(GamepadRumbleRequest::Add {

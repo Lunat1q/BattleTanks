@@ -45,6 +45,7 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] District map screen (pixel-art city backdrop), unlocks saved in `%APPDATA%`; power-ups/lives reset per district
 - [x] Districts redrawn by theme (`city_gen`): each looks like its name, no street stretch repeats (owner: copies bothered)
 - [x] No stash on a district's first screen; 3 secret stashes per district (core only players' shells break)
+- [x] Score per try per district (a retry starts at 0); 9 look-alike brick blocks per district hide the secrets
 - [ ] Couch-test difficulty and length; boss HP bar if bosses feel like sponges
 
 ### M4 — Ship to the TV ⏳
@@ -69,6 +70,8 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Results-screen count-up animation like the classic tally (blip per kill, A skips)
 - [x] City Run world boards: district clear time + kills, one fastest-first board per district and player count,
   server checks time and kills against the district (ADR 0010)
+- [x] Couch feedback: rumble on enemy hits and kills, a sad three-pulse on losing a tank; world board on its own screen
+  after results / game over (A send, B skip, top 3 + 2 above + 1 below); names up to 7 letters, prefilled
 - [ ] World board live check: server reachable at `scores.maxpodolski.com` (tunnel route + DNS added, key and rules checked live); first real run from the couch still to come
 
 ## Current state

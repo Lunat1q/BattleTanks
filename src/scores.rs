@@ -31,9 +31,12 @@ impl Best {
     }
 }
 
-/// Up to 3 letters A-Z, upper case; everything else dropped (the server checks the same).
+/// Longest name the entry takes.
+pub const NAME_LEN: usize = 7;
+
+/// Up to `NAME_LEN` letters A-Z, upper case; everything else dropped (the server checks the same).
 pub fn clean_name(s: &str) -> String {
-    s.chars().filter(char::is_ascii_alphabetic).map(|c| c.to_ascii_uppercase()).take(3).collect()
+    s.chars().filter(char::is_ascii_alphabetic).map(|c| c.to_ascii_uppercase()).take(NAME_LEN).collect()
 }
 
 /// One board line.

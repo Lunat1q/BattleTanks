@@ -159,6 +159,7 @@ pub fn resolve_hits(
                 if enemy.hp > 0 {
                     commands.entity(hit.target).insert(HitFlash(0.12));
                     sfx.write(Sfx::ArmorHit);
+                    rumble.write(Rumble::hit(p));
                     continue;
                 }
                 dead.push(hit.target);
@@ -180,7 +181,7 @@ pub fn resolve_hits(
                 fx.write(Fx { kind: if big { FxKind::BaseBoom } else { FxKind::TankBoom }, pos });
                 fx.write(Fx { kind: FxKind::Points(points), pos });
                 sfx.write(if enemy.rank == Rank::Boss { Sfx::BossBoom } else { Sfx::EnemyBoom });
-                rumble.write(if big { Rumble::death(p) } else { Rumble::tick(p) });
+                rumble.write(if big { Rumble::big_kill(p) } else { Rumble::kill(p) });
             }
             (Team::Player(target), Team::Player(_), _) if !shielded => {
                 commands.entity(hit.target).insert(Paralyzed(rules::PARALYZE_TIME));
@@ -192,7 +193,7 @@ pub fn resolve_hits(
                 commands.entity(hit.target).try_despawn();
                 fx.write(Fx { kind: FxKind::TankBoom, pos });
                 sfx.write(Sfx::PlayerBoom);
-                rumble.write(Rumble::death(p));
+                rumble.write_batch(Rumble::death(p));
                 let at = respawn_point(p, view.bottom, &terrain);
                 player_lost_tank(&mut commands, &mut session, p, at, settings.keep_power);
             }

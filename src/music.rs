@@ -85,6 +85,9 @@ pub fn pick(screen: Screen, mode: Mode, stage: usize, fight: Fight) -> &'static 
         Screen::CityMap => &[MenuAlt],
         Screen::Results => &[Victory],
         Screen::GameOver => &[Loss],
+        // Keeps the screen before it playing: a district clear's victory, or a classic run's game over.
+        Screen::Board if mode == Mode::City => &[Victory],
+        Screen::Board => &[Loss],
         Screen::Stage => match (fight, mode) {
             (Fight::Boss, _) => BOSS,
             (Fight::Mini, _) => HARD,

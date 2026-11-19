@@ -29,16 +29,8 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (banner, pause_menu).run_if(in_state(Screen::Stage)))
         .add_systems(OnEnter(Screen::Results), spawn_results)
         .add_systems(OnEnter(Screen::GameOver), spawn_game_over)
-        .add_systems(
-            Update,
-            (super::tally::tally, results_input.run_if(super::board::entry_closed).before(super::board::input))
-                .chain()
-                .run_if(in_state(Screen::Results)),
-        )
-        .add_systems(
-            Update,
-            game_over_input.run_if(in_state(Screen::GameOver)).run_if(super::board::entry_closed).before(super::board::input),
-        );
+        .add_systems(Update, (super::tally::tally, results_input).chain().run_if(in_state(Screen::Results)))
+        .add_systems(Update, game_over_input.run_if(in_state(Screen::GameOver)));
 }
 
 fn overlay(bg: f32) -> impl Bundle {
@@ -156,18 +148,8 @@ fn spawn_results(mut commands: Commands, session: Res<Session>, mut time: ResMut
     time.0 = 0.0;
     commands.spawn((screen_root(), DespawnOnExit(Screen::Results))).with_children(|r| {
         r.spawn(text(format!("{} {} CLEAR", place(&session), session.stage), 8.0, GOLD));
-        let tally = (text(table(&session, Some(tally_view(0.0, kill_maxes(&session)))), 3.8, INK), Tally);
-        if session.mode == Mode::City {
-            // Tally on the left, the district's world board on the right (as on game over).
-            r.spawn(Node { column_gap: vw(6), align_items: AlignItems::Center, ..default() }).with_children(|row| {
-                row.spawn(tally);
-                row.spawn((text("", 3.2, INK), super::board::OnlineText));
-            });
-            r.spawn((text("press A to continue", 3.0, DIM), super::board::HintText));
-        } else {
-            r.spawn(tally);
-            r.spawn(text("press A to continue", 3.0, DIM));
-        }
+        r.spawn((text(table(&session, Some(tally_view(0.0, kill_maxes(&session)))), 3.8, INK), Tally));
+        r.spawn(text("press A to continue", 3.0, DIM));
     });
 }
 
@@ -176,16 +158,9 @@ fn spawn_game_over(mut commands: Commands, session: Res<Session>, mut time: ResM
     commands.spawn((screen_root(), DespawnOnExit(Screen::GameOver))).with_children(|r| {
         r.spawn(text("GAME OVER", 12.0, RED));
         r.spawn(text(format!("reached {} {}", place(&session).to_lowercase(), session.stage), 3.6, DIM));
-        // Tally on the left, the world board (name entry, then rank) on the right when it is on.
-        r.spawn(Node { column_gap: vw(6), align_items: AlignItems::Center, ..default() }).with_children(|row| {
-            row.spawn(Node { flex_direction: FlexDirection::Column, align_items: AlignItems::Center, row_gap: vh(1.6), ..default() })
-                .with_children(|c| {
-                    c.spawn(text(table(&session, None), 3.8, INK));
-                    c.spawn(text(format!("HI SCORE  {}", session.hi_score), 4.2, GOLD));
-                });
-            row.spawn((text("", 3.2, INK), super::board::OnlineText));
-        });
-        r.spawn((text("press A", 3.0, DIM), super::board::HintText));
+        r.spawn(text(table(&session, None), 3.8, INK));
+        r.spawn(text(format!("HI SCORE  {}", session.hi_score), 4.2, GOLD));
+        r.spawn(text("press A", 3.0, DIM));
     });
 }
 
@@ -206,17 +181,16 @@ fn results_input(
     platform: Res<crate::Platform>,
     mut next: ResMut<NextState<Screen>>,
 ) {
-    // A City Run clear with the world board waits for A, so the board can be read.
-    let auto = session.mode != Mode::City || !crate::scores::Online::available(&platform);
     // After the count-up (or the press that skipped it): a 1 s guard against a held button, then A or the wait moves on.
     let done = time.0 - tally_len(kill_maxes(&session));
     let pressed = (0..2).any(|i| {
         let it = session.intent(i, &devices);
         it.confirm || it.start
     });
-    if (done > 1.0 && pressed) || (auto && done > RESULTS_WAIT) {
+    if (done > 1.0 && pressed) || done > RESULTS_WAIT {
         if session.mode == Mode::City {
-            next.set(Screen::CityMap); // pick the next district (or replay one)
+            // The clear's world board, then the district map (pick the next district or replay one).
+            next.set(if super::board::wants_board(&session, &platform) { Screen::Board } else { Screen::CityMap });
         } else {
             session.stage += 1;
             next.set(Screen::Stage);
@@ -229,10 +203,11 @@ fn game_over_input(
     mut time: ResMut<ScreenTime>,
     session: Res<Session>,
     devices: Res<DeviceIntents>,
+    platform: Res<crate::Platform>,
     mut next: ResMut<NextState<Screen>>,
 ) {
     if advance_pressed(&mut time, t.delta_secs(), &session, &devices) {
-        // City Run: back to the district map to retry.
-        next.set(if session.mode == Mode::City { Screen::CityMap } else { Screen::Title });
+        // The run's world board, then the title; City Run: back to the district map to retry.
+        next.set(if super::board::wants_board(&session, &platform) { Screen::Board } else { super::board::onward(&session) });
     }
 }

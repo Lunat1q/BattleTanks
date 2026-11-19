@@ -65,14 +65,14 @@ fn run(
                 session.slots = keys();
                 next.set(Screen::CityMap);
             }
-            Ok(s @ ("results" | "gameover" | "cityresults")) if session.players() == 0 => {
+            Ok(s @ ("results" | "gameover" | "cityresults" | "board")) if session.players() == 0 => {
                 session.slots = keys();
                 for (i, slot) in session.slots.iter_mut().flatten().enumerate() {
                     slot.kills = [7 - 3 * i as u32, 4, 2, 1 + i as u32];
                     slot.score = 12_340 + 2_210 * i as u32;
                 }
                 let won = s != "gameover";
-                let city = s == "cityresults";
+                let city = s == "cityresults" || s == "board";
                 if city {
                     session.mode = Mode::City;
                 }
@@ -85,7 +85,12 @@ fn run(
                     pickups: vec![1, 0],
                     big: if city { vec![[14, 2, 1], [6, 1, 0]] } else { vec![] },
                 }];
-                next.set(if won { Screen::Results } else { Screen::GameOver });
+                // `board`: the name entry only; nothing is sent, since the smoke run presses nothing.
+                next.set(match s {
+                    "board" => Screen::Board,
+                    _ if won => Screen::Results,
+                    _ => Screen::GameOver,
+                });
             }
             _ => {}
         }

@@ -36,6 +36,8 @@ const START: usize = 6;
 const FIRST_SCREEN: usize = 26;
 /// Secret stashes per district.
 const SECRETS: usize = 3;
+/// Empty look-alike brick blocks per secret.
+const DECOYS: usize = 3;
 const ARENA: usize = 12;
 /// Least boss-arena height; it grows by up to `TALLEST` so the district ends at exactly its planned height.
 const BOSS: usize = 16;
@@ -211,7 +213,26 @@ fn district(p: &Plan, rng: &mut Rng) -> Band {
     map.lay(rng, false, |r| arena(r, &th, h, true));
     bury_secrets(&mut map, rng);
     place_enemies(&mut map, rng, p.enemies);
+    // After the enemies, so their squares (and the server's district table) stay as they were.
+    stamp_decoys(&mut map, rng);
     map.rows
+}
+
+/// Plain solid 4x4 brick blocks, `DECOYS` per secret slice, on open street ground: a lone block of brick is then
+/// no tell that a secret sits inside (owner: "obvious that in that huge brick square there is something").
+fn stamp_decoys(map: &mut Map, rng: &mut Rng) {
+    let (lo, hi) = (FIRST_SCREEN, map.rows.len() - BOSS - 4);
+    for i in 0..SECRETS * DECOYS {
+        let rows = &map.rows;
+        let open = |x: usize, y: usize| (y..y + 6).all(|r| map.street[r] && rows[r][x..x + 6].iter().all(|&v| v == b'.'));
+        let pool: Vec<(usize, usize)> = (lo + (hi - lo) * i / (SECRETS * DECOYS)..lo + (hi - lo) * (i + 1) / (SECRETS * DECOYS))
+            .flat_map(|y| (0..=W - 6).map(move |x| (x, y)))
+            .filter(|&(x, y)| open(x, y))
+            .collect();
+        if let Some(&(x, y)) = pool.get(rng.below(pool.len().max(1) as u32) as usize) {
+            rect(&mut map.rows, x + 1, y + 1, 4, 4, b'#');
+        }
+    }
 }
 
 /// `SECRETS` secret cores (`??/??`), one per slice of the climb above the first screen: inside a solid 4x4 brick block

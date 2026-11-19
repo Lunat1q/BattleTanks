@@ -59,7 +59,8 @@ src/
     hud.rs            # side panels: lives, score, power, enemy reserve icons, stage flag
     screens.rs        # stage banner, pause menu (+ pad-lost note), results and game over screens
     tally.rs          # results / game over table; classic count-up (tally_view pure: rows, blips, time bonus, score)
-    board.rs          # game over (classic) / district results (City): 3-letter name entry per player, send, show world rank + rows
+    board.rs          # Screen::Board after game over (classic) / district results (City): 7-letter name entry per player
+                      # (prefilled), A send / B skip, world rank + top 3 + 2 above / 1 below
 ```
 
 ## Frame pipeline
@@ -80,7 +81,7 @@ Update          ├─ title / pause / results / game-over menus read DeviceInte
                 after(Sim): gfx::world attach_* (Added<T>) + tank_looks/shield_rings/... ; ui::hud::refresh
 
 Leaving Stage (classic): scores::log_stage ──▶ Session.log (StageLog per stage: time, kills, power-ups per player)
-GameOver: ui::board name entry ──▶ scores::Online::send (worker thread: Platform::post_score = curl) ──▶ scores::poll ──▶ ui::board::show
+Board: ui::board name entry ──▶ scores::Online::send (worker thread: Platform::post_score = curl) ──▶ scores::poll ──▶ ui::board::show
 ```
 
 ## State machine
@@ -88,11 +89,13 @@ GameOver: ui::board name entry ──▶ scores::Online::send (worker thread: Pl
 ```
 Settings ◀──SETTINGS / B──▶ Title ──START──▶ Stage ──all 20 killed──▶ Results ──tally, then A / 10 s──▶ Stage (n+1)
                              ▲                │
-                             │                └──base destroyed or everyone out──▶ GameOver ──A──▶ Title
+                             │                └──base destroyed or everyone out──▶ GameOver ──A──▶ [Board ──A / B──▶] Title
                              └────────────── pause menu "QUIT TO TITLE" ◀──────────┘
 ```
 
-City Run: Title ──CITY RUN──▶ CityMap ──A──▶ Stage (mode City) ──boss killed──▶ Results ──▶ CityMap;
+`[Board]` = the world board screen, only when it is on (game key + host `post_score`) and the run counts.
+
+City Run: Title ──CITY RUN──▶ CityMap ──A──▶ Stage (mode City) ──boss killed──▶ Results ──▶ [Board ──▶] CityMap;
 game over ──▶ CityMap (retry). B on the map ──▶ Title.
 
 `StageRun.phase` inside `Screen::Stage`: `Intro` (banner, frozen) → `Play` → `Won` | `Lost` (3 s, world keeps

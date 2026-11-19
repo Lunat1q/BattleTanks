@@ -89,6 +89,8 @@ pub fn setup(commands: &mut Commands, session: &mut Session) -> Terrain {
         commands.spawn((PowerUp(kind), Stash, Transform::from_translation(pos.extend(0.0)), DespawnOnExit(Screen::Stage)));
     }
     for slot in session.slots.iter_mut().flatten() {
+        // Score is per try: a retry starts from 0, like the clear time the board ranks.
+        slot.score = 0;
         slot.lives = rules::CITY_START_LIVES;
         slot.level = 0;
         slot.out = false;

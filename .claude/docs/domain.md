@@ -62,21 +62,21 @@ all 20 destroyed → 3 s → results tally → next stage. Base lost or every pl
   until the last kill. City Run has no time bonus; its clear time is what its world boards rank.
 - **Results tally** counts up like the classics: row by row, one blip per kill (0.07 s each, 0.35 s between rows), then
   the stage time with the bonus, then the score. A skips the count; then A (after 1 s) or 10 s moves on.
-- **Hi score** is kept in `%APPDATA%\BattleTanks\scores.txt` (`hi=`, plus `name1=` / `name2=`: the initials last
-  entered per slot), saved on results, game over and the title.
-- **World board** (builds with a game key, host with `post_score`): at game over each player enters 3
-  letters with their own controller (up/down letter, left/right or A move, A on the last letter = done, B = don't send).
+- **Hi score** is kept in `%APPDATA%\BattleTanks\scores.txt` (`hi=`, plus `name1=` / `name2=`: the name last
+  entered per slot, prefilled next time), saved on results, game over and the title.
+- **World board** (builds with a game key, host with `post_score`): its own screen after the game over screen (A).
+  Each player sets a name of up to 7 letters with their own controller, prefilled with their last one (up/down letter,
+  A-Z then blank; left/right move; A sends, in 2P once both pressed A; B skips to the title, nothing sent).
   The run's stage log goes to `scores.maxpodolski.com` (game `battletanks`), which recomputes and checks it and keeps
-  the top 1000 per board (1P, 2P co-op team total). The screen then shows the world rank, the top 5 and the rows around
-  ours, or "offline - score not sent". Runs quit from the pause menu are not sent.
-- **City Run boards** (ADR 0010): after a district clear, once the tally is counted (it shows `TIME m:ss.t`), the same
-  name entry sends the clear: play time (to the boss kill) and kills per player, ordinary tanks by type plus turrets,
+  the top 1000 per board (1P, 2P co-op team total). The screen then shows the world rank, the top 3, the two rows above
+  ours and the one below, or "offline - score not sent"; A moves on. Runs quit from the pause menu are not sent.
+- **City Run boards** (ADR 0010): the district results screen (it shows `TIME m:ss.t`) is followed by the same board
+  screen (B skips to the district map), which sends the clear: play time (to the boss kill) and kills per player, ordinary tanks by type plus turrets,
   mini-bosses and the boss. One board per district and player count, fastest first. The server refuses a time below
   the straight drive from the start to the boss at full speed, a clear that does not kill the boss, every turret
   and every mini-boss, or more kills than the district plus its reinforcements hold in that time. The district numbers
   live on both sides (`scores.rs` `CITY_FACTS`, server `CityRules.Facts`); the test
-  `city_facts_match_the_maps_and_the_server` fails on a map change until both are updated. With the board on, the
-  results screen waits for A instead of moving on after 10 s.
+  `city_facts_match_the_maps_and_the_server` fails on a map change until both are updated.
 
 **Map rule (tested):** from every enemy and player spawn, a 16×16 tank must be able to reach the base treating
 bricks as open and steel/water as walls (`levels::tests::every_spawn_can_reach_the_base`). Watch for: a water gap
@@ -112,7 +112,7 @@ Title → SETTINGS (any controller or keyboard; left/right or A changes, B back)
 | SHOW FPS | ON/OFF | OFF | smoothed FPS, top-right, every screen |
 | FRIENDLY FIRE | ON/OFF | ON | ON = classic (players paralyze each other); OFF = player bullets pass through the other player |
 | KEEP POWER | ON/OFF | OFF | ON = losing a tank keeps your star level (City Run districts still start at 0) |
-| VIBRATION | ON/OFF | ON | rumble on the slot's own pad: own tank destroyed (strong), paralyzed (medium), base lost (everyone, long), kill / power-up (short tick) |
+| VIBRATION | ON/OFF | ON | rumble on the slot's own pad: own tank destroyed (a sad, falling three-pulse), enemy hit (short), kill (medium), mini-boss / boss kill (strong), paralyzed (medium), base lost (everyone, long), power-up (tick) |
 
 A host that owns the window (`Platform::host_window`) hides VSYNC and FULLSCREEN.
 
@@ -129,7 +129,7 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
   `View`. It follows the lead player (kept at 55 % height) but never drops the trailing tank off the bottom and
   never scrolls back down. Tanks can't leave the view; bullets pop at its edges.
 - Every district starts fresh: 3 spare tanks each (one more than classic), star level 0 (upgrades don't carry
-  over). Score carries on.
+  over). Score starts from 0 on every try (per district, like the clear time).
 - **Stashes**: brick boxes holding a power-up from the start (`SS` star, `LL` extra tank in the map file; the
   half-row mirroring makes a pair, one per side). Shoot in to collect. Every district has a star pair low down
   and a tank pair further up; a new enemy drop never replaces a stash (tested: `city_map::tests`).
@@ -138,6 +138,7 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
   per district) buried in the core of a solid 4x4 brick block that looks like any other. The core is `Tile::Secret`:
   it blocks like brick, but enemy shells only pop on it (they still chip the bricks around it), so only a player can
   open a secret. Breaking into the core makes the power-up pop out (sound + debris); it then stays put like a stash.
+  Each district also has 9 plain look-alike 4x4 brick blocks (3 per secret), so a lone brick block is no tell.
   All players out → game over → back to the map to retry.
 - No base. Enemies hunt the nearest player. Placed enemies wake (sparkle) once fully in view; every 5th placed
   enemy carries a power-up. Reinforcements drop in at the top every 7 s − 0.35·district − 1 s in 2P (≥ 2.5 s),
