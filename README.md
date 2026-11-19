@@ -66,11 +66,9 @@ Quit from the title (**EXIT**) or the pause menu (**EXIT GAME**). `F11` / `Alt+E
 Battle Tanks has no accounts, ads or analytics. Settings, City Run progress and your best score are saved only on
 your device (`%APPDATA%\BattleTanks` on Windows, the app's private storage elsewhere) and are deleted with the game.
 
-The **Android TV app never connects to the internet** and collects nothing.
-
-The Windows game connects only when you choose to send a run to the world board at game over: it sends the three
-letters you entered, the run's stage log (stage numbers, times, kills, power-ups, score) and the game version to
-`scores.maxpodolski.com`. The board keeps the top 1000 runs (letters, score, stages cleared, date) and shows them
+The game (Windows and Android TV) connects only when you choose to send a run to the world board, at game over or
+after a City Run district: it sends the three letters you entered, the run's stage log (stage numbers, times, kills,
+power-ups, score) and the game version to `scores.maxpodolski.com`. The board keeps the top 1000 runs (letters, score, stages cleared, date) and shows them
 publicly; your IP address is used only to limit how often scores arrive and is not stored. Press **B** at the name
 entry and nothing is sent. Where a build asks for Bluetooth ("nearby devices") access,
 it is used only to talk to a controller you have paired; no data leaves the device.

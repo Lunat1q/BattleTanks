@@ -174,7 +174,6 @@ play over it.
 
 ## Known gaps / deliberate omissions
 - The world board can't stop a careful cheat who extracts the key and fakes a plausible stage log (open source).
-- Android TV doesn't send scores (no internet permission; local hi score only).
 - No way to see the world board in game except your own result at game over / district clear (the website shows it all).
 - City Run keeps no local best time per district; only the world board has it.
 - Grenade-killed spawning enemies leave their sparkle to finish (cosmetic).
