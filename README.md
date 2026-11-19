@@ -55,7 +55,7 @@ Out of tanks while your partner still has spares? Press **A** to borrow one.
 
 Kills, power-ups and speed score: each classic stage cleared quicker than its par time (about two minutes over the
 fastest possible clear) adds a time bonus. Your best score is kept between sessions. At game over in classic mode you
-can enter three letters and send the run to the **world board** (top 1000 for one and two players):
+can enter a name (up to 7 letters) and send the run to the **world board** (top 1000 for one and two players):
 <https://scores.maxpodolski.com>. **B** skips it.
 
 Quit from the title (**EXIT**) or the pause menu (**EXIT GAME**). `F11` / `Alt+Enter` toggles fullscreen;
@@ -67,8 +67,8 @@ Battle Tanks has no accounts, ads or analytics. Settings, City Run progress and 
 your device (`%APPDATA%\BattleTanks` on Windows, the app's private storage elsewhere) and are deleted with the game.
 
 The game (Windows and Android TV) connects only when you choose to send a run to the world board, at game over or
-after a City Run district: it sends the three letters you entered, the run's stage log (stage numbers, times, kills,
-power-ups, score) and the game version to `scores.maxpodolski.com`. The board keeps the top 1000 runs (letters, score, stages cleared, date) and shows them
+after a City Run district: it sends the name you entered (up to 7 letters), the run's stage log (stage numbers, times, kills,
+power-ups, score) and the game version to `scores.maxpodolski.com`. The board keeps the top 1000 runs (name, score, stages cleared, date) and shows them
 publicly; your IP address is used only to limit how often scores arrive and is not stored. Press **B** at the name
 entry and nothing is sent. Where a build asks for Bluetooth ("nearby devices") access,
 it is used only to talk to a controller you have paired; no data leaves the device.
