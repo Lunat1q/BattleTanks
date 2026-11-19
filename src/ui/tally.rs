@@ -75,13 +75,18 @@ pub fn table(session: &Session, view: Option<TallyView>) -> String {
             out += &format!("{cell:>16}");
         }
     }
-    // A classic clear carries a time bonus (each player gets it; it is already in the score).
-    let cleared = session.log.last().filter(|l| l.won && session.mode == Mode::Classic && view.is_some());
+    // A classic clear carries a time bonus (each player gets it; it is already in the score); a City Run clear
+    // shows its time (what the world board ranks).
+    let cleared = session.log.last().filter(|l| l.won && view.is_some());
     out += "\n";
     if let Some(l) = cleared.filter(|_| view.is_some_and(|v| v.bonus)) {
-        out += &format!("\n{:8}", format!("{}:{:02}", l.tenths / 600, l.tenths / 10 % 60));
-        for _ in &present {
-            out += &format!("{:>16}", format!("+{} TIME", session.bonus));
+        if session.mode == Mode::City {
+            out += &format!("\n{:8}{:>16}", "TIME", crate::scores::clock_text(l.tenths));
+        } else {
+            out += &format!("\n{:8}", format!("{}:{:02}", l.tenths / 600, l.tenths / 10 % 60));
+            for _ in &present {
+                out += &format!("{:>16}", format!("+{} TIME", session.bonus));
+            }
         }
     } else if cleared.is_some() {
         out += "\n";
@@ -97,6 +102,7 @@ pub fn table(session: &Session, view: Option<TallyView>) -> String {
 
 /// Count the results table up, a blip per kill; A while counting jumps to the end.
 pub fn tally(
+    t: Res<Time>,
     mut time: ResMut<ScreenTime>,
     session: Res<Session>,
     devices: Res<DeviceIntents>,
@@ -116,9 +122,11 @@ pub fn tally(
         sfx.write(if view.total { Sfx::MenuPick } else { Sfx::MenuMove });
         *heard = if view.total { u32::MAX } else { view.ticks };
     }
-    if let Ok(mut t) = q.single_mut() {
-        set_text(&mut t, table(&session, Some(view)));
+    if let Ok(mut text) = q.single_mut() {
+        set_text(&mut text, table(&session, Some(view)));
     }
+    // The results clock ticks here (not in `results_input`, which waits while names are entered).
+    time.0 += t.delta_secs();
 }
 
 #[cfg(test)]

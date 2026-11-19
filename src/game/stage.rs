@@ -64,6 +64,7 @@ fn setup(mut commands: Commands, mut session: ResMut<Session>, mut view: ResMut<
     for (i, slot) in session.slots.iter_mut().enumerate() {
         if let Some(slot) = slot.as_mut() {
             slot.kills = [0; 4];
+            slot.big = [0; 3];
             slot.pickups = 0;
             if !slot.out {
                 spawn_player(&mut commands, i, slot.level, PLAYER_SPAWNS[i]);

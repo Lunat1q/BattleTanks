@@ -1,6 +1,9 @@
-//! Game over, classic mode: each player enters 3 letters with their own controller, then the run goes to the world
-//! board (`scores`) and the answer shows beside the tally: our rank, the top 5 and the rows around ours.
+//! World board entry: at a classic game over, or after a City Run district clear (once the tally is counted), each
+//! player enters 3 letters with their own controller, then the run goes to the world board (`scores`) and the answer
+//! shows beside the tally: our rank, the top 5 and the rows around ours.
 
+use super::screens::ScreenTime;
+use super::tally::{kill_maxes, tally_len};
 use super::*;
 use crate::game::{Mode, Screen, Session, Sfx};
 use crate::geom::Dir;
@@ -26,7 +29,8 @@ pub struct Entry {
 pub fn plugin(app: &mut App) {
     app.init_resource::<Entry>()
         .add_systems(OnEnter(Screen::GameOver), open)
-        .add_systems(Update, (input, show).chain().run_if(in_state(Screen::GameOver)));
+        .add_systems(OnEnter(Screen::Results), open)
+        .add_systems(Update, (input, show).chain().run_if(|s: Res<State<Screen>>| matches!(s.get(), Screen::GameOver | Screen::Results)));
 }
 
 /// Game over may advance: not while names are being entered.
@@ -40,10 +44,23 @@ pub fn step_letter(c: u8, up: bool) -> u8 {
     b'A' + i as u8
 }
 
-fn open(mut entry: ResMut<Entry>, mut online: ResMut<Online>, session: Res<Session>, best: Res<Best>, platform: Res<crate::Platform>) {
+fn open(
+    mut entry: ResMut<Entry>,
+    mut online: ResMut<Online>,
+    session: Res<Session>,
+    best: Res<Best>,
+    platform: Res<crate::Platform>,
+    screen: Res<State<Screen>>,
+) {
     online.result = None;
     let slots: Vec<usize> = (0..2).filter(|&i| session.slots[i].is_some()).collect();
-    entry.open = session.mode == Mode::Classic && Online::available(&platform) && session.team_score() > 0 && !session.log.is_empty();
+    // Classic: the whole run at game over. City Run: each district clear, ranked by time.
+    let run = match (session.mode, screen.get()) {
+        (Mode::Classic, Screen::GameOver) => session.team_score() > 0 && !session.log.is_empty(),
+        (Mode::City, Screen::Results) => session.log.last().is_some_and(|l| l.won),
+        _ => false,
+    };
+    entry.open = run && Online::available(&platform);
     entry.letters = slots
         .iter()
         .map(|&i| {
@@ -65,9 +82,11 @@ pub(super) fn input(
     session: Res<Session>,
     devices: Res<DeviceIntents>,
     platform: Res<crate::Platform>,
+    screen: Res<State<Screen>>,
+    time: Res<ScreenTime>,
     mut sfx: MessageWriter<Sfx>,
 ) {
-    if !entry.open {
+    if !entry.open || counting(&screen, &time, &session) {
         return;
     }
     for k in 0..entry.slots.len() {
@@ -102,18 +121,31 @@ pub(super) fn input(
             best.names[slot] = name.clone();
         }
         scores::save(&best);
-        online.send(&platform, scores::payload(&names, session.team_score(), &session.log));
+        let body = match (session.mode, session.log.last()) {
+            (Mode::City, Some(district)) => scores::city_payload(&names, district),
+            _ => scores::payload(&names, session.team_score(), &session.log),
+        };
+        online.send(&platform, body);
     }
+}
+
+/// On results the count-up comes first (its first A skips it); the name entry waits until it is done.
+fn counting(screen: &State<Screen>, time: &ScreenTime, session: &Session) -> bool {
+    *screen.get() == Screen::Results && time.0 < tally_len(kill_maxes(session))
 }
 
 fn show(
     entry: Res<Entry>,
     online: Res<Online>,
     session: Res<Session>,
+    screen: Res<State<Screen>>,
+    time: Res<ScreenTime>,
     mut text: Query<&mut Text, With<OnlineText>>,
     mut hint: Query<&mut Text, (With<HintText>, Without<OnlineText>)>,
 ) {
-    let (body, help) = if entry.open {
+    let (body, help) = if counting(&screen, &time, &session) {
+        (String::new(), "press A")
+    } else if entry.open {
         let names: Vec<String> = entry
             .slots
             .iter()
@@ -133,7 +165,7 @@ fn show(
         ("WORLD BOARD\n\nsending score...".to_string(), "press A")
     } else {
         match &online.result {
-            Some(Ok(b)) => (board_text(b, session.players()), "press A"),
+            Some(Ok(b)) => (board_text(b, session.players(), (session.mode == Mode::City).then_some(session.stage)), "press A"),
             Some(Err(_)) => ("WORLD BOARD\n\noffline - score not sent".to_string(), "press A"),
             None => (String::new(), "press A"),
         }
@@ -146,13 +178,15 @@ fn show(
     }
 }
 
-/// Rank headline and the rows the server picked; ours marked with `>`.
-pub fn board_text(b: &scores::Board, players: usize) -> String {
+/// Rank headline and the rows the server picked; ours marked with `>`. `district` = a City Run board (scores are
+/// clear times in tenths).
+pub fn board_text(b: &scores::Board, players: usize, district: Option<usize>) -> String {
     let head = match b.rank {
         Some(r) => format!("WORLD RANK #{r} OF {}", b.total),
         None => format!("OUTSIDE THE TOP 1000 ({} RUNS)", b.total),
     };
-    let mut out = format!("{head}\n{}P BOARD\n", players);
+    let board = district.map_or(format!("{players}P BOARD"), |d| format!("DISTRICT {d} {players}P FASTEST"));
+    let mut out = format!("{head}\n{board}\n");
     let mut last = 0;
     for row in &b.rows {
         if row.rank > last + 1 {
@@ -160,7 +194,8 @@ pub fn board_text(b: &scores::Board, players: usize) -> String {
         }
         last = row.rank;
         let mark = if Some(row.rank) == b.rank { ">" } else { " " };
-        out += &format!("\n{mark}{:>4}  {:<9} {:>7}", row.rank, row.names, row.score);
+        let score = if district.is_some() { scores::clock_text(row.score) } else { row.score.to_string() };
+        out += &format!("\n{mark}{:>4}  {:<9} {score:>7}", row.rank, row.names);
     }
     out
 }
@@ -181,9 +216,12 @@ mod tests {
     fn board_marks_our_row_and_gaps() {
         let row = |rank, names: &str| Row { rank, score: 1000 - rank, stages: 1, names: names.into() };
         let b = Board { rank: Some(12), total: 40, rows: vec![row(1, "TOP"), row(11, "ABC"), row(12, "MAX & ZED")] };
-        let t = board_text(&b, 2);
+        let t = board_text(&b, 2, None);
         assert!(t.starts_with("WORLD RANK #12 OF 40\n2P BOARD"), "{t}");
         assert!(t.contains("...") && t.contains(">  12  MAX & ZED"), "{t}");
-        assert!(board_text(&Board { rank: None, total: 5000, rows: vec![] }, 1).starts_with("OUTSIDE THE TOP 1000 (5000 RUNS)"));
+        assert!(board_text(&Board { rank: None, total: 5000, rows: vec![] }, 1, None).starts_with("OUTSIDE THE TOP 1000 (5000 RUNS)"));
+        let row = Row { rank: 1, score: 1503, stages: 30, names: "MAX".into() };
+        let city = board_text(&Board { rank: Some(1), total: 3, rows: vec![row] }, 1, Some(4));
+        assert!(city.contains("DISTRICT 4 1P FASTEST") && city.contains(">   1  MAX        2:30.3"), "{city}");
     }
 }

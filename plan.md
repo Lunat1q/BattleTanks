@@ -65,6 +65,8 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Steam grid artwork: capsules, hero, logo, icon in `docs/steam/` (`write_steam_art`), README steps
 - [x] Background music: owner's 11 tracks, embedded Ogg Vorbis, per screen / stage tier / boss (ADR 0007)
 - [x] Results-screen count-up animation like the classic tally (blip per kill, A skips)
+- [x] City Run world boards: district clear time + kills, one fastest-first board per district and player count,
+  server checks time and kills against the district (ADR 0010)
 - [ ] World board live check: server reachable at `scores.maxpodolski.com` (tunnel route + DNS added, key and rules checked live); first real run from the couch still to come
 
 ## Current state

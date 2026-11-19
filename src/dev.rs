@@ -65,15 +65,26 @@ fn run(
                 session.slots = keys();
                 next.set(Screen::CityMap);
             }
-            Ok(s @ ("results" | "gameover")) if session.players() == 0 => {
+            Ok(s @ ("results" | "gameover" | "cityresults")) if session.players() == 0 => {
                 session.slots = keys();
                 for (i, slot) in session.slots.iter_mut().flatten().enumerate() {
                     slot.kills = [7 - 3 * i as u32, 4, 2, 1 + i as u32];
                     slot.score = 12_340 + 2_210 * i as u32;
                 }
-                let won = s == "results";
+                let won = s != "gameover";
+                let city = s == "cityresults";
+                if city {
+                    session.mode = Mode::City;
+                }
                 (session.stage, session.bonus) = (4, 1_610);
-                session.log = vec![StageLog { stage: 4, tenths: 1_017, won, kills: vec![[7, 4, 2, 1], [4, 4, 2, 2]], pickups: vec![1, 0] }];
+                session.log = vec![StageLog {
+                    stage: 4,
+                    tenths: 1_017,
+                    won,
+                    kills: vec![[7, 4, 2, 1], [4, 4, 2, 2]],
+                    pickups: vec![1, 0],
+                    big: if city { vec![[14, 2, 1], [6, 1, 0]] } else { vec![] },
+                }];
                 next.set(if won { Screen::Results } else { Screen::GameOver });
             }
             _ => {}

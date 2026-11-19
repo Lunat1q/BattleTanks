@@ -167,8 +167,11 @@ pub fn resolve_hits(
                 if enemy.rank == Rank::Mini {
                     drop_power(&mut commands, &mut rng, &mut sfx);
                 }
-                if let Some(slot) = session.slots[p].as_mut().filter(|_| enemy.rank == Rank::Normal) {
-                    slot.kills[enemy.kind.index()] += 1;
+                if let Some(slot) = session.slots[p].as_mut() {
+                    match enemy.rank {
+                        Rank::Normal => slot.kills[enemy.kind.index()] += 1,
+                        big => slot.big[big as usize - 1] += 1,
+                    }
                 }
                 if session.add_score(p, points) > 0 {
                     sfx.write(Sfx::ExtraLife);

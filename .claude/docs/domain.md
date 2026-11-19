@@ -59,16 +59,24 @@ all 20 destroyed → 3 s → results tally → next stage. Base lost or every pl
 - Points: kills (100–400 by type), power-ups 500, and a **time bonus** per cleared classic stage, to each player:
   fastest possible clear = 19 × spawn interval + 1 s (the 20th enemy can't arrive sooner); par = fastest + 120 s;
   20 points per second under par, rounded down to tens (max 2400). The clock runs only in play (no banner, no pause)
-  until the last kill. City Run has no time bonus.
+  until the last kill. City Run has no time bonus; its clear time is what its world boards rank.
 - **Results tally** counts up like the classics: row by row, one blip per kill (0.07 s each, 0.35 s between rows), then
   the stage time with the bonus, then the score. A skips the count; then A (after 1 s) or 10 s moves on.
 - **Hi score** is kept in `%APPDATA%\BattleTanks\scores.txt` (`hi=`, plus `name1=` / `name2=`: the initials last
   entered per slot), saved on results, game over and the title.
-- **World board** (classic only, builds with a game key, host with `post_score`): at game over each player enters 3
+- **World board** (builds with a game key, host with `post_score`): at game over each player enters 3
   letters with their own controller (up/down letter, left/right or A move, A on the last letter = done, B = don't send).
   The run's stage log goes to `scores.maxpodolski.com` (game `battletanks`), which recomputes and checks it and keeps
   the top 1000 per board (1P, 2P co-op team total). The screen then shows the world rank, the top 5 and the rows around
-  ours, or "offline - score not sent". Runs quit from the pause menu and City Run are not sent.
+  ours, or "offline - score not sent". Runs quit from the pause menu are not sent.
+- **City Run boards** (ADR 0010): after a district clear, once the tally is counted (it shows `TIME m:ss.t`), the same
+  name entry sends the clear: play time (to the boss kill) and kills per player, ordinary tanks by type plus turrets,
+  mini-bosses and the boss. One board per district and player count, fastest first. The server refuses a time below
+  the straight drive from the start to the boss at full speed, a clear that does not kill the boss, every turret
+  and every mini-boss, or more kills than the district plus its reinforcements hold in that time. The district numbers
+  live on both sides (`scores.rs` `CITY_FACTS`, server `CityRules.Facts`); the test
+  `city_facts_match_the_maps_and_the_server` fails on a map change until both are updated. With the board on, the
+  results screen waits for A instead of moving on after 10 s.
 
 **Map rule (tested):** from every enemy and player spawn, a 16×16 tank must be able to reach the base treating
 bricks as open and steel/water as walls (`levels::tests::every_spawn_can_reach_the_base`). Watch for: a water gap
@@ -154,7 +162,8 @@ play over it.
 ## Known gaps / deliberate omissions
 - The world board can't stop a careful cheat who extracts the key and fakes a plausible stage log (open source).
 - Android TV doesn't send scores (no internet permission; local hi score only).
-- No way to see the world board in game except your own result at game over (the website shows it all).
+- No way to see the world board in game except your own result at game over / district clear (the website shows it all).
+- City Run keeps no local best time per district; only the world board has it.
 - Grenade-killed spawning enemies leave their sparkle to finish (cosmetic).
 - Keyboard layouts share Esc and Backspace; both act for whoever is joined on the keyboard.
 - Variable timestep (dt clamped 0.05 s) rather than fixed; fine at 60 fps vsync, revisit if behaviour drifts

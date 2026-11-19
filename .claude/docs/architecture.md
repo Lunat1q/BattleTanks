@@ -17,8 +17,9 @@ src/
                       # plugin list. Public API for wrapper crates: Platform (incl. post_score), TvRemote, canvas, paint_icon, paint_banner
   geom.rs             # units (SUB 4, CELL 8, TILE 16, FIELD 208), Dir, rect overlap, grid snap  [pure]
   rng.rs              # xorshift64* Resource: below/range/chance/pick/shuffle                     [pure]
-  scores.rs           # Best (hi score + last initials) <-> scores.txt; world board: payload (stage log JSON), curl_post,
-                      # Online (worker thread -> poll), parse_board (plain-text answer); log_stage on leaving a classic stage  [ADR 0009]
+  scores.rs           # Best (hi score + last initials) <-> scores.txt; world board: payload (stage log JSON), city_payload
+                      # (district clear time + kills), curl_post, Online (worker thread -> poll), parse_board (plain-text
+                      # answer); log_stage on leaving a stage or district; CITY_FACTS test = server table  [ADR 0009, 0010]
   settings.rs         # Settings (fps, vsync, fullscreen, volume, music, shake, show_fps, friendly_fire, vibration) <-> %APPDATA%\BattleTanks\settings.txt;
                       # apply to window, F11 toggle, FPS overlay, frame limiter in Last
   rules.rs            # every gameplay number: speeds, timers, enemy stats, gun levels, scoring    [pure]
@@ -55,7 +56,7 @@ src/
     hud.rs            # side panels: lives, score, power, enemy reserve icons, stage flag
     screens.rs        # stage banner, pause menu (+ pad-lost note), results and game over screens
     tally.rs          # results / game over table; classic count-up (tally_view pure: rows, blips, time bonus, score)
-    board.rs          # game over (classic): 3-letter name entry per player, send the run, show world rank + rows
+    board.rs          # game over (classic) / district results (City): 3-letter name entry per player, send, show world rank + rows
 ```
 
 ## Frame pipeline

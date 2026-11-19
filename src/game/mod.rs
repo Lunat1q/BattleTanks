@@ -47,11 +47,13 @@ pub struct Slot {
     pub kills: [u32; 4],
     /// Power-ups picked up this stage.
     pub pickups: u32,
+    /// City Run kills this district beyond `kills`: turrets, mini-bosses, the boss.
+    pub big: [u32; 3],
 }
 
 impl Slot {
     pub fn new(device: Device) -> Self {
-        Slot { device, lives: rules::START_LIVES, score: 0, level: 0, out: false, kills: [0; 4], pickups: 0 }
+        Slot { device, lives: rules::START_LIVES, score: 0, level: 0, out: false, kills: [0; 4], pickups: 0, big: [0; 3] }
     }
 }
 
@@ -62,13 +64,13 @@ pub struct Session {
     /// Current stage (Classic) or district (City), 1-based.
     pub stage: usize,
     pub hi_score: u32,
-    /// Classic run so far, one entry per stage played (the score server recomputes the score from it).
+    /// Stages (classic run) or districts (City Run) played since the title; the score server checks it.
     pub log: Vec<StageLog>,
     /// Time bonus of the stage just cleared (classic), shown in the results tally.
     pub bonus: u32,
 }
 
-/// One classic stage of a run. `kills` / `pickups` per joined player, in slot order.
+/// One stage (classic) or district (City Run) played. `kills` / `pickups` / `big` per joined player, in slot order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct StageLog {
     pub stage: usize,
@@ -77,6 +79,8 @@ pub struct StageLog {
     pub won: bool,
     pub kills: Vec<[u32; 4]>,
     pub pickups: Vec<u32>,
+    /// City Run: turrets, mini-bosses, boss.
+    pub big: Vec<[u32; 3]>,
 }
 
 impl Session {

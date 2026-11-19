@@ -1,10 +1,11 @@
 //! Scores: the local best (`scores.txt` next to the settings: hi score + last initials) and the world board on the
 //! owner's score server (ADR 0009; game id `battletanks`). A classic run is sent at game over as its stage log; the
-//! server recomputes and checks the score.
+//! server recomputes and checks the score. A City Run district clear is sent as its play time and kills (boards per
+//! district, fastest first); the server checks both against the district (`CITY_FACTS`).
 //! The game key is baked in at build time (`BT_SCORES_KEY`, from the gitignored `scores.key`); builds without it
 //! stay offline.
 
-use crate::game::{Mode, Phase, Screen, Session, StageLog, StageRun};
+use crate::game::{Phase, Screen, Session, StageLog, StageRun};
 use bevy::prelude::*;
 use std::sync::{Arc, Mutex};
 
@@ -96,6 +97,28 @@ pub fn payload(names: &[String], score: u32, log: &[StageLog]) -> String {
     )
 }
 
+/// JSON body for a City Run district clear: the play time is the score, the kills prove the clear was played.
+pub fn city_payload(names: &[String], log: &StageLog) -> String {
+    let list = |v: &[u32]| v.iter().map(u32::to_string).collect::<Vec<_>>().join(",");
+    let rows = |v: Vec<String>| v.iter().map(|r| format!("[{r}]")).collect::<Vec<_>>().join(",");
+    let names: Vec<String> = names.iter().map(|n| format!("\"{n}\"")).collect();
+    format!(
+        r#"{{"version":"{}","mode":"city","district":{},"players":{},"names":[{}],"tenths":{},"kills":[{}],"big":[{}]}}"#,
+        env!("CARGO_PKG_VERSION"),
+        log.stage,
+        names.len(),
+        names.join(","),
+        log.tenths,
+        rows(log.kills.iter().map(|k| list(k)).collect()),
+        rows(log.big.iter().map(|k| list(k)).collect())
+    )
+}
+
+/// `m:ss.t` for a City Run time in tenths.
+pub fn clock_text(tenths: u32) -> String {
+    format!("{}:{:02}.{}", tenths / 600, tenths / 10 % 60, tenths % 10)
+}
+
 /// Default `Post`: the `curl` that ships with Windows 10+ (and every desktop Linux/macOS), so the game needs no
 /// HTTP/TLS crates. ponytail: a missing curl just means offline; swap in a client crate if that ever bites.
 pub fn curl_post(url: &str, key: &str, body: &str) -> Result<String, String> {
@@ -162,18 +185,16 @@ fn poll(mut online: ResMut<Online>) {
     }
 }
 
-/// Leaving a classic stage (won, lost or quit) records it for the online score. After the end delay, so kills
-/// in the last 3 s count too.
+/// Leaving a stage or district (won, lost or quit) records it for the online score. After the end delay, so kills
+/// in the last 3 s count too (the clock stopped at the last kill).
 fn log_stage(mut session: ResMut<Session>, run: Res<StageRun>) {
-    if session.mode != Mode::Classic {
-        return;
-    }
     let entry = StageLog {
         stage: session.stage,
         tenths: (run.clock * 10.0) as u32,
         won: run.phase == Phase::Won,
         kills: session.slots.iter().flatten().map(|s| s.kills).collect(),
         pickups: session.slots.iter().flatten().map(|s| s.pickups).collect(),
+        big: session.slots.iter().flatten().map(|s| s.big).collect(),
     };
     session.log.push(entry);
 }
@@ -228,12 +249,61 @@ mod tests {
 
     #[test]
     fn payload_is_the_stage_log() {
-        let log = [StageLog { stage: 3, tenths: 905, won: true, kills: vec![[1, 2, 0, 0], [0, 0, 1, 4]], pickups: vec![1, 0] }];
+        let log =
+            [StageLog { stage: 3, tenths: 905, won: true, kills: vec![[1, 2, 0, 0], [0, 0, 1, 4]], pickups: vec![1, 0], big: vec![] }];
         let body = payload(&["MAX".into(), "ZED".into()], 4200, &log);
         assert!(body.contains(r#""players":2,"names":["MAX","ZED"],"score":4200"#), "{body}");
         assert!(
             body.ends_with(r#""stages":[{"stage":3,"tenths":905,"won":true,"kills":[[1,2,0,0],[0,0,1,4]],"pickups":[1,0]}]}"#),
             "{body}"
         );
+    }
+
+    #[test]
+    fn city_payload_is_time_and_kills() {
+        let log = StageLog { stage: 4, tenths: 1503, won: true, kills: vec![[3, 1, 0, 0]], pickups: vec![2], big: vec![[20, 3, 1]] };
+        let body = city_payload(&["MAX".into()], &log);
+        assert!(body.starts_with(r#"{"version":""#), "{body}");
+        assert!(
+            body.ends_with(r#""mode":"city","district":4,"players":1,"names":["MAX"],"tenths":1503,"kills":[[3,1,0,0]],"big":[[20,3,1]]}"#),
+            "{body}"
+        );
+        assert_eq!(clock_text(1503), "2:30.3");
+        assert_eq!(clock_text(7), "0:00.7");
+    }
+
+    /// Per district: climb time (tenths), placed enemies, turrets, mini-bosses. The score server's
+    /// `CityRules.Districts` has the same table; change both when a district map changes.
+    const CITY_FACTS: [[u32; 4]; crate::rules::CITY_DISTRICTS] = [
+        [627, 82, 6, 2],
+        [665, 74, 8, 2],
+        [700, 86, 8, 3],
+        [752, 100, 20, 3],
+        [805, 108, 20, 4],
+        [848, 106, 24, 6],
+        [880, 108, 30, 6],
+        [923, 118, 38, 5],
+        [977, 124, 36, 7],
+        [1003, 110, 42, 7],
+    ];
+
+    #[test]
+    fn city_facts_match_the_maps_and_the_server() {
+        use crate::geom::FIELD;
+        use crate::rules::{PLAYER_SPEED, Rank};
+        for (i, facts) in CITY_FACTS.iter().enumerate() {
+            let d = crate::city_map::load(i + 1);
+            let count = |r| d.spawns.iter().filter(|s| s.rank == r).count() as u32;
+            let boss_top = d.spawns.iter().find(|s| s.rank == Rank::Boss).map(|s| s.pos.y + 16.0).unwrap();
+            // The boss wakes once fully in view, and the view keeps the lead tank at 55 % height: the lead must
+            // drive at least this far from the start row at full speed.
+            let climb = ((boss_top - 0.45 * FIELD - crate::game::stage::PLAYER_SPAWNS[0].y) / PLAYER_SPEED * 10.0) as u32;
+            let got = [climb, count(Rank::Normal), count(Rank::Turret), count(Rank::Mini)];
+            assert_eq!(&got, facts, "district {}: update CITY_FACTS and the server's CityRules.Districts", i + 1);
+            // The server wants every turret and mini-boss dead: each turret guards a gate the boss sits behind, and a
+            // live mini-boss holds the camera well below the boss.
+            assert!(d.spawns.iter().all(|s| s.rank != Rank::Turret || s.bastion.is_some()), "district {}", i + 1);
+            assert!(d.spawns.iter().all(|s| s.rank != Rank::Mini || s.pos.y + 12.0 < boss_top - FIELD), "district {}", i + 1);
+        }
     }
 }
