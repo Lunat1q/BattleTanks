@@ -23,6 +23,8 @@ pub struct CityRun {
     boss: Option<Entity>,
     pub boss_down: bool,
     reinforce_in: f32,
+    /// Secret stashes still buried: centre, power-up.
+    secrets: Vec<(Vec2, PowerKind)>,
 }
 
 /// Highest district the players may start (1-based); `CITY_DISTRICTS + 1` once all are cleared.
@@ -55,7 +57,7 @@ pub fn plugin(app: &mut App) {
         .add_systems(OnEnter(Screen::Results), save_clear.run_if(|s: Res<Session>| s.mode == Mode::City))
         .add_systems(
             Update,
-            (scroll, wake, reinforce, watch, cull)
+            (scroll, wake, reinforce, watch, reveal, cull)
                 .chain()
                 .in_set(Sim)
                 .after(stage::tick_timers)
@@ -81,6 +83,7 @@ pub fn setup(commands: &mut Commands, session: &mut Session) -> Terrain {
         boss: None,
         boss_down: false,
         reinforce_in: rules::reinforce_interval(session.stage, session.players()),
+        secrets: d.secrets,
     });
     for &(pos, kind) in &d.stashes {
         commands.spawn((PowerUp(kind), Stash, Transform::from_translation(pos.extend(0.0)), DespawnOnExit(Screen::Stage)));
@@ -192,6 +195,32 @@ fn watch(
     if city.boss.is_some_and(|b| !alive.contains(b)) {
         city.boss_down = true;
     }
+}
+
+/// A player shell broke into a secret core: the rest of the core crumbles and its power-up pops out (and stays put,
+/// like a stash).
+fn reveal(
+    mut commands: Commands,
+    mut city: ResMut<CityRun>,
+    mut terrain: ResMut<Terrain>,
+    mut fx: MessageWriter<Fx>,
+    mut sfx: MessageWriter<Sfx>,
+) {
+    city.secrets.retain(|&(pos, kind)| {
+        let core: Vec<(usize, usize)> = city_map::footprint(pos, 16.0).collect();
+        if core.iter().all(|&(x, y)| terrain.get(x, y) == Tile::Secret) {
+            return true;
+        }
+        for &(x, y) in &core {
+            if terrain.get(x, y) == Tile::Secret {
+                terrain.set(x, y, Tile::Empty);
+            }
+        }
+        commands.spawn((PowerUp(kind), Stash, Transform::from_translation(pos.extend(0.0)), DespawnOnExit(Screen::Stage)));
+        fx.write(Fx { kind: FxKind::Bricks, pos });
+        sfx.write(Sfx::PowerAppear);
+        false
+    });
 }
 
 /// Enemies and power-ups the view has scrolled past are gone (no points).

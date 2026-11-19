@@ -11,7 +11,9 @@
 //! Cells as in classic maps (`.#@~%-`), plus `=` fortress wall and `G` gate (both unbreakable).
 //! Markers are drawn as full squares so mirroring keeps them whole: `EE/EE` enemy, `TT/TT` turret,
 //! `MMM` x3 mini-boss, `BBBB` x4 boss (exactly one), `LL/LL` stashed extra tank, `SS/SS` stashed star (draw
-//! the brick walls around a stash yourself; a test checks every stash is sealed). A gate opens once every turret nearest to it
+//! the brick walls around a stash yourself; a test checks every stash is sealed). `??/??` is a secret stash: a
+//! `Tile::Secret` core (only players' shells break it) buried in a brick block, holding a power-up picked per district
+//! that appears once a player breaks in. No stash of either kind on the first screen (tested). A gate opens once every turret nearest to it
 //! (vertically) is destroyed; a dead turret's spot becomes wall.
 
 use crate::geom::{CELL, CELLS, SUBS};
@@ -58,11 +60,17 @@ pub struct District {
     pub gates: Vec<Vec<(usize, usize)>>,
     /// Power-ups waiting behind brick from the start: centre, kind.
     pub stashes: Vec<(Vec2, PowerKind)>,
+    /// Power-ups buried in `Tile::Secret` cores: centre, kind.
+    pub secrets: Vec<(Vec2, PowerKind)>,
 }
+
+/// What a secret stash may hold.
+const SECRET_POWERS: [PowerKind; 5] = [PowerKind::Star, PowerKind::Tank, PowerKind::Helmet, PowerKind::Grenade, PowerKind::Clock];
 
 enum Mark {
     Enemy(Rank),
     Stash(PowerKind),
+    Secret,
 }
 
 fn marker(ch: char) -> Option<(Mark, usize)> {
@@ -73,6 +81,7 @@ fn marker(ch: char) -> Option<(Mark, usize)> {
         'B' => Some((Mark::Enemy(Rank::Boss), 4)),
         'L' => Some((Mark::Stash(PowerKind::Tank), 2)),
         'S' => Some((Mark::Stash(PowerKind::Star), 2)),
+        '?' => Some((Mark::Secret, 2)),
         _ => None,
     }
 }
@@ -116,6 +125,7 @@ pub fn parse(src: &str, seed: u64) -> Result<District, String> {
     let mut claimed = vec![false; h * CELLS];
     let mut spawns = Vec::new();
     let mut stashes = Vec::new();
+    let mut secrets = Vec::new();
     let mut gate_cells = Vec::new();
     for r in 0..h {
         for c in 0..CELLS {
@@ -129,6 +139,7 @@ pub fn parse(src: &str, seed: u64) -> Result<District, String> {
                 '-' => Tile::Ice,
                 '=' => Tile::Wall,
                 'G' => Tile::Gate,
+                '?' => Tile::Secret,
                 other => return Err(format!("unknown cell {other:?} at row {}", r + 1)),
             };
             for (x, y) in subs(c, h - 1 - r) {
@@ -155,6 +166,7 @@ pub fn parse(src: &str, seed: u64) -> Result<District, String> {
             match mark {
                 Mark::Enemy(rank) => spawns.push(Spawn { rank, kind: EnemyKind::Basic, pos, bastion: None, bonus: false }),
                 Mark::Stash(kind) => stashes.push((pos, kind)),
+                Mark::Secret => secrets.push((pos, PowerKind::Star)),
             }
         }
     }
@@ -200,8 +212,11 @@ pub fn parse(src: &str, seed: u64) -> Result<District, String> {
     if let Some(i) = guarded.iter().position(|g| !g) {
         return Err(format!("gate {} has no turret, it would never open", i + 1));
     }
+    for s in &mut secrets {
+        s.1 = rng.pick(&SECRET_POWERS);
+    }
     ter.dirty.clear();
-    Ok(District { mix, terrain: ter, spawns, gates, stashes })
+    Ok(District { mix, terrain: ter, spawns, gates, stashes, secrets })
 }
 
 pub fn weighted(mix: &[usize; 4], rng: &mut Rng) -> EnemyKind {
@@ -380,6 +395,53 @@ mod tests {
                 assert!(seen.insert(w.concat()), "district {}: rows from {:?} repeat", i + 1, w[0]);
             }
         }
+    }
+
+    #[test]
+    fn no_stash_on_the_first_screen_and_secrets_are_buried() {
+        for n in 1..=CITY_DISTRICTS {
+            let d = load(n);
+            assert!(!d.secrets.is_empty(), "district {n} has no secret");
+            for &(pos, _) in d.stashes.iter().chain(&d.secrets) {
+                assert!(pos.y - 8.0 >= crate::geom::FIELD, "district {n}: stash at {pos} shows on the first screen");
+            }
+            for &(pos, _) in &d.secrets {
+                let (x0, y0) = ((pos.x / 4.0) as usize - 3, (pos.y / 4.0) as usize - 3);
+                for y in y0..y0 + 6 {
+                    for x in x0..x0 + 6 {
+                        let edge = x == x0 || y == y0 || x == x0 + 5 || y == y0 + 5;
+                        let want = if edge { Tile::Brick } else { Tile::Secret };
+                        assert_eq!(d.terrain.get(x, y), want, "district {n}: secret at {pos}, sub ({x}, {y})");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn secret_markers_bury_a_power_up() {
+        let mut src = String::from(
+            "name Test
+mix 1 0 0 0
+",
+        );
+        src += &"...........BB
+"
+        .repeat(4);
+        src += &".............
+"
+        .repeat(17);
+        src += "....####.....
+....#??#.....
+....#??#.....
+....####.....
+.............
+";
+        let d = parse(&src, 1).unwrap();
+        assert_eq!(d.secrets.iter().map(|s| s.0).collect::<Vec<_>>(), [Vec2::new(48.0, 24.0), Vec2::new(160.0, 24.0)]);
+        assert!(d.secrets.iter().all(|s| SECRET_POWERS.contains(&s.1)));
+        assert_eq!(d.terrain.get(12, 6), Tile::Secret);
+        assert_eq!(d.spawns.len(), 1, "a secret is not an enemy");
     }
 
     #[test]

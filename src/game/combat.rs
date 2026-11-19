@@ -81,8 +81,8 @@ pub fn fly_bullets(
             }
             // The edges of the view are the edges of the world (City Run scrolls it).
             let off_view = (r.min.y < view.bottom || r.max.y > view.top()).then_some(Impact::Edge);
-            if let Some(impact) = off_view.or_else(|| terrain.bullet_hit(r, b.dir, b.power)) {
-                let player = matches!(b.team, Team::Player(_));
+            let player = matches!(b.team, Team::Player(_));
+            if let Some(impact) = off_view.or_else(|| terrain.bullet_hit(r, b.dir, b.power, player)) {
                 match impact {
                     Impact::Brick => {
                         fx.write(Fx { kind: FxKind::Bricks, pos });

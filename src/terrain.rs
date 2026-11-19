@@ -18,14 +18,17 @@ pub enum Tile {
     Wall,
     /// Fortress gate: like `Wall` until its bastion's turrets are destroyed.
     Gate,
+    /// City Run secret stash core: looks and blocks like brick, but only a player's shell breaks it, so enemy fire
+    /// never opens a secret by accident.
+    Secret,
 }
 
 impl Tile {
     pub fn blocks_tank(self) -> bool {
-        matches!(self, Tile::Brick | Tile::Steel | Tile::Water | Tile::Wall | Tile::Gate)
+        matches!(self, Tile::Brick | Tile::Steel | Tile::Water | Tile::Wall | Tile::Gate | Tile::Secret)
     }
     pub fn blocks_bullet(self) -> bool {
-        matches!(self, Tile::Brick | Tile::Steel | Tile::Wall | Tile::Gate)
+        matches!(self, Tile::Brick | Tile::Steel | Tile::Wall | Tile::Gate | Tile::Secret)
     }
     fn unbreakable(self) -> bool {
         matches!(self, Tile::Wall | Tile::Gate)
@@ -114,8 +117,8 @@ impl Terrain {
     }
 
     /// Bullet rectangle `r` travelling `dir`. On contact, destroys a 16-wide strip (4 deep, 8 with
-    /// `power`, which also breaks steel) and reports what was hit.
-    pub fn bullet_hit(&mut self, r: Rect, dir: Dir, power: bool) -> Option<Impact> {
+    /// `power`, which also breaks steel) and reports what was hit. Only a `player` shell breaks `Secret`.
+    pub fn bullet_hit(&mut self, r: Rect, dir: Dir, power: bool, player: bool) -> Option<Impact> {
         if self.outside(r) {
             return Some(Impact::Edge);
         }
@@ -154,6 +157,7 @@ impl Terrain {
                 match self.get(x, y) {
                     Tile::Brick => self.set(x, y, Tile::Empty),
                     Tile::Steel if power => self.set(x, y, Tile::Empty),
+                    Tile::Secret if player => self.set(x, y, Tile::Empty),
                     _ => {}
                 }
             }
@@ -193,7 +197,7 @@ mod tests {
     fn bullet_digs_a_tank_wide_strip() {
         let mut ter = wall(Tile::Brick, 10..14);
         // Bullet moving up at x = 72, its top edge just entering row 10 (y = 40).
-        let hit = ter.bullet_hit(rect_at(Vec2::new(72.0, 39.0), 4.0), Dir::Up, false);
+        let hit = ter.bullet_hit(rect_at(Vec2::new(72.0, 39.0), 4.0), Dir::Up, false, true);
         assert_eq!(hit, Some(Impact::Brick));
         for x in 16..20 {
             assert_eq!(ter.get(x, 10), Tile::Empty, "column {x}");
@@ -204,12 +208,23 @@ mod tests {
     }
 
     #[test]
+    fn only_players_break_secrets() {
+        let mut ter = wall(Tile::Secret, 10..12);
+        let r = rect_at(Vec2::new(72.0, 39.0), 4.0);
+        assert_eq!(ter.bullet_hit(r, Dir::Up, true, false), Some(Impact::Brick), "an enemy shell pops on it");
+        assert_eq!(ter.get(17, 10), Tile::Secret);
+        assert_eq!(ter.bullet_hit(r, Dir::Up, false, true), Some(Impact::Brick));
+        assert_eq!(ter.get(17, 10), Tile::Empty);
+        assert!(ter.blocks_tank(rect_at(Vec2::new(72.0, 46.0), 16.0)));
+    }
+
+    #[test]
     fn steel_needs_power() {
         let mut ter = wall(Tile::Steel, 10..12);
         let r = rect_at(Vec2::new(72.0, 39.0), 4.0);
-        assert_eq!(ter.bullet_hit(r, Dir::Up, false), Some(Impact::Steel));
+        assert_eq!(ter.bullet_hit(r, Dir::Up, false, true), Some(Impact::Steel));
         assert_eq!(ter.get(17, 10), Tile::Steel);
-        assert_eq!(ter.bullet_hit(r, Dir::Up, true), Some(Impact::Brick));
+        assert_eq!(ter.bullet_hit(r, Dir::Up, true, true), Some(Impact::Brick));
         assert_eq!(ter.get(17, 10), Tile::Empty);
         assert_eq!(ter.get(17, 11), Tile::Empty, "power digs two rows");
     }
@@ -218,7 +233,7 @@ mod tests {
     fn water_blocks_tanks_not_bullets() {
         let mut ter = wall(Tile::Water, 10..12);
         assert!(ter.blocks_tank(rect_at(Vec2::new(72.0, 36.0), 16.0)));
-        assert_eq!(ter.bullet_hit(rect_at(Vec2::new(72.0, 42.0), 4.0), Dir::Up, false), None);
+        assert_eq!(ter.bullet_hit(rect_at(Vec2::new(72.0, 42.0), 4.0), Dir::Up, false, true), None);
     }
 
     #[test]
@@ -226,7 +241,7 @@ mod tests {
         let mut ter = Terrain::default();
         assert!(ter.blocks_tank(rect_at(Vec2::new(7.0, 100.0), 16.0)));
         assert!(!ter.blocks_tank(rect_at(Vec2::new(8.0, 100.0), 16.0)));
-        assert_eq!(ter.bullet_hit(rect_at(Vec2::new(100.0, 207.0), 4.0), Dir::Up, false), Some(Impact::Edge));
+        assert_eq!(ter.bullet_hit(rect_at(Vec2::new(100.0, 207.0), 4.0), Dir::Up, false, true), Some(Impact::Edge));
     }
 
     #[test]
@@ -239,11 +254,11 @@ mod tests {
             ter.set(x, 101, Tile::Gate);
         }
         // Even a power bullet only sparks off a fortress wall and leaves it standing.
-        assert_eq!(ter.bullet_hit(rect_at(Vec2::new(72.0, 399.0), 4.0), Dir::Up, true), Some(Impact::Steel));
+        assert_eq!(ter.bullet_hit(rect_at(Vec2::new(72.0, 399.0), 4.0), Dir::Up, true, true), Some(Impact::Steel));
         assert_eq!(ter.get(17, 100), Tile::Wall);
         assert_eq!(ter.get(17, 101), Tile::Gate);
         assert!(ter.blocks_tank(rect_at(Vec2::new(72.0, 400.0), 16.0)));
-        assert_eq!(ter.bullet_hit(rect_at(Vec2::new(100.0, FIELD * 3.0 - 1.0), 4.0), Dir::Up, false), Some(Impact::Edge));
+        assert_eq!(ter.bullet_hit(rect_at(Vec2::new(100.0, FIELD * 3.0 - 1.0), 4.0), Dir::Up, false, true), Some(Impact::Edge));
     }
 
     #[test]

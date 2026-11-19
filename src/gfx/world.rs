@@ -72,7 +72,7 @@ fn sync_terrain(mut commands: Commands, gfx: Res<Gfx>, terrain: Option<ResMut<Te
         let plain = Color::WHITE;
         let (image, depth, color) = match terrain.get(x, y) {
             Tile::Empty => continue,
-            Tile::Brick => (gfx.brick.clone(), z::WALL, plain),
+            Tile::Brick | Tile::Secret => (gfx.brick.clone(), z::WALL, plain),
             Tile::Steel => (gfx.steel.clone(), z::WALL, plain),
             Tile::Water => (gfx.water[0].clone(), z::FLOOR, plain),
             Tile::Ice => (gfx.ice.clone(), z::FLOOR, plain),

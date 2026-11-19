@@ -32,6 +32,10 @@ const PLANS: [Plan; 10] = [
 ];
 
 const START: usize = 6;
+/// Rows of the first screen: no stash of any kind there.
+const FIRST_SCREEN: usize = 26;
+/// Secret stashes per district.
+const SECRETS: usize = 3;
 const ARENA: usize = 12;
 /// Least boss-arena height; it grows by up to `TALLEST` so the district ends at exactly its planned height.
 const BOSS: usize = 16;
@@ -186,9 +190,10 @@ fn district(p: &Plan, rng: &mut Rng) -> Band {
     let body = (p.height - START - BOSS - TALLEST) as f32;
     for (f, feature) in features {
         // At least one street between two features.
+        let floor = if matches!(feature, Feature::Stash(_)) { FIRST_SCREEN } else { 0 };
         loop {
             map.lay(rng, true, |r| street(r, &th));
-            if map.rows.len() as f32 >= START as f32 + f * body {
+            if map.rows.len() as f32 >= (START as f32 + f * body).max(floor as f32) {
                 break;
             }
         }
@@ -204,8 +209,29 @@ fn district(p: &Plan, rng: &mut Rng) -> Band {
     }
     let h = p.height.saturating_sub(map.rows.len()).max(BOSS);
     map.lay(rng, false, |r| arena(r, &th, h, true));
+    bury_secrets(&mut map, rng);
     place_enemies(&mut map, rng, p.enemies);
     map.rows
+}
+
+/// `SECRETS` secret cores (`??/??`), one per slice of the climb above the first screen: inside a solid 4x4 brick block
+/// the streets already have, or a stamped one on open ground where the slice has none.
+fn bury_secrets(map: &mut Map, rng: &mut Rng) {
+    let (lo, hi) = (FIRST_SCREEN, map.rows.len() - BOSS - 4);
+    for i in 0..SECRETS {
+        let rows = &map.rows;
+        let area = |x: usize, y: usize, n: usize, c: u8| (y..y + n).all(|r| map.street[r] && rows[r][x..x + n].iter().all(|&v| v == c));
+        let slice = || (lo + (hi - lo) * i / SECRETS..lo + (hi - lo) * (i + 1) / SECRETS).flat_map(|y| (0..W - 3).map(move |x| (x, y)));
+        let natural: Vec<(usize, usize)> = slice().filter(|&(x, y)| area(x, y, 4, b'#')).collect();
+        let open: Vec<(usize, usize)> = slice().filter(|&(x, y)| x > 0 && x + 5 <= W && area(x - 1, y - 1, 6, b'.')).collect();
+        let pool = if natural.is_empty() { open } else { natural };
+        if pool.is_empty() {
+            continue;
+        }
+        let (x, y) = pool[rng.below(pool.len() as u32) as usize];
+        rect(&mut map.rows, x, y, 4, 4, b'#');
+        rect(&mut map.rows, x + 1, y + 1, 2, 2, b'?');
+    }
 }
 
 /// `n` enemy squares on reachable open street ground, one per even slice of the climb (a slice with no room passes

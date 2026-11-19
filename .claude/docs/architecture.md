@@ -23,7 +23,7 @@ src/
   settings.rs         # Settings (fps, vsync, fullscreen, volume, music, shake, show_fps, friendly_fire, vibration) <-> %APPDATA%\BattleTanks\settings.txt;
                       # apply to window, F11 toggle, FPS overlay, frame limiter in Last
   rules.rs            # every gameplay number: speeds, timers, enemy stats, gun levels, scoring    [pure]
-  terrain.rs          # 52-wide sub-cell grid, any height; tank blocking, bullet impact strip, Wall/Gate, base ring, dirty list [pure]
+  terrain.rs          # 52-wide sub-cell grid, any height; tank blocking, bullet impact strip, Wall/Gate/Secret, base ring, dirty list [pure]
   levels.rs           # parse stage files, force spawns/base clear, rosters, harder laps         [pure]
   city_map.rs         # parse district files: tall terrain, placed enemies/turrets/minis/boss, gates, stashes [pure]
   city_gen.rs         # test-only: write_city_districts draws levels/city/*.txt from each district's plan (height, turrets,
@@ -36,7 +36,7 @@ src/
   game/
     mod.rs            # Screen state, Mode, Session/Slot, StageRun, View, components, Fx/Sfx messages, Sim schedule
     stage.rs          # OnEnter build (classic or city), spawn_enemy, respawn point, timers, borrow a tank, win/lose, pause (+ app in background), pad loss
-    city.rs           # City Run: scroll the View, wake placed enemies, reinforcements, turret->gate, cull, Progress save
+    city.rs           # City Run: scroll the View, wake placed enemies, reinforcements, turret->gate, reveal secrets, cull, Progress save
     tank.rs           # player_control (intent -> want/trigger), drive (collisions, snap, ice), fire
     enemy.rs          # think: choose_dir (pure) + random fire, freeze; turrets aim at the nearest player
     combat.rs         # fly_bullets (sub-steps: tanks, base, terrain; bullet-vs-bullet) -> Hit; resolve_hits

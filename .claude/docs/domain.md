@@ -133,6 +133,11 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
 - **Stashes**: brick boxes holding a power-up from the start (`SS` star, `LL` extra tank in the map file; the
   half-row mirroring makes a pair, one per side). Shoot in to collect. Every district has a star pair low down
   and a tank pair further up; a new enemy drop never replaces a stash (tested: `city_map::tests`).
+  No stash of any kind on a district's first screen (tested).
+- **Secret stashes** (`??` in the map file, 3 per district): a power-up (star, tank, helmet, grenade or clock, fixed
+  per district) buried in the core of a solid 4x4 brick block that looks like any other. The core is `Tile::Secret`:
+  it blocks like brick, but enemy shells only pop on it (they still chip the bricks around it), so only a player can
+  open a secret. Breaking into the core makes the power-up pop out (sound + debris); it then stays put like a stash.
   All players out → game over → back to the map to retry.
 - No base. Enemies hunt the nearest player. Placed enemies wake (sparkle) once fully in view; every 5th placed
   enemy carries a power-up. Reinforcements drop in at the top every 7 s − 0.35·district − 1 s in 2P (≥ 2.5 s),
