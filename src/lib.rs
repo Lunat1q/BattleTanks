@@ -15,10 +15,12 @@ mod levels;
 mod music;
 mod rng;
 mod rules;
+mod scores;
 mod settings;
 mod terrain;
 mod ui;
 
+pub use gfx::art_promo::banner as paint_banner;
 pub use gfx::canvas;
 pub use gfx::icon::paint as paint_icon;
 pub use input::TvRemote;
@@ -40,11 +42,21 @@ pub struct Platform {
     pub host_window: bool,
     /// Back on the title with nobody joined quits (TV launcher convention).
     pub back_exits_title: bool,
+    /// Sends a finished classic run to the world board: `(url, game key, JSON) -> answer`, on a worker thread.
+    /// Default: the OS `curl`. `None` = offline (local hi score only).
+    pub post_score: Option<fn(&str, &str, &str) -> Result<String, String>>,
 }
 
 impl Default for Platform {
     fn default() -> Self {
-        Platform { data_dir: None, bloom: true, gilrs: true, host_window: false, back_exits_title: false }
+        Platform {
+            data_dir: None,
+            bloom: true,
+            gilrs: true,
+            host_window: false,
+            back_exits_title: false,
+            post_score: Some(scores::curl_post),
+        }
     }
 }
 
@@ -77,7 +89,17 @@ pub fn run_with(platform: Platform, extra: impl FnOnce(&mut App)) {
     }))
     .insert_resource(settings)
     .insert_resource(platform)
-    .add_plugins((settings::plugin, gfx::plugin, audio::plugin, music::plugin, input::plugin, game::plugin, ui::plugin, dev::plugin));
+    .add_plugins((
+        settings::plugin,
+        gfx::plugin,
+        audio::plugin,
+        music::plugin,
+        input::plugin,
+        game::plugin,
+        scores::plugin,
+        ui::plugin,
+        dev::plugin,
+    ));
     extra(&mut app);
     app.run();
 }

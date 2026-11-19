@@ -25,13 +25,15 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 - **Agents build and test; they don't play.** The only allowed run is the smoke hook above (auto-joins two
   keyboard players, screenshots, exits by itself; sound is muted while `BT_SHOT` is set, `BT_MUTE=1` mutes
   any run). Use it after visual or startup changes and *look at the PNG*.
-  `BT_STAGE=0` screenshots the title (`BT_SCREEN=settings` the settings screen). It logs `smoke: N fps average` on exit. Write screenshots to the scratchpad, never the repo.
+  `BT_STAGE=0` screenshots the title (`BT_SCREEN=settings` the settings screen, `results` / `gameover` a made-up run). It logs `smoke: N fps average` on exit. Write screenshots to the scratchpad, never the repo.
 
 ## Tech stack
 
 - Rust 2024 edition, Bevy 0.20.1 with `default-features = false` + `2d`, `ui`, `bevy_audio`, `wav`, `png`.
 - Gamepads via Bevy's gilrs backend (XInput/WGI on Windows — what Sunshine's virtual pads and Steam Input expose).
 - No other dependencies. RNG is our own xorshift (`rng.rs`). Art and sound are generated at startup (ADR 0002).
+  The world board shells out to the OS `curl` (ADR 0009); its game key lives in the gitignored `scores.key` (ask the
+  owner; never commit it). Without the file the build is simply offline.
 - Bevy 0.20 is newer than most training data: **check the API in `~/.cargo/registry/src/*/bevy_*-0.20.*`
   before guessing** (e.g. `Message`/`MessageWriter` replaced buffered events, `DespawnOnExit`, `FontSize::Vh`,
   `CursorOptions` is separate from `Window`).
@@ -51,7 +53,7 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 - **Pure rules in plain functions** (`geom`, `terrain`, `levels`, `rules`, `enemy::choose_dir`,
   `tank::advance`, `combat::can_hit`, `canvas` SDFs) with unit tests in the same file.
 - **Public API is a contract.** A wrapper crate outside this repo builds on `run_with(Platform, extra plugins)`,
-  `Platform`, `TvRemote`, `canvas` and `paint_icon`. Change them only on purpose; keep `Platform::default()` = the exe.
+  `Platform`, `TvRemote`, `canvas`, `paint_icon` and `paint_banner`. Change them only on purpose; keep `Platform::default()` = the exe.
 - Lazy and small: stdlib/Bevy before new crates, shortest diff, `// ponytail:` comments on deliberate
   shortcuts naming the ceiling and the upgrade path.
 

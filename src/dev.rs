@@ -1,9 +1,10 @@
 //! Agent/dev smoke hook: `BT_SHOT=out.png` auto-joins two keyboard players, starts `BT_STAGE`
-//! (default 1; 0 = stay on the title, or `BT_SCREEN=settings` / `BT_SCREEN=city` for the district map) or City Run
+//! (default 1; 0 = stay on the title, or `BT_SCREEN=settings` / `city` (district map) / `results` / `gameover` (a
+//! made-up classic run, to look at the tally and the name entry)) or City Run
 //! district `BT_CITY`, saves a screenshot after `BT_SHOT_AT` seconds (default 7) and quits. `BT_VIEW=<units>` pins the
 //! City Run view that far up the map, to look at bastions and bosses. Inert unless `BT_SHOT` is set.
 
-use crate::game::{Mode, Screen, Session, Slot, View};
+use crate::game::{Mode, Screen, Session, Slot, StageLog, View};
 use crate::input::Device;
 use bevy::prelude::*;
 use bevy::render::view::screenshot::{Screenshot, save_to_disk};
@@ -63,6 +64,17 @@ fn run(
             Ok("city") if session.players() == 0 => {
                 session.slots = keys();
                 next.set(Screen::CityMap);
+            }
+            Ok(s @ ("results" | "gameover")) if session.players() == 0 => {
+                session.slots = keys();
+                for (i, slot) in session.slots.iter_mut().flatten().enumerate() {
+                    slot.kills = [7 - 3 * i as u32, 4, 2, 1 + i as u32];
+                    slot.score = 12_340 + 2_210 * i as u32;
+                }
+                let won = s == "results";
+                (session.stage, session.bonus) = (4, 1_610);
+                session.log = vec![StageLog { stage: 4, tenths: 1_017, won, kills: vec![[7, 4, 2, 1], [4, 4, 2, 2]], pickups: vec![1, 0] }];
+                next.set(if won { Screen::Results } else { Screen::GameOver });
             }
             _ => {}
         }

@@ -183,6 +183,23 @@ pub fn spawn_interval(stage: usize, players: usize) -> f32 {
     base.max(1.0)
 }
 
+/// Fastest possible classic stage clear, in tenths of a second: the 20th enemy spawns 19 intervals in and becomes
+/// real after its twinkle. Integer maths (same formula as `spawn_interval`) so the score server gets the same number.
+pub fn fastest_clear_tenths(stage: usize, players: usize) -> u32 {
+    let interval = (320 - 6 * stage as i64 - 40 * (players.max(1) as i64 - 1)).max(100); // hundredths
+    (19 * interval / 10) as u32 + (SPAWN_TIME * 10.0) as u32
+}
+
+/// Par = fastest clear + this; every second under par is worth `TIME_BONUS_PER_SEC`.
+pub const PAR_MARGIN_TENTHS: u32 = 1200;
+pub const TIME_BONUS_PER_SEC: u32 = 20;
+
+/// Classic stage clear bonus for a clear in `tenths`, rounded down to tens; each player gets it.
+pub fn time_bonus(stage: usize, players: usize, tenths: u32) -> u32 {
+    let par = fastest_clear_tenths(stage, players) + PAR_MARGIN_TENTHS;
+    par.saturating_sub(tenths) * TIME_BONUS_PER_SEC / 100 * 10
+}
+
 /// Enemies allowed on the field at once.
 // ponytail: 4 like the classic for 1P; 6 for 2P so co-op stays busy. Tune on the couch.
 pub fn max_enemies(players: usize) -> usize {
@@ -212,6 +229,19 @@ mod tests {
     fn spawn_interval_has_a_floor() {
         assert!(spawn_interval(1, 1) > spawn_interval(1, 2));
         assert_eq!(spawn_interval(500, 2), 1.0);
+    }
+
+    #[test]
+    fn time_bonus_rewards_fast_clears() {
+        let fastest = fastest_clear_tenths(1, 1);
+        assert!(((19.0 * spawn_interval(1, 1) + SPAWN_TIME) * 10.0 - fastest as f32).abs() < 1.0);
+        assert_eq!(fastest_clear_tenths(999, 2), 200, "floor of 1 s per spawn");
+        assert_eq!(time_bonus(1, 1, fastest), 2400);
+        assert_eq!(time_bonus(1, 1, fastest + 605), 1190, "60.5 s slower");
+        assert_eq!(time_bonus(1, 1, fastest + PAR_MARGIN_TENTHS), 0);
+        assert_eq!(time_bonus(1, 1, 99_999), 0);
+        // Same vector as the score server's RunRulesTests.Shares_its_numbers_with_the_game (score_server repo).
+        assert_eq!((fastest_clear_tenths(7, 2), time_bonus(7, 2, 1500)), (462, 320));
     }
 
     #[test]

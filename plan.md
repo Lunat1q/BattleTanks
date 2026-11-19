@@ -60,10 +60,12 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] README screenshots (`docs/screenshots`, smoke hook)
 
 ### Next ideas (not started — confirm before building)
-- [ ] Persist hi-score (small file in `%APPDATA%`)
-- [ ] Steam grid artwork (capsule/hero images)
+- [x] Persist hi-score (`scores.txt` in `%APPDATA%`) + world board: time bonus, stage log sent at game over to the
+  owner's score server (`score_server` submodule of the Android repo), name entry, rank on the game over screen (ADR 0009)
+- [x] Steam grid artwork: capsules, hero, logo, icon in `docs/steam/` (`write_steam_art`), README steps
 - [x] Background music: owner's 11 tracks, embedded Ogg Vorbis, per screen / stage tier / boss (ADR 0007)
-- [ ] Results-screen count-up animation like the classic tally
+- [x] Results-screen count-up animation like the classic tally (blip per kill, A skips)
+- [ ] World board live check: `scores.maxpodolski.com` needs its Cloudflare tunnel route + DNS (owner), then one real run
 
 ## Current state
 

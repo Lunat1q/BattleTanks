@@ -169,3 +169,9 @@ pub fn turret() -> Image {
 pub fn hero(ppu: f32, span: f32) -> Canvas {
     paint(player_look(3), 0, ppu, span)
 }
+
+/// An enemy model, grey, facing up, for store art.
+#[cfg(test)]
+pub fn enemy_art(kind: EnemyKind, ppu: f32, span: f32) -> Canvas {
+    paint(enemy_look(kind), 0, ppu, span)
+}

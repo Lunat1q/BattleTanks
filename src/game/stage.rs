@@ -59,10 +59,12 @@ fn setup(mut commands: Commands, mut session: ResMut<Session>, mut view: ResMut<
         freeze: 0.0,
         shovel: 0.0,
         base_alive: true,
+        clock: 0.0,
     });
     for (i, slot) in session.slots.iter_mut().enumerate() {
         if let Some(slot) = slot.as_mut() {
             slot.kills = [0; 4];
+            slot.pickups = 0;
             if !slot.out {
                 spawn_player(&mut commands, i, slot.level, PLAYER_SPAWNS[i]);
             }
@@ -180,6 +182,9 @@ pub fn tick_timers(
             }
         }
     }
+    if run.phase == Phase::Play {
+        run.clock += dt;
+    }
     run.freeze = (run.freeze - dt).max(0.0);
     if run.shovel > 0.0 {
         run.shovel = (run.shovel - dt).max(0.0);
@@ -210,7 +215,7 @@ pub fn borrow_life(
 
 pub fn check_end(
     mut run: ResMut<StageRun>,
-    session: Res<Session>,
+    mut session: ResMut<Session>,
     city: Option<Res<super::city::CityRun>>,
     enemies: Query<(), With<Enemy>>,
     mut sfx: MessageWriter<Sfx>,
@@ -226,6 +231,13 @@ pub fn check_end(
     } else if city.map_or(run.next_enemy >= run.roster.len() && enemies.is_empty(), |c| c.boss_down) {
         run.phase = Phase::Won;
         run.timer = rules::END_DELAY;
+        if session.mode == Mode::Classic {
+            let bonus = rules::time_bonus(session.stage, session.players(), (run.clock * 10.0) as u32);
+            session.bonus = bonus;
+            if (0..2).map(|p| session.add_score(p, bonus)).sum::<u32>() > 0 {
+                sfx.write(Sfx::ExtraLife);
+            }
+        }
     }
 }
 

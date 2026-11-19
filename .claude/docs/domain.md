@@ -55,6 +55,21 @@ all 20 destroyed → 3 s → results tally → next stage. Base lost or every pl
 30 stages, rosters ramping from mostly LIGHT (1) to mostly HEAVY (30). After stage 30 the maps loop; each lap converts
 4 weaker enemies into stronger ones.
 
+## Scoring and the world board (`rules.rs`, `scores.rs`, `ui/board.rs`, ADR 0009)
+- Points: kills (100–400 by type), power-ups 500, and a **time bonus** per cleared classic stage, to each player:
+  fastest possible clear = 19 × spawn interval + 1 s (the 20th enemy can't arrive sooner); par = fastest + 120 s;
+  20 points per second under par, rounded down to tens (max 2400). The clock runs only in play (no banner, no pause)
+  until the last kill. City Run has no time bonus.
+- **Results tally** counts up like the classics: row by row, one blip per kill (0.07 s each, 0.35 s between rows), then
+  the stage time with the bonus, then the score. A skips the count; then A (after 1 s) or 10 s moves on.
+- **Hi score** is kept in `%APPDATA%\BattleTanks\scores.txt` (`hi=`, plus `name1=` / `name2=`: the initials last
+  entered per slot), saved on results, game over and the title.
+- **World board** (classic only, builds with a game key, host with `post_score`): at game over each player enters 3
+  letters with their own controller (up/down letter, left/right or A move, A on the last letter = done, B = don't send).
+  The run's stage log goes to `scores.maxpodolski.com` (game `battletanks`), which recomputes and checks it and keeps
+  the top 1000 per board (1P, 2P co-op team total). The screen then shows the world rank, the top 5 and the rows around
+  ours, or "offline - score not sent". Runs quit from the pause menu and City Run are not sent.
+
 **Map rule (tested):** from every enemy and player spawn, a 16×16 tank must be able to reach the base treating
 bricks as open and steel/water as walls (`levels::tests::every_spawn_can_reach_the_base`). Watch for: a water gap
 that exits straight into steel, and 1-cell (8-unit) open bands between obstacle rows — a tank needs 2 cells.
@@ -137,14 +152,14 @@ pair, the boss to the `bossfight` pair, and back when it dies. the pause menu pa
 play over it.
 
 ## Known gaps / deliberate omissions
-- Hi-score lives for the session only (not saved).
-- No Steam grid artwork (the exe and window do have an icon).
-- Results tally is static (no count-up animation).
+- The world board can't stop a careful cheat who extracts the key and fakes a plausible stage log (open source).
+- Android TV doesn't send scores (no internet permission; local hi score only).
+- No way to see the world board in game except your own result at game over (the website shows it all).
 - Grenade-killed spawning enemies leave their sparkle to finish (cosmetic).
 - Keyboard layouts share Esc and Backspace; both act for whoever is joined on the keyboard.
 - Variable timestep (dt clamped 0.05 s) rather than fixed; fine at 60 fps vsync, revisit if behaviour drifts
   at very low frame rates.
-- No online play, no AI teammate, no level editor (maps are plain text).
+- No online play, no AI teammate, no level editor (maps are plain text). The world board is the only network use.
 - City Run: no boss HP bar (bosses fade to grey as they take damage); district maps are assembled from a
   shared set of section blocks, so long districts repeat streets; the view never scrolls back down.
 

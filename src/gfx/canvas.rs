@@ -107,6 +107,12 @@ impl Canvas {
         }
     }
 
+    /// Upside down (a tank facing up now faces down).
+    pub fn flipped(&self) -> Canvas {
+        let px = self.px.chunks(self.w).rev().flatten().copied().collect();
+        Canvas { px, ..*self }
+    }
+
     pub fn size(&self) -> (u32, u32) {
         (self.w as u32, self.h as u32)
     }

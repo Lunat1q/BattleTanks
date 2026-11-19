@@ -1,6 +1,6 @@
 //! Embeds `assets/icon.ico` as the exe icon (Explorer, Steam shortcut) without extra crates:
 //! wraps the ICO images into a Win32 `.res` file and hands it to the MSVC linker.
-//! Regenerate the icon with `cargo test write_icon_file -- --ignored`.
+//! Regenerate the icon with `cargo test write_icon_file -- --ignored`. Also bakes in the score server's game key.
 
 use std::{env, fs, path::PathBuf};
 
@@ -29,7 +29,20 @@ fn entry(out: &mut Vec<u8>, kind: u16, name: u16, flags: u16, lang: u16, data: &
     out.resize(out.len().next_multiple_of(4), 0);
 }
 
+/// The online score board's game key (ADR 0009): from the gitignored `scores.key`, else none (offline build).
+/// ponytail: only watched while it exists, so after creating it `touch build.rs` once.
+fn game_key() {
+    println!("cargo:rerun-if-env-changed=BT_SCORES_KEY");
+    if let Ok(key) = fs::read_to_string("scores.key") {
+        println!("cargo:rerun-if-changed=scores.key");
+        if !key.trim().is_empty() {
+            println!("cargo:rustc-env=BT_SCORES_KEY={}", key.trim());
+        }
+    }
+}
+
 fn main() {
+    game_key();
     println!("cargo:rerun-if-changed=assets/icon.ico");
     if env::var("CARGO_CFG_TARGET_ENV").as_deref() != Ok("msvc") {
         return;

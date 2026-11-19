@@ -68,6 +68,9 @@ pub fn pickup(
         rumble.write(Rumble::tick(p));
         fx.write(Fx { kind: FxKind::Points(rules::POWERUP_POINTS), pos: ptf.translation.xy() });
         let mut extra = session.add_score(p, rules::POWERUP_POINTS);
+        if let Some(slot) = session.slots[p].as_mut() {
+            slot.pickups += 1;
+        }
         match power.0 {
             rules::PowerKind::Helmet => {
                 commands.entity(te).insert(Shield(rules::HELMET_SHIELD));

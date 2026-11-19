@@ -45,11 +45,13 @@ pub struct Slot {
     pub out: bool,
     /// Kills per `EnemyKind` this stage.
     pub kills: [u32; 4],
+    /// Power-ups picked up this stage.
+    pub pickups: u32,
 }
 
 impl Slot {
     pub fn new(device: Device) -> Self {
-        Slot { device, lives: rules::START_LIVES, score: 0, level: 0, out: false, kills: [0; 4] }
+        Slot { device, lives: rules::START_LIVES, score: 0, level: 0, out: false, kills: [0; 4], pickups: 0 }
     }
 }
 
@@ -60,11 +62,31 @@ pub struct Session {
     /// Current stage (Classic) or district (City), 1-based.
     pub stage: usize,
     pub hi_score: u32,
+    /// Classic run so far, one entry per stage played (the score server recomputes the score from it).
+    pub log: Vec<StageLog>,
+    /// Time bonus of the stage just cleared (classic), shown in the results tally.
+    pub bonus: u32,
+}
+
+/// One classic stage of a run. `kills` / `pickups` per joined player, in slot order.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StageLog {
+    pub stage: usize,
+    /// Play time to the last kill (or to the end, if lost), tenths of a second.
+    pub tenths: u32,
+    pub won: bool,
+    pub kills: Vec<[u32; 4]>,
+    pub pickups: Vec<u32>,
 }
 
 impl Session {
     pub fn players(&self) -> usize {
         self.slots.iter().flatten().count()
+    }
+
+    /// Sum of the joined players' scores (what the online board ranks).
+    pub fn team_score(&self) -> u32 {
+        self.slots.iter().flatten().map(|s| s.score).sum()
     }
 
     /// Adds points; returns extra lives earned.
@@ -124,6 +146,8 @@ pub struct StageRun {
     pub freeze: f32,
     pub shovel: f32,
     pub base_alive: bool,
+    /// Seconds in `Phase::Play` (pauses and banners excluded): the clear time.
+    pub clock: f32,
 }
 
 #[derive(Resource, Default)]

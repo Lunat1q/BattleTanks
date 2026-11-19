@@ -5,3 +5,5 @@ target_game_folder.env
 .codegraph/
 assets/music/*.mp3
 !docs/screenshots/*.png
+scores.key
+!docs/steam/*.png

@@ -29,6 +29,7 @@ fn reset_session(mut session: ResMut<Session>, devices: Res<DeviceIntents>) {
     for slot in session.slots.iter_mut() {
         *slot = slot.take().filter(|s| devices.connected(s.device)).map(|s| Slot::new(s.device));
     }
+    session.log.clear();
 }
 
 fn spawn(mut commands: Commands, session: Res<Session>, gfx: Res<Gfx>) {

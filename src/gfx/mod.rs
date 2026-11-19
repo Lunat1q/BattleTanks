@@ -2,6 +2,7 @@
 
 mod art_icons;
 mod art_map;
+pub mod art_promo;
 mod art_tanks;
 mod art_world;
 pub mod canvas;

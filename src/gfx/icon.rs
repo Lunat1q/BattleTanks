@@ -103,19 +103,6 @@ mod tests {
         assert_eq!(u32::from_le_bytes(data[first_offset..first_offset + 4].try_into().unwrap()), 40);
     }
 
-    fn save_png(c: &Canvas, path: &str) {
-        let (w, h) = c.size();
-        let img = Image::new(
-            bevy::render::render_resource::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
-            bevy::render::render_resource::TextureDimension::D2,
-            c.rgba8(),
-            bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
-            bevy::asset::RenderAssetUsages::all(),
-        );
-        std::fs::create_dir_all(std::path::Path::new(path).parent().unwrap()).unwrap();
-        img.try_into_dynamic().unwrap().save(path).unwrap();
-    }
-
     #[test]
     #[ignore = "writes assets/icon.ico and assets/icon.png; run when the icon art changes"]
     fn write_icon_file() {
@@ -123,6 +110,6 @@ mod tests {
         std::fs::create_dir_all("assets").unwrap();
         std::fs::write("assets/icon.ico", ico(&images)).unwrap();
         // A PNG preview for eyeballing in reviews/screenshots.
-        save_png(&paint(256), "assets/icon.png");
+        super::super::art_promo::save_png(&paint(256), "assets/icon.png", false);
     }
 }

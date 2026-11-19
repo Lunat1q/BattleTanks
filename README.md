@@ -28,7 +28,10 @@ Copy it anywhere you like, e.g. `C:\Games\BattleTanks\battle_tanks.exe`.
 ## Add to Steam (non-Steam game)
 
 1. Steam → **Games → Add a Non-Steam Game to My Library… → Browse…** → pick `battle_tanks.exe` → **Add Selected Programs**.
-2. Optional: right-click it → **Properties** → rename to "Battle Tanks", set artwork.
+2. Optional: right-click it → **Properties** → rename to "Battle Tanks". For library artwork, right-click the
+   game's tile / banner / logo in the library → **Manage → Set custom artwork** and pick the images in
+   [`docs/steam/`](docs/steam): `capsule-600x900.png` (grid), `capsule-920x430.png` (wide), `hero-3840x1240.png`
+   (background), `logo-1280x200.png` (logo), `icon-256.png` (icon).
 3. If a controller shows up twice or moves the menu double, right-click → **Properties → Controller** →
    *Disable Steam Input* for this game.
 
@@ -48,14 +51,28 @@ TV can launch it. The game starts borderless fullscreen with the mouse cursor hi
 
 Out of tanks while your partner still has spares? Press **A** to borrow one.
 
+## Scores
+
+Kills, power-ups and speed score: each classic stage cleared quicker than its par time (about two minutes over the
+fastest possible clear) adds a time bonus. Your best score is kept between sessions. At game over in classic mode you
+can enter three letters and send the run to the **world board** (top 1000 for one and two players):
+<https://scores.maxpodolski.com>. **B** skips it.
+
 Quit from the title (**EXIT**) or the pause menu (**EXIT GAME**). `F11` / `Alt+Enter` toggles fullscreen;
 `--windowed` starts in a window. Set `BT_MUTE=1` to start without sound.
 
 ## Privacy
 
-Battle Tanks collects nothing. It has no accounts, ads, analytics or online features and never connects to the
-internet. Settings and City Run progress are saved only on your device (`%APPDATA%\BattleTanks` on Windows, the app's
-private storage elsewhere) and are deleted with the game. Where a build asks for Bluetooth ("nearby devices") access,
+Battle Tanks has no accounts, ads or analytics. Settings, City Run progress and your best score are saved only on
+your device (`%APPDATA%\BattleTanks` on Windows, the app's private storage elsewhere) and are deleted with the game.
+
+The **Android TV app never connects to the internet** and collects nothing.
+
+The Windows game connects only when you choose to send a run to the world board at game over: it sends the three
+letters you entered, the run's stage log (stage numbers, times, kills, power-ups, score) and the game version to
+`scores.maxpodolski.com`. The board keeps the top 1000 runs (letters, score, stages cleared, date) and shows them
+publicly; your IP address is used only to limit how often scores arrive and is not stored. Press **B** at the name
+entry and nothing is sent. Where a build asks for Bluetooth ("nearby devices") access,
 it is used only to talk to a controller you have paired; no data leaves the device.
 Questions: open an issue on this repository.
 
