@@ -14,7 +14,7 @@ levels/city/NN.txt    # 10 City Run districts, 15-24 screens tall (format in cit
 src/
   main.rs             # Windows exe: calls battle_tanks::run()
   lib.rs              # run() / run_with(Platform, extra plugins): loads Settings first so the window opens in the saved mode;
-                      # plugin list. Public API for wrapper crates: Platform (incl. post_score, fetch_board), TvRemote, canvas, paint_icon, paint_banner
+                      # plugin list. Public API for wrapper crates: Platform (incl. post_score, fetch_board, cloud_load / cloud_save), TvRemote, canvas, paint_icon, paint_banner
   geom.rs             # units (SUB 4, CELL 8, TILE 16, FIELD 208), Dir, rect overlap, grid snap  [pure]
   rng.rs              # xorshift64* Resource: below/range/chance/pick/shuffle                     [pure]
   scores.rs           # Best (hi score + last initials) <-> scores.txt; world board: payload (stage log JSON), city_payload
@@ -46,6 +46,7 @@ src/
     mod.rs            # Screen state, Mode, Session/Slot, StageRun, View, components, Fx/Sfx messages, Sim schedule
     stage.rs          # OnEnter build (classic or city), spawn_enemy, respawn point, timers, borrow a tank, win/lose, pause (+ app in background), pad loss
     city.rs           # City Run: scroll the View, wake placed enemies, reinforcements, turret->gate, reveal secrets, cull, Progress save
+    cloud.rs          # Progress <-> the host's cloud copy (Platform::cloud_load / cloud_save): sync at start and per new unlock, max merge
     tank.rs           # player_control (intent -> want/trigger), drive (collisions, snap, ice), fire
     enemy.rs          # think: choose_dir (pure) + random fire, freeze; turrets aim at the nearest player
     combat.rs         # fly_bullets (sub-steps: tanks, base, terrain; bullet-vs-bullet) -> Hit; resolve_hits

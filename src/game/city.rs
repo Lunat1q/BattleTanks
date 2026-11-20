@@ -45,6 +45,16 @@ impl Progress {
         self.unlocked = self.unlocked.max(next);
         news
     }
+    pub fn text(&self) -> String {
+        format!("unlocked={}\n", self.unlocked)
+    }
+    /// Writes `city.txt` in the data folder.
+    pub fn save_local(&self) {
+        let Some(p) = crate::settings::data_file(SAVE) else { return };
+        if let Err(e) = p.parent().map_or(Ok(()), std::fs::create_dir_all).and_then(|_| std::fs::write(&p, self.text())) {
+            warn!("could not save City Run progress to {}: {e}", p.display());
+        }
+    }
 }
 
 const SAVE: &str = "city.txt";
@@ -54,6 +64,7 @@ pub fn plugin(app: &mut App) {
         .and_then(|p| std::fs::read_to_string(p).ok())
         .map_or(Progress { unlocked: 1 }, |t| Progress::parse(&t));
     app.insert_resource(progress)
+        .add_plugins(super::cloud::plugin)
         .add_systems(OnEnter(Screen::Results), save_clear.run_if(|s: Res<Session>| s.mode == Mode::City))
         .add_systems(
             Update,
@@ -240,18 +251,16 @@ fn cull(mut commands: Commands, view: Res<View>, things: Query<(Entity, &Transfo
 }
 
 /// A LAN joiner plays on the host's unlocks: it moves them along (both maps must match) but doesn't save them.
-fn save_clear(session: Res<Session>, mut progress: ResMut<Progress>, net: Res<crate::net::Net>) {
-    if progress.clear(session.stage)
-        && net.me() != Some(1)
-        && let Some(p) = crate::settings::data_file(SAVE)
-    {
-        let result = p
-            .parent()
-            .map_or(Ok(()), std::fs::create_dir_all)
-            .and_then(|_| std::fs::write(&p, format!("unlocked={}\n", progress.unlocked)));
-        if let Err(e) = result {
-            warn!("could not save City Run progress to {}: {e}", p.display());
-        }
+fn save_clear(
+    session: Res<Session>,
+    mut progress: ResMut<Progress>,
+    net: Res<crate::net::Net>,
+    platform: Res<crate::Platform>,
+    mut pull: ResMut<super::cloud::Pull>,
+) {
+    if progress.clear(session.stage) && net.me() != Some(1) {
+        progress.save_local();
+        pull.start(&platform, *progress);
     }
 }
 

@@ -21,6 +21,7 @@ fn world(mode: Mode, stage: usize) -> App {
     app.add_plugins((MinimalPlugins, StatesPlugin))
         .add_message::<AppLifecycle>()
         .insert_resource(crate::settings::Settings::default())
+        .insert_resource(crate::Platform::default())
         .init_resource::<DeviceIntents>()
         .init_resource::<super::Net>()
         .add_plugins(crate::game::plugin)

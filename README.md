@@ -64,7 +64,8 @@ Quit from the title (**EXIT**) or the pause menu (**EXIT GAME**). `F11` / `Alt+E
 ## Privacy
 
 Battle Tanks has no accounts, ads or analytics. Settings, City Run progress and your best score are saved only on
-your device (`%APPDATA%\BattleTanks` on Windows, the app's private storage elsewhere) and are deleted with the game.
+your device (`%APPDATA%\BattleTanks` on Windows, the app's private storage elsewhere) and are deleted with the game. On Android, if you are signed in to Google Play Games, City Run unlocks are also kept
+as a Play Games saved game on your Google account, so your other devices get them; nothing else goes there.
 
 The game connects to the internet only for the world board. Opening HI SCORES reads the public board and sends
 nothing about you. When you choose to send a run, at game over or after a City Run district, it sends the name you

@@ -132,7 +132,9 @@ Controller disconnect → game pauses with a note; any unassigned controller pre
 ## City Run (`game/city.rs`, `city_map.rs`, `levels/city/NN.txt`)
 Title → CITY RUN → district map (10 dots on a pixel-art city, dotted roads). Cleared = gold, next = white,
 later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved to
-`%APPDATA%\BattleTanks\city.txt` (`unlocked=N`).
+`%APPDATA%\BattleTanks\city.txt` (`unlocked=N`). A host with a cloud copy (`Platform::cloud_load` / `cloud_save`,
+none on the exe) syncs it at start and after each new unlock: the higher count wins on both sides, and a cloud that
+can't be read is never written.
 
 - A district is 15 screens tall (district 1) up to ~24 (district 10). Only one field-sized slice is visible: the
   `View`. It follows the lead player (kept at 55 % height) but keeps the trailing tank in view with 16 units (one

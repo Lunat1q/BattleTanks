@@ -57,6 +57,11 @@ pub struct Platform {
     /// name for the other side's list (a phone may also take its Wi-Fi multicast lock here), and `false` when it
     /// closes. `None` hides LAN CO-OP. Default: the computer name.
     pub lan: Option<fn(bool) -> String>,
+    /// One player's cloud copy of City Run progress (the text of `city.txt`, "" = none yet), shared by their
+    /// devices, e.g. Play Games saved games: `cloud_load() -> text` and `cloud_save(text)`, both on a worker thread.
+    /// The game merges (unlocks only grow). `None` = this device only (default).
+    pub cloud_load: Option<fn() -> Result<String, String>>,
+    pub cloud_save: Option<fn(&str) -> Result<String, String>>,
 }
 
 /// The desktop's name for LAN CO-OP.
@@ -75,6 +80,8 @@ impl Default for Platform {
             post_score: Some(scores::curl_post),
             fetch_board: Some(scores::curl_get),
             lan: Some(computer_name),
+            cloud_load: None,
+            cloud_save: None,
         }
     }
 }

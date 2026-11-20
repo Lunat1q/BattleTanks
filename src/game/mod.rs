@@ -2,6 +2,7 @@
 //! Logic entities carry no sprites; `gfx` attaches visuals when they appear.
 
 pub mod city;
+mod cloud;
 pub mod combat;
 pub mod enemy;
 pub mod powerup;
