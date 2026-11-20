@@ -55,7 +55,7 @@ Out of tanks while your partner still has spares? Press **A** to borrow one.
 
 Kills, power-ups and speed score: each classic stage cleared quicker than its par time (about two minutes over the
 fastest possible clear) adds a time bonus. Your best score is kept between sessions. At game over in classic mode you
-can enter a name (up to 7 letters) and send the run to the **world board** (top 1000 for one and two players):
+can enter a name (up to 7 letters) and send the run to the **world board** (top 100 for one and two players):
 <https://scores.maxpodolski.com>. **B** skips it.
 
 Quit from the title (**EXIT**) or the pause menu (**EXIT GAME**). `F11` / `Alt+Enter` toggles fullscreen;
@@ -70,7 +70,7 @@ as a Play Games saved game on your Google account, so your other devices get the
 The game connects to the internet only for the world board. Opening HI SCORES reads the public board and sends
 nothing about you. When you choose to send a run, at game over or after a City Run district, it sends the name you
 entered (up to 7 letters), the run's stage log (stage numbers, times, kills, power-ups, score) and the game version to
-`scores.maxpodolski.com`. The board keeps the top 1000 runs (name, score, stages cleared, date) and shows them
+`scores.maxpodolski.com`. Each board keeps its top 100 runs (name, score, stages cleared, date) and shows them
 publicly; your IP address is used only to limit how often scores arrive and is not stored. Press **B** at the name
 entry and nothing is sent. LAN CO-OP talks only to the other device you join, on your local network: while its screen is open the host
 announces its device name (e.g. the phone's name) on the network so the other player can find it, and during play the
