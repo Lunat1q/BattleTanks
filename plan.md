@@ -74,6 +74,10 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
   after results / game over (A send, B skip, top 3 + 2 above + 1 below); names up to 7 letters, prefilled
 - [x] HI SCORES screen on the title: world top 10 per category (classic 1P/2P, City Run district x 1P/2P), read live
   from the server's public board (`?format=text`); checked against the live server in a smoke run
+- [ ] Assisted runs stay off the world board (decided 2026-11-19, build later): `ui::board::wants_board` skips the
+  board when KEEP POWER is on, or FRIENDLY FIRE is off in 2P (no effect in 1P); local hi score still counts; a short
+  "assists on - not ranked" note at game over / district results. Settings only change on the title, so checking at
+  the run's end is enough. Runs sent since 0.4.0 carry no flag, so the boards may already hold assisted runs
 - [ ] World board live check: server reachable at `scores.maxpodolski.com` (tunnel route + DNS added, key and rules checked live); first real run from the couch still to come
 
 ## Current state
