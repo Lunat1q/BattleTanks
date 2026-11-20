@@ -80,7 +80,7 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
   the run's end is enough. Runs sent since 0.4.0 carry no flag, so the boards may already hold assisted runs
 - [ ] World board live check: server reachable at `scores.maxpodolski.com` (tunnel route + DNS added, key and rules checked live); first real run from the couch still to come
 
-### M8 — LAN co-op ⏳ (branch `lan-coop`, ADR 0014)
+### M8 — LAN co-op ✅ (v0.5.0, ADR 0014 + 0015)
 - [x] Lockstep over UDP (packed intents, 3-tick delay), hello over TCP; `net::Driver` runs `Update` per tick
 - [x] Determinism: particles' own RNG, sim loops in spawn order (`NetId`); headless two-world test with disturbance
 - [x] Hash every 30 ticks, host snapshot on mismatch (checked: forced nudge healed after 7 ticks, 3.3 KB)
@@ -89,7 +89,7 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Two phones on home Wi-Fi (owner, 2026-11-19): a City Run played, one short lag
 - [x] Input delay from the measured round trip, 1-5 ticks per machine (ADR 0015); loopback settles at 2
 - [ ] Owner: feel of the adaptive delay on the phones
-- [ ] Merge to `main` once played
+- [x] Merged to `main`, released as 0.5.0 (2026-11-19)
 
 ## Current state
 
