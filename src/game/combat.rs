@@ -47,13 +47,19 @@ pub fn fly_bullets(
     mut sfx: MessageWriter<Sfx>,
     mut rumble: MessageWriter<Rumble>,
     settings: Res<Settings>,
+    ids: Ids,
 ) {
     let dt = time.delta_secs().min(0.05);
-    let targets: Vec<(Entity, Team, Rect)> = tanks.iter().map(|(e, t, tf)| (e, t.team, rect_at(tf.translation.xy(), t.size))).collect();
+    // Spawn order throughout: the first tank a shell touches takes the hit, and earlier shells chip bricks first.
+    let targets: Vec<(Entity, Team, Rect)> = tanks
+        .iter()
+        .sort_by_key::<Entity, _>(|e| order(&ids, *e))
+        .map(|(e, t, tf)| (e, t.team, rect_at(tf.translation.xy(), t.size)))
+        .collect();
     let base = (!base.is_empty()).then(|| rect_at(BASE_POS, TILE));
     let mut swept: Vec<(Entity, Team, Rect)> = Vec::new();
 
-    for (e, b, mut tf) in &mut bullets {
+    for (e, b, mut tf) in bullets.iter_mut().sort_by_key::<Entity, _>(|e| order(&ids, *e)) {
         let start = tf.translation.xy();
         let total = b.speed * dt;
         let steps = (total / BULLET_STEP).ceil().max(1.0) as usize;

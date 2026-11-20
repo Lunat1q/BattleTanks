@@ -20,6 +20,7 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 | Redraw City Run districts | `cargo test write_city_districts -- --ignored` → `levels/city/*.txt` (commit; overwrites hand edits) |
 | Regenerate app icon | `cargo test write_icon_file -- --ignored` → `assets/icon.ico` + `icon.png` (commit both) |
 | Smoke run + screenshot | `BT_SHOT=<scratch>/shot.png BT_STAGE=2 BT_SHOT_AT=8 ./target/debug/battle_tanks.exe --windowed` |
+| LAN smoke (two copies) | run twice at once: `BT_LAN=host` / `BT_LAN=join`, both with `BT_LAN_BOT=1 BT_LAN_SECS=60 BT_MUTE=1 ... --windowed`; compare their `lan: tick <t> hash <h>` log lines (`BT_DESYNC=<tick>` on the joiner tests the resync) |
 
 - First build compiles Bevy (~3 min). If cargo says a `bevy_*` version "doesn't exist", the local index is stale:
   delete `Cargo.lock` and run `cargo generate-lockfile`.
@@ -67,7 +68,12 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 - Everything spawned for a stage gets `DespawnOnExit(Screen::Stage)`; screens likewise for their state.
 - Field coordinates = world coordinates: origin bottom-left of the 208×208 field, y up. Terrain grid is
   52×52 sub-cells of 4 units; map files are 26×26 cells of 8 units.
-- Variable timestep, `dt` clamped to 0.05 s; bullets sub-step (≤ 2 units) so they can't tunnel.
+- Variable timestep, `dt` clamped to 0.05 s; bullets sub-step (≤ 2 units) so they can't tunnel. In a LAN session
+  `Update` runs once per lockstep tick with a fixed 1/60 s (ADR 0014).
+- **Determinism (LAN, ADR 0014):** gameplay randomness only from the gameplay `Rng`, never from visuals; a sim loop
+  whose result depends on order (dice per entity, first match, sequential moves) iterates
+  `.sort_by_key::<Entity, _>(|e| order(&ids, *e))` (spawn order, `NetId`); new sim state goes into `net::snap`.
+  `net::tests` fails when two worlds drift.
 - Crate-level `allow(clippy::type_complexity, clippy::too_many_arguments)` — normal for Bevy queries.
 - Comments say *why*. No commented-out code.
 

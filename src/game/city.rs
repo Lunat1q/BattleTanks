@@ -12,19 +12,19 @@ use crate::terrain::{Terrain, Tile};
 
 #[derive(Resource)]
 pub struct CityRun {
-    mix: [usize; 4],
+    pub(crate) mix: [usize; 4],
     /// Not yet in view, bottom first.
-    pending: Vec<Spawn>,
+    pub(crate) pending: Vec<Spawn>,
     /// Live turrets: entity, bastion, position.
-    turrets: Vec<(Entity, Option<usize>, Vec2)>,
+    pub(crate) turrets: Vec<(Entity, Option<usize>, Vec2)>,
     /// Turrets still standing per bastion (pending or live).
-    guards: Vec<usize>,
-    gates: Vec<Vec<(usize, usize)>>,
-    boss: Option<Entity>,
+    pub(crate) guards: Vec<usize>,
+    pub(crate) gates: Vec<Vec<(usize, usize)>>,
+    pub(crate) boss: Option<Entity>,
     pub boss_down: bool,
-    reinforce_in: f32,
+    pub(crate) reinforce_in: f32,
     /// Secret stashes still buried: centre, power-up.
-    secrets: Vec<(Vec2, PowerKind)>,
+    pub(crate) secrets: Vec<(Vec2, PowerKind)>,
 }
 
 /// Highest district the players may start (1-based); `CITY_DISTRICTS + 1` once all are cleared.
@@ -235,8 +235,10 @@ fn cull(mut commands: Commands, view: Res<View>, things: Query<(Entity, &Transfo
     }
 }
 
-fn save_clear(session: Res<Session>, mut progress: ResMut<Progress>) {
+/// A LAN joiner plays on the host's unlocks: it moves them along (both maps must match) but doesn't save them.
+fn save_clear(session: Res<Session>, mut progress: ResMut<Progress>, net: Res<crate::net::Net>) {
     if progress.clear(session.stage)
+        && net.me() != Some(1)
         && let Some(p) = crate::settings::data_file(SAVE)
     {
         let result = p

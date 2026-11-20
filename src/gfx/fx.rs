@@ -19,8 +19,14 @@ struct Particle {
 #[derive(Resource, Default)]
 pub struct Shake(pub f32);
 
+/// Particles' own dice: they run per rendered frame, so drawing from the gameplay `Rng` would make two LAN
+/// machines' simulations drift apart (frame rates differ).
+#[derive(Resource)]
+struct FxRng(Rng);
+
 pub fn plugin(app: &mut App) {
     app.init_resource::<Shake>()
+        .insert_resource(FxRng(Rng::from_time()))
         .add_systems(Update, (spawn_fx, update_particles, shake_camera).chain().after(crate::game::Sim).run_if(|p: Res<Paused>| !p.0));
 }
 
@@ -104,10 +110,10 @@ fn explosion(emit: &mut impl FnMut(Vec2, Burst), pos: Vec2, k: f32) {
     emit(pos, b(n(14.0), (60.0, 140.0 * k), (0.2, 0.5), (2.2, 0.5), (lin(5.0, 3.5, 1.2, 1.0), lin(2.0, 0.4, 0.1, 0.0)), 0.05));
 }
 
-fn spawn_fx(mut commands: Commands, gfx: Res<Gfx>, mut rng: ResMut<Rng>, mut events: MessageReader<Fx>, mut shake: ResMut<Shake>) {
+fn spawn_fx(mut commands: Commands, gfx: Res<Gfx>, mut rng: ResMut<FxRng>, mut events: MessageReader<Fx>, mut shake: ResMut<Shake>) {
     let events: Vec<Fx> = events.read().copied().collect();
     let mut texts = Vec::new();
-    let mut emit = |p: Vec2, burst_def: Burst| burst(&mut commands, &gfx, &mut rng, p, burst_def);
+    let mut emit = |p: Vec2, burst_def: Burst| burst(&mut commands, &gfx, &mut rng.0, p, burst_def);
     for ev in events {
         let p = ev.pos;
         match ev.kind {
@@ -187,13 +193,13 @@ fn shake_camera(
     time: Res<Time>,
     settings: Res<crate::settings::Settings>,
     mut shake: ResMut<Shake>,
-    mut rng: ResMut<Rng>,
+    mut rng: ResMut<FxRng>,
     view: Res<crate::game::View>,
     mut cam: Query<&mut Transform, With<MainCamera>>,
 ) {
     let Ok(mut tf) = cam.single_mut() else { return };
     shake.0 = (shake.0 - time.delta_secs() * 1.6).max(0.0);
     let k = if settings.shake { shake.0 * shake.0 * 3.5 } else { 0.0 };
-    tf.translation.x = 104.0 + rng.range(-k, k);
-    tf.translation.y = 104.0 + view.bottom + rng.range(-k, k);
+    tf.translation.x = 104.0 + rng.0.range(-k, k);
+    tf.translation.y = 104.0 + view.bottom + rng.0.range(-k, k);
 }

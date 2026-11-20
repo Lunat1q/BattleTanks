@@ -29,9 +29,22 @@ pub fn backgrounded(e: AppLifecycle) -> Option<bool> {
     }
 }
 
-/// Going to the background pauses a live stage, like Start; coming back leaves the pause menu up.
-fn pause_when_away(mut lifecycle: MessageReader<AppLifecycle>, run: Res<StageRun>, mut paused: ResMut<Paused>) {
-    if lifecycle.read().any(|&e| backgrounded(e) == Some(true)) && matches!(run.phase, Phase::Play | Phase::Won) {
+/// Going to the background pauses a live stage, like Start; coming back leaves the pause menu up. In a LAN session
+/// the news comes through the lockstep (`Intent::away`), so both machines pause on the same tick.
+fn pause_when_away(
+    mut lifecycle: MessageReader<AppLifecycle>,
+    net: Res<crate::net::Net>,
+    devices: Res<DeviceIntents>,
+    run: Res<StageRun>,
+    mut paused: ResMut<Paused>,
+) {
+    let away = if net.linked() {
+        lifecycle.clear();
+        devices.0.iter().any(|(_, i)| i.away)
+    } else {
+        lifecycle.read().any(|&e| backgrounded(e) == Some(true))
+    };
+    if away && matches!(run.phase, Phase::Play | Phase::Won) {
         paused.0 = true;
     }
 }

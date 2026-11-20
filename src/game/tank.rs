@@ -42,12 +42,14 @@ pub fn drive(
     view: Res<View>,
     base: Query<(), With<Base>>,
     mut tanks: Query<(Entity, &mut Tank, &mut Transform, Has<Spawning>)>,
+    ids: Ids,
 ) {
     let dt = time.delta_secs().min(0.05);
     let mut rects: Vec<(Entity, Rect)> = tanks.iter().map(|(e, t, tf, _)| (e, rect_at(tf.translation.xy(), t.size))).collect();
     let base = (!base.is_empty()).then(|| rect_at(BASE_POS, TILE));
 
-    for (e, mut tank, mut tf, spawning) in &mut tanks {
+    // Spawn order: a tank that moves first takes the spot the next one wanted.
+    for (e, mut tank, mut tf, spawning) in tanks.iter_mut().sort_by_key::<Entity, _>(|e| order(&ids, *e)) {
         if spawning {
             continue;
         }
@@ -103,8 +105,10 @@ pub fn fire(
     bullets: Query<&Bullet>,
     mut sfx: MessageWriter<Sfx>,
     mut fx: MessageWriter<Fx>,
+    ids: Ids,
 ) {
-    for (e, tank, mut gun, tf) in &mut tanks {
+    // Spawn order, so bullets are numbered alike on every machine.
+    for (e, tank, mut gun, tf) in tanks.iter_mut().sort_by_key::<Entity, _>(|e| order(&ids, *e)) {
         if !std::mem::take(&mut gun.trigger) {
             continue;
         }

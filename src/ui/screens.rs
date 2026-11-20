@@ -96,6 +96,7 @@ fn pause_menu(
     mut next: ResMut<NextState<Screen>>,
     mut exit: MessageWriter<AppExit>,
     mut sfx: MessageWriter<Sfx>,
+    mut net: ResMut<crate::net::Net>,
 ) {
     if let Ok(mut v) = overlay.single_mut() {
         v.set_if_neq(if paused.0 { Visibility::Inherited } else { Visibility::Hidden });
@@ -103,7 +104,9 @@ fn pause_menu(
     let lost: Vec<usize> = (0..2).filter(|&i| session.slots[i].as_ref().is_some_and(|s| !devices.connected(s.device))).collect();
     for (mut t, line, note) in &mut lines {
         if let Some(MenuLine(i)) = line {
-            set_text(&mut t, menu_label(sel.0 == *i, PAUSE_ITEMS[*i]));
+            // Linked, the last item ends the session for both, rather than closing one app under the other player.
+            let label = if *i == 2 && net.linked() { "LEAVE LAN" } else { PAUSE_ITEMS[*i] };
+            set_text(&mut t, menu_label(sel.0 == *i, label));
         }
         if note {
             let msg =
@@ -132,6 +135,10 @@ fn pause_menu(
         match sel.0 {
             0 if lost.is_empty() => paused.0 = false,
             1 => next.set(Screen::Title),
+            2 if net.linked() => {
+                net.leave = true;
+                next.set(Screen::Title);
+            }
             2 => {
                 exit.write(AppExit::Success);
             }
@@ -179,6 +186,7 @@ fn results_input(
     mut session: ResMut<Session>,
     devices: Res<DeviceIntents>,
     platform: Res<crate::Platform>,
+    net: Res<crate::net::Net>,
     mut next: ResMut<NextState<Screen>>,
 ) {
     // After the count-up (or the press that skipped it): a 1 s guard against a held button, then A or the wait moves on.
@@ -190,7 +198,9 @@ fn results_input(
     if (done > 1.0 && pressed) || done > RESULTS_WAIT {
         if session.mode == Mode::City {
             // The clear's world board, then the district map (pick the next district or replay one).
-            next.set(if super::board::wants_board(&session, &platform) { Screen::Board } else { Screen::CityMap });
+            // LAN runs skip the world board: name entry waits on a network answer, which the two machines
+            // would get at different ticks.
+            next.set(if super::board::wants_board(&session, &platform) && !net.linked() { Screen::Board } else { Screen::CityMap });
         } else {
             session.stage += 1;
             next.set(Screen::Stage);
@@ -204,10 +214,15 @@ fn game_over_input(
     session: Res<Session>,
     devices: Res<DeviceIntents>,
     platform: Res<crate::Platform>,
+    net: Res<crate::net::Net>,
     mut next: ResMut<NextState<Screen>>,
 ) {
     if advance_pressed(&mut time, t.delta_secs(), &session, &devices) {
         // The run's world board, then the title; City Run: back to the district map to retry.
-        next.set(if super::board::wants_board(&session, &platform) { Screen::Board } else { super::board::onward(&session) });
+        next.set(if super::board::wants_board(&session, &platform) && !net.linked() {
+            Screen::Board
+        } else {
+            super::board::onward(&session)
+        });
     }
 }

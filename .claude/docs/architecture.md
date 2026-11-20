@@ -32,7 +32,15 @@ src/
   input.rs            # Device (pads, two keyboard layouts) -> Intent per frame (DeviceIntents); Rumble -> pad; TvRemote marker
   audio.rs            # synthesises WAVs at startup; plays Sfx messages (deduped per frame); BT_SHOT/BT_MUTE mute
   music.rs            # one track at a time: pick(screen, mode, stage, boss up) -> pool, next() on end [pure]; pauses with the game
-  dev.rs              # BT_SHOT smoke hook: auto-join, start stage, screenshot, log average fps, quit
+  dev.rs              # BT_SHOT smoke hook: auto-join, start stage, screenshot, log average fps, quit;
+                      # BT_LAN smoke: auto host/join, bot input, desync nudge, hash log
+  net/                # LAN co-op (ADR 0014)
+    mod.rs            # Net resource (host/join/handshake), Driver schedule in Update's place, session start/finish
+    lockstep.rs       # ticks: input exchange, fixed-dt step, hash checks, resync, "waiting for" overlay
+    snap.rs           # the live stage as bytes (hash, snapshot, load)
+    wire.rs           # byte reader/writer, packed Intent, datagram, beacon, FNV       [pure]
+    link.rs           # std sockets: beacon + TCP listener, beacon finder, linked TCP/UDP pair
+    tests.rs          # two headless worlds stay in step; a desync heals
   game/
     mod.rs            # Screen state, Mode, Session/Slot, StageRun, View, components, Fx/Sfx messages, Sim schedule
     stage.rs          # OnEnter build (classic or city), spawn_enemy, respawn point, timers, borrow a tank, win/lose, pause (+ app in background), pad loss
@@ -53,7 +61,8 @@ src/
     fx.rs             # Fx messages -> particles, score pop-ups (Text2d), camera shake
   ui/
     mod.rs            # text() in vh units, colours, menu helpers
-    title.rs          # join/leave slots, START / STAGE <n> / CITY RUN / HI SCORES / SETTINGS / EXIT
+    title.rs          # join/leave slots, START / STAGE <n> / CITY RUN / LAN CO-OP / HI SCORES / SETTINGS / EXIT
+                      # (linked: START / STAGE / CITY RUN / LEAVE LAN)
     city_map.rs       # district map: 10 dots + dotted roads, pick an unlocked district
     settings.rs       # rows from settings::ITEMS + BACK; saves on every change
     hud.rs            # side panels: lives, score, power, enemy reserve icons (City Run: district track), stage flag
@@ -61,11 +70,16 @@ src/
     tally.rs          # results / game over table; classic count-up (tally_view pure: rows, blips, time bonus, score)
     board.rs          # Screen::Board after game over (classic) / district results (City): 7-letter name entry per player
                       # (prefilled), A send / B skip, world rank + top 3 + 2 above / 1 below
+    lan.rs            # Screen::Lan from the title: HOST GAME / JOIN <name> / BACK
     hiscores.rs       # Screen::HiScores from the title: MODE / PLAYERS / DISTRICT selectors (Pick -> board id), top 10 per
                       # board fetched once per visit on a worker thread (Platform::fetch_board), colour-coded rows
 ```
 
 ## Frame pipeline
+
+`net::Driver` sits where `Update` was in the main schedule: offline it runs `Update` once (the pipeline below);
+in a LAN session it runs `StateTransition` + `Update` once per lockstep tick, with `DeviceIntents` set to the two
+players' `Device::Net` intents and a fixed `dt` (`net::collect` in PreUpdate gathers this machine's input).
 
 ```
 PreUpdate   input::gather ──▶ DeviceIntents [(Device, Intent)]
@@ -90,7 +104,7 @@ HiScores: Pick (selectors) ──▶ ui::hiscores::fetch (worker thread: Platfor
 ## State machine
 
 ```
-HiScores ◀──HI SCORES / B──▶ Title
+HiScores ◀──HI SCORES / B──▶ Title ◀──B / linked──▶ Lan (LAN CO-OP)
 Settings ◀──SETTINGS / B──▶ Title ──START──▶ Stage ──all 20 killed──▶ Results ──tally, then A / 10 s──▶ Stage (n+1)
                              ▲                │
                              │                └──base destroyed or everyone out──▶ GameOver ──A──▶ [Board ──A / B──▶] Title

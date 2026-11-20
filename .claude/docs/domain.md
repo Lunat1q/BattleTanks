@@ -185,7 +185,24 @@ track, so consecutive stages start differently. In City Run a live mini-boss swi
 pair, the boss to the `bossfight` pair, and back when it dies. the pause menu pauses the music. Jingles (stage start, game over)
 play over it.
 
+## LAN co-op (`net/`, `ui/lan.rs`, ADR 0014)
+Title → LAN CO-OP (hosts whose `Platform::lan` is set). One player picks HOST GAME (the screen says "HOSTING AS
+<name>"), the other sees that name in the list (JOIN <NAME>) and picks it. Both machines must run the same version
+(the list says which version a host runs). Once linked both go to the title with nobody joined; each player joins
+with A on their own device and is shown by machine name. Then it is the normal game for two: classic or City Run,
+same rules, each machine draws it and plays its own sound and rumble.
+- Linked title: START, STAGE, CITY RUN, LEAVE LAN (no HI SCORES / SETTINGS / EXIT). Pause menu: EXIT GAME becomes
+  LEAVE LAN. Leaving ends it for both. The host's FRIENDLY FIRE, KEEP POWER and City Run unlocks apply; the joiner's
+  own come back afterwards, and only the host saves unlocks.
+- LAN runs don't go to the world board (the local hi score still counts).
+- One machine going to the background pauses the stage on both. A slow or silent partner freezes both screens with
+  "waiting for <name>..."; after 45 s the session ends and the remaining player goes on alone (the partner's slot is
+  a lost controller: pause, any local pad takes it over). A mismatch found off a stage ends it with "lost sync".
+- Input delay 3 ticks (50 ms) for both players.
+
 ## Known gaps / deliberate omissions
+- LAN: two players only, same network, same version; a phone acting as a hotspot host may not be found (the beacon
+  guesses a /24 broadcast); no reconnect after a drop.
 - The world board can't stop a careful cheat who extracts the key and fakes a plausible stage log (open source).
 - HI SCORES shows the top 10 only; the website shows the top 100 of every board.
 - City Run keeps no local best time per district; only the world board has it.
@@ -193,7 +210,8 @@ play over it.
 - Keyboard layouts share Esc and Backspace; both act for whoever is joined on the keyboard.
 - Variable timestep (dt clamped 0.05 s) rather than fixed; fine at 60 fps vsync, revisit if behaviour drifts
   at very low frame rates.
-- No online play, no AI teammate, no level editor (maps are plain text). The world board (sending runs, HI SCORES) is the only network use.
+- No online play, no AI teammate, no level editor (maps are plain text). Network use: the world board (sending runs,
+  HI SCORES) and LAN co-op on the local network.
 - City Run: no boss HP bar (bosses fade to grey as they take damage); the view never scrolls back down.
 
 ## Operational lessons

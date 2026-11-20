@@ -3,7 +3,7 @@
 use bevy::prelude::Resource;
 
 #[derive(Resource, Clone)]
-pub struct Rng(u64);
+pub struct Rng(pub(crate) u64);
 
 impl Rng {
     pub fn new(seed: u64) -> Self {

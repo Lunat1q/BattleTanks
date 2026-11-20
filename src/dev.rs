@@ -105,3 +105,96 @@ fn run(
         exit.write(AppExit::Success);
     }
 }
+
+/// LAN smoke, two copies and no player: `BT_LAN=host` / `BT_LAN=join` opens LAN CO-OP and hosts / joins the first
+/// game heard; `BT_LAN_BOT=1` plays made-up input; `BT_LAN_SECS=n` quits n seconds after linking; `BT_DESYNC=t` (on
+/// the joiner) nudges a tank at tick t to test the resync. Each copy logs `lan: tick <t> hash <h>` lines to compare.
+pub fn lan_plugin(app: &mut App) {
+    if std::env::var("BT_LAN").is_ok() {
+        app.add_systems(Update, lan_auto);
+    }
+}
+
+fn env_num(k: &str) -> Option<u64> {
+    std::env::var(k).ok()?.parse().ok()
+}
+
+fn lan_auto(
+    state: Res<State<Screen>>,
+    mut next: ResMut<NextState<Screen>>,
+    mut net: ResMut<crate::net::Net>,
+    mut linked_at: Local<Option<std::time::Instant>>,
+    mut exit: MessageWriter<AppExit>,
+) {
+    let host = std::env::var("BT_LAN").as_deref() == Ok("host");
+    if let Some(t) = *linked_at {
+        if env_num("BT_LAN_SECS").is_some_and(|s| t.elapsed().as_secs() >= s) {
+            info!("lan: smoke done");
+            exit.write(AppExit::Success);
+        }
+        return;
+    }
+    if net.linked() {
+        *linked_at = Some(std::time::Instant::now());
+        return;
+    }
+    match state.get() {
+        Screen::Title => next.set(Screen::Lan),
+        Screen::Lan if host && !net.hosting() => net.host(),
+        // The host's copy may still hold the beacon port for a moment at start-up: keep trying.
+        Screen::Lan if !host && net.finder.is_none() => net.listen(),
+        Screen::Lan if !host && !net.joining() && net.finder.as_ref().is_some_and(|f| !f.found.is_empty()) => net.join(0),
+        _ => {}
+    }
+}
+
+fn lan_env(k: &'static str) -> bool {
+    static SEEN: std::sync::Mutex<Vec<(&str, bool)>> = std::sync::Mutex::new(Vec::new());
+    let mut seen = SEEN.lock().unwrap();
+    if let Some(&(_, v)) = seen.iter().find(|(n, _)| *n == k) {
+        return v;
+    }
+    let v = std::env::var(k).is_ok();
+    seen.push((k, v));
+    v
+}
+
+/// The LAN smoke logs hashes.
+pub fn lan_log() -> bool {
+    lan_env("BT_LAN")
+}
+
+/// `BT_LAN_BOT`: made-up input for player `me`, one call per frame. A every 1.5 s (joins, starts, moves on), a new
+/// heading every half second, mostly upwards, and fire half the time but only facing up, so it doesn't shoot its own
+/// base and the stages last. Never Start, so it doesn't pause.
+pub fn lan_bot(me: Option<u8>) -> Option<crate::input::Intent> {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    if !lan_env("BT_LAN_BOT") {
+        return None;
+    }
+    static FRAME: AtomicU32 = AtomicU32::new(0);
+    let n = FRAME.fetch_add(1, Ordering::Relaxed);
+    let mut rng = crate::rng::Rng::new((n / 30) as u64 * 31 + me? as u64 + 1);
+    use crate::geom::Dir;
+    let dir = rng.chance(0.8).then(|| rng.pick(&[Dir::Up, Dir::Up, Dir::Left, Dir::Right, Dir::Down]));
+    let up = dir == Some(Dir::Up);
+    Some(crate::input::Intent {
+        dir,
+        fire: up && n % 40 < 20,
+        fire_pressed: up && n.is_multiple_of(40),
+        confirm: n % 90 == 45,
+        ..default()
+    })
+}
+
+/// `BT_DESYNC=<tick>` on the joiner: shift player 1's tank a little before that tick, as a desync would.
+pub fn lan_nudge(world: &mut World, me: u8, tick: u32) {
+    if me != 1 || env_num("BT_DESYNC") != Some(tick as u64) {
+        return;
+    }
+    let mut q = world.query::<(&crate::game::Tank, &mut Transform)>();
+    if let Some((_, mut tf)) = q.iter_mut(world).find(|(t, _)| t.team == crate::game::Team::Player(0)) {
+        tf.translation.x += 0.5;
+        warn!("lan: nudged player 1 at tick {tick} (BT_DESYNC)");
+    }
+}

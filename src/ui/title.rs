@@ -6,17 +6,37 @@ use crate::geom::Dir;
 use crate::gfx::Gfx;
 use crate::input::{Device, DeviceIntents, Intent};
 use crate::levels;
+use crate::net::Net;
 
 #[derive(Resource)]
-struct TitleMenu {
-    sel: usize,
-    stage: usize,
+pub(crate) struct TitleMenu {
+    pub(crate) sel: usize,
+    pub(crate) stage: usize,
 }
 
 #[derive(Component)]
 struct SlotLine(usize);
 
-const ITEMS: usize = 6; // START, STAGE, CITY RUN, HI SCORES, SETTINGS, EXIT
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Item {
+    Start,
+    Stage,
+    City,
+    Lan,
+    HiScores,
+    Settings,
+    Exit,
+    Leave,
+}
+
+/// The menu. Linked, only what both machines can do together: no online boards, and no settings (the host's apply).
+fn items(linked: bool, lan: bool) -> Vec<Item> {
+    use Item::*;
+    if linked {
+        return vec![Start, Stage, City, Leave];
+    }
+    [Start, Stage, City].into_iter().chain(lan.then_some(Lan)).chain([HiScores, Settings, Exit]).collect()
+}
 
 pub fn plugin(app: &mut App) {
     app.insert_resource(TitleMenu { sel: 0, stage: 1 })
@@ -32,7 +52,7 @@ fn reset_session(mut session: ResMut<Session>, devices: Res<DeviceIntents>) {
     session.log.clear();
 }
 
-fn spawn(mut commands: Commands, session: Res<Session>, gfx: Res<Gfx>) {
+fn spawn(mut commands: Commands, session: Res<Session>, gfx: Res<Gfx>, net: Res<Net>, platform: Res<crate::Platform>) {
     // Version in the corner, so a TV screenshot says which build it was.
     commands.spawn((
         text(concat!("v", env!("CARGO_PKG_VERSION")), 2.4, DIM),
@@ -54,7 +74,7 @@ fn spawn(mut commands: Commands, session: Res<Session>, gfx: Res<Gfx>) {
         });
         root.spawn(text("two-player tank defence", 3.2, DIM));
         root.spawn(Node { height: vh(4), ..default() });
-        for i in 0..ITEMS {
+        for i in 0..items(net.linked(), platform.lan.is_some()).len() {
             root.spawn((text("", 5.0, INK), MenuLine(i)));
         }
         root.spawn(Node { height: vh(4), ..default() });
@@ -65,15 +85,19 @@ fn spawn(mut commands: Commands, session: Res<Session>, gfx: Res<Gfx>) {
         });
         root.spawn(Node { height: vh(4), ..default() });
         root.spawn(text(format!("HI SCORE  {}", session.hi_score), 3.0, DIM));
+        if !net.linked() && !net.note.is_empty() {
+            root.spawn(text(format!("LAN: {}", net.note), 2.6, RED));
+        }
         root.spawn(text("Controller: stick/D-pad move  A fire  Start pause  |  Keys: P1 WASD+Space  P2 Arrows+Enter  Esc pause", 2.2, DIM));
     });
 }
 
-fn device_name(d: Device) -> String {
+fn device_name(d: Device, net: &Net) -> String {
     match d {
         Device::KeysLeft => "KEYS WASD".into(),
         Device::KeysRight => "KEYS ARROWS".into(),
         Device::Pad(_) => "CONTROLLER".into(),
+        Device::Net(i) => net.names[i as usize].to_uppercase(),
     }
 }
 
@@ -85,7 +109,11 @@ fn input(
     mut exit: MessageWriter<AppExit>,
     mut sfx: MessageWriter<Sfx>,
     platform: Res<crate::Platform>,
+    mut net: ResMut<Net>,
 ) {
+    let items = items(net.linked(), platform.lan.is_some());
+    let n = items.len();
+    menu.sel = menu.sel.min(n - 1);
     let joined: Vec<Device> = session.slots.iter().flatten().map(|s| s.device).collect();
     let mut nav = Intent::default();
     for &(dev, intent) in &devices.0 {
@@ -113,12 +141,12 @@ fn input(
     }
     // TV launcher convention: Back on the app's first screen goes home. Only with nobody joined, so a joined
     // player's Back still just leaves their slot.
-    if platform.back_exits_title && joined.is_empty() && devices.0.iter().any(|(_, i)| i.back) {
+    if platform.back_exits_title && !net.linked() && joined.is_empty() && devices.0.iter().any(|(_, i)| i.back) {
         exit.write(AppExit::Success);
     }
     match nav.nav {
-        Some(Dir::Up) => menu.sel = (menu.sel + ITEMS - 1) % ITEMS,
-        Some(Dir::Down) => menu.sel = (menu.sel + 1) % ITEMS,
+        Some(Dir::Up) => menu.sel = (menu.sel + n - 1) % n,
+        Some(Dir::Down) => menu.sel = (menu.sel + 1) % n,
         Some(Dir::Left) if menu.sel == 1 => menu.stage = if menu.stage <= 1 { levels::stage_count() } else { menu.stage - 1 },
         Some(Dir::Right) if menu.sel == 1 => menu.stage = menu.stage % levels::stage_count() + 1,
         _ => {}
@@ -127,48 +155,66 @@ fn input(
         sfx.write(Sfx::MenuMove);
     }
     if nav.confirm || nav.start {
-        match menu.sel {
-            0 | 1 if session.players() > 0 => {
+        match items[menu.sel] {
+            Item::Start | Item::Stage if session.players() > 0 => {
                 session.mode = Mode::Classic;
                 session.stage = menu.stage;
                 sfx.write(Sfx::MenuPick);
                 next.set(Screen::Stage);
             }
-            2 if session.players() > 0 => {
+            Item::City if session.players() > 0 => {
                 session.mode = Mode::City;
                 sfx.write(Sfx::MenuPick);
                 next.set(Screen::CityMap);
             }
-            3 => {
+            Item::Lan => {
+                sfx.write(Sfx::MenuPick);
+                next.set(Screen::Lan);
+            }
+            Item::HiScores => {
                 sfx.write(Sfx::MenuPick);
                 next.set(Screen::HiScores);
             }
-            4 => next.set(Screen::Settings),
-            5 => {
+            Item::Settings => next.set(Screen::Settings),
+            Item::Exit => {
                 exit.write(AppExit::Success);
+            }
+            Item::Leave => {
+                sfx.write(Sfx::MenuPick);
+                net.leave = true;
             }
             _ => {}
         }
     }
 }
 
-fn refresh(menu: Res<TitleMenu>, session: Res<Session>, mut lines: Query<(&mut Text, Option<&MenuLine>, Option<&SlotLine>)>) {
+fn refresh(
+    menu: Res<TitleMenu>,
+    session: Res<Session>,
+    net: Res<Net>,
+    platform: Res<crate::Platform>,
+    mut lines: Query<(&mut Text, Option<&MenuLine>, Option<&SlotLine>)>,
+) {
+    let items = items(net.linked(), platform.lan.is_some());
     for (mut t, line, slot) in &mut lines {
         if let Some(MenuLine(i)) = line {
-            let label = match i {
-                0 if session.players() == 0 => "PRESS A TO JOIN".to_string(),
-                0 => "START".to_string(),
-                1 => format!("STAGE  < {} >", menu.stage),
-                2 => "CITY RUN".to_string(),
-                3 => "HI SCORES".to_string(),
-                4 => "SETTINGS".to_string(),
-                _ => "EXIT".to_string(),
+            let label = match items.get(*i) {
+                Some(Item::Start) if session.players() == 0 => "PRESS A TO JOIN".to_string(),
+                Some(Item::Start) => "START".to_string(),
+                Some(Item::Stage) => format!("STAGE  < {} >", menu.stage),
+                Some(Item::City) => "CITY RUN".to_string(),
+                Some(Item::Lan) => "LAN CO-OP".to_string(),
+                Some(Item::HiScores) => "HI SCORES".to_string(),
+                Some(Item::Settings) => "SETTINGS".to_string(),
+                Some(Item::Exit) => "EXIT".to_string(),
+                Some(Item::Leave) => "LEAVE LAN".to_string(),
+                None => String::new(),
             };
             set_text(&mut t, menu_label(menu.sel == *i, &label));
         }
         if let Some(SlotLine(i)) = slot {
             let s = match &session.slots[*i] {
-                Some(s) => format!("{}P  {}  READY", i + 1, device_name(s.device)),
+                Some(s) => format!("{}P  {}  READY", i + 1, device_name(s.device, &net)),
                 None => format!("{}P  press A to join", i + 1),
             };
             set_text(&mut t, s);

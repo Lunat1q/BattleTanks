@@ -17,6 +17,7 @@ mod gfx;
 mod input;
 mod levels;
 mod music;
+mod net;
 mod rng;
 mod rules;
 mod scores;
@@ -52,6 +53,15 @@ pub struct Platform {
     /// Reads a world board for the HI SCORES screen: `url -> answer`, on a worker thread. Default: the OS `curl`.
     /// `None` = the screen says the board is not available.
     pub fetch_board: Option<fn(&str) -> Result<String, String>>,
+    /// LAN CO-OP (two machines, one game): called with `true` when the LAN screen opens, answering this machine's
+    /// name for the other side's list (a phone may also take its Wi-Fi multicast lock here), and `false` when it
+    /// closes. `None` hides LAN CO-OP. Default: the computer name.
+    pub lan: Option<fn(bool) -> String>,
+}
+
+/// The desktop's name for LAN CO-OP.
+fn computer_name(_open: bool) -> String {
+    std::env::var("COMPUTERNAME").or_else(|_| std::env::var("HOSTNAME")).unwrap_or_else(|_| "PC".into())
 }
 
 impl Default for Platform {
@@ -64,6 +74,7 @@ impl Default for Platform {
             back_exits_title: false,
             post_score: Some(scores::curl_post),
             fetch_board: Some(scores::curl_get),
+            lan: Some(computer_name),
         }
     }
 }
@@ -107,6 +118,8 @@ pub fn run_with(platform: Platform, extra: impl FnOnce(&mut App)) {
         scores::plugin,
         ui::plugin,
         dev::plugin,
+        net::plugin,
+        dev::lan_plugin,
     ));
     extra(&mut app);
     app.run();

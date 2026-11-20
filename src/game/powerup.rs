@@ -55,10 +55,15 @@ pub fn pickup(
     mut fx: MessageWriter<Fx>,
     mut sfx: MessageWriter<Sfx>,
     mut rumble: MessageWriter<Rumble>,
+    ids: Ids,
 ) {
-    for (pe, power, ptf) in &powerups {
+    for (pe, power, ptf) in powerups.iter().sort_by_key::<Entity, _>(|e| order(&ids, *e)) {
         let prect = rect_at(ptf.translation.xy(), TILE);
-        let Some((te, tank, _, mut gun)) = players.iter_mut().find(|(_, _, tf, _)| overlaps(prect, rect_at(tf.translation.xy(), TILE)))
+        // Spawn order: if both players touch it, the same one gets it on every machine.
+        let Some((te, tank, _, mut gun)) = players
+            .iter_mut()
+            .sort_by_key::<Entity, _>(|e| order(&ids, *e))
+            .find(|(_, _, tf, _)| overlaps(prect, rect_at(tf.translation.xy(), TILE)))
         else {
             continue;
         };

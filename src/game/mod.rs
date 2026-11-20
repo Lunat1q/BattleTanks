@@ -27,6 +27,8 @@ pub enum Screen {
     Board,
     /// HI SCORES from the title: the world board's top 10 per category.
     HiScores,
+    /// LAN CO-OP from the title: host a game or join one on the same Wi-Fi.
+    Lan,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -180,7 +182,29 @@ pub enum Team {
     Enemy,
 }
 
+/// Spawn order of a simulated thing (tank, bullet, power-up, base), counted from 1 per process. Sim loops whose
+/// result depends on order walk entities by it: Bevy's own order follows archetypes, and those differ between two
+/// LAN machines because `gfx` adds sprites on different frames.
+#[derive(Component, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub struct NetId(pub u64);
+
+static NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+impl Default for NetId {
+    fn default() -> Self {
+        NetId(NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+    }
+}
+
+/// Spawn-order lookup for `sort_by_key::<Entity, _>(|e| order(&ids, *e))`.
+pub type Ids<'w, 's> = Query<'w, 's, &'static NetId>;
+
+pub fn order(ids: &Ids, e: Entity) -> NetId {
+    ids.get(e).copied().unwrap_or(NetId(u64::MAX))
+}
+
 #[derive(Component)]
+#[require(NetId)]
 pub struct Tank {
     pub team: Team,
     pub dir: Dir,
@@ -233,6 +257,7 @@ pub struct Spawning(pub f32);
 pub struct HitFlash(pub f32);
 
 #[derive(Component)]
+#[require(NetId)]
 pub struct Bullet {
     pub owner: Entity,
     pub team: Team,
@@ -242,9 +267,11 @@ pub struct Bullet {
 }
 
 #[derive(Component)]
+#[require(NetId)]
 pub struct Base;
 
 #[derive(Component)]
+#[require(NetId)]
 pub struct PowerUp(pub PowerKind);
 
 /// A City Run power-up placed in a brick stash: stays put when a new drop appears.

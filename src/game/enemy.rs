@@ -37,11 +37,18 @@ pub fn think(
     mut rng: ResMut<Rng>,
     players: Query<(&Transform, &Tank), (Without<Enemy>, Without<Spawning>)>,
     mut enemies: Query<(&Transform, &mut Tank, &mut Gun, &mut Enemy), Without<Spawning>>,
+    ids: Ids,
 ) {
     let dt = time.delta_secs();
-    let player_pos: Vec<Vec2> =
-        players.iter().filter(|(_, t)| matches!(t.team, Team::Player(_))).map(|(tf, _)| tf.translation.xy()).collect();
-    for (tf, mut tank, mut gun, mut ai) in &mut enemies {
+    // Spawn order: on a tie for nearest (an enemy halfway between the two players) the first one wins.
+    let player_pos: Vec<Vec2> = players
+        .iter()
+        .sort_by_key::<Entity, _>(|e| order(&ids, *e))
+        .filter(|(_, t)| matches!(t.team, Team::Player(_)))
+        .map(|(tf, _)| tf.translation.xy())
+        .collect();
+    // Spawn order: each enemy draws from the shared dice, so the order decides who gets which roll.
+    for (tf, mut tank, mut gun, mut ai) in enemies.iter_mut().sort_by_key::<Entity, _>(|e| order(&ids, *e)) {
         if run.freeze > 0.0 {
             tank.want = None;
             gun.trigger = false;

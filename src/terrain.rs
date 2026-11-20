@@ -24,6 +24,9 @@ pub enum Tile {
 }
 
 impl Tile {
+    pub const ALL: [Tile; 9] =
+        [Tile::Empty, Tile::Brick, Tile::Steel, Tile::Water, Tile::Trees, Tile::Ice, Tile::Wall, Tile::Gate, Tile::Secret];
+
     pub fn blocks_tank(self) -> bool {
         matches!(self, Tile::Brick | Tile::Steel | Tile::Water | Tile::Wall | Tile::Gate | Tile::Secret)
     }
@@ -44,9 +47,9 @@ pub enum Impact {
 
 #[derive(Resource, Clone)]
 pub struct Terrain {
-    tiles: Vec<Tile>,
+    pub(crate) tiles: Vec<Tile>,
     /// Sub-cell rows (52 on a classic stage).
-    rows: usize,
+    pub(crate) rows: usize,
     /// Sub-cells changed since the renderer last looked.
     pub dirty: Vec<(usize, usize)>,
 }

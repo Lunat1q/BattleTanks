@@ -15,6 +15,8 @@ pub enum Device {
     /// Arrows + Enter/Right Ctrl/Numpad 0, Esc pauses.
     KeysRight,
     Pad(Entity),
+    /// Player slot 0/1 of a LAN session (`net`): the same on both machines, fed from the lockstep.
+    Net(u8),
 }
 
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
@@ -34,6 +36,8 @@ pub struct Intent {
     pub pause: bool,
     /// Direction just pressed (menu navigation).
     pub nav: Option<Dir>,
+    /// This player's app went to the background (LAN sessions, where it must reach both machines): pauses a stage.
+    pub away: bool,
 }
 
 /// Intent of every connected device this frame (title screen joins from these).
@@ -59,6 +63,7 @@ pub fn merge(a: Intent, b: Intent) -> Intent {
         start: a.start || b.start,
         pause: a.pause || b.pause,
         nav: a.nav.or(b.nav),
+        away: a.away || b.away,
     }
 }
 
@@ -89,6 +94,7 @@ fn keyboard(keys: &ButtonInput<KeyCode>, moves: [KeyCode; 4], fire: &[KeyCode], 
         start: keys.just_pressed(KeyCode::Escape),
         pause: false,
         nav: keys_dir(keys, moves, false),
+        away: false,
     }
 }
 
@@ -109,10 +115,11 @@ fn pad_intent(pad: &Gamepad, remote: bool, last_stick: &mut Option<Dir>) -> Inte
         start: pad.just_pressed(Start),
         pause: remote && pad.just_pressed(East),
         nav: Dir::ALL.into_iter().zip(dpad).find(|&(_, b)| pad.just_pressed(b)).map(|(d, _)| d).or(stick_edge),
+        away: false,
     }
 }
 
-fn gather(
+pub fn gather(
     keys: Res<ButtonInput<KeyCode>>,
     pads: Query<(Entity, &Gamepad, Has<TvRemote>)>,
     mut sticks: Local<HashMap<Entity, Option<Dir>>>,
@@ -135,6 +142,8 @@ fn gather(
 fn rumble(
     settings: Res<Settings>,
     session: Res<Session>,
+    net: Res<crate::net::Net>,
+    pads: Query<Entity, With<Gamepad>>,
     time: Res<Time<Real>>,
     mut later: Local<Vec<Rumble>>,
     mut events: MessageReader<Rumble>,
@@ -152,8 +161,13 @@ fn rumble(
         wait
     });
     for r in &due {
-        let Some(Device::Pad(gamepad)) = session.slots.get(r.slot).and_then(|s| s.as_ref()).map(|s| s.device) else { continue };
-        if settings.vibration {
+        // A LAN player's own slot rumbles every local pad; the partner's slot is the other machine's business.
+        let targets: Vec<Entity> = match session.slots.get(r.slot).and_then(|s| s.as_ref()).map(|s| s.device) {
+            Some(Device::Pad(gamepad)) => vec![gamepad],
+            Some(Device::Net(slot)) if net.me() == Some(slot) => pads.iter().collect(),
+            _ => continue,
+        };
+        for gamepad in targets.into_iter().filter(|_| settings.vibration) {
             out.write(GamepadRumbleRequest::Add {
                 gamepad,
                 duration: std::time::Duration::from_secs_f32(r.secs),
