@@ -48,7 +48,7 @@ pub struct Row {
     pub names: String,
 }
 
-/// The server's answer: our rank (`None` = beyond the kept top 1000), runs ever sent to this board, and the
+/// The server's answer: our rank (`None` = beyond the kept top 100), runs ever sent to this board, and the
 /// top rows plus the ones around ours.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Board {

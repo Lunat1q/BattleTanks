@@ -68,7 +68,7 @@ all 20 destroyed → 3 s → results tally → next stage. Base lost or every pl
   Each player sets a name of up to 7 letters with their own controller, prefilled with their last one (up/down letter,
   A-Z then blank; left/right move; A sends, in 2P once both pressed A; B skips to the title, nothing sent).
   The run's stage log goes to `scores.maxpodolski.com` (game `battletanks`), which recomputes and checks it and keeps
-  the top 1000 per board (1P, 2P co-op team total). The screen then shows the world rank, the top 3, the two rows above
+  the top 100 per board (1P, 2P co-op team total). The screen then shows the world rank, the top 3, the two rows above
   ours and the one below, or "offline - score not sent"; A moves on. Runs quit from the pause menu are not sent.
 - **City Run boards** (ADR 0010): the district results screen (it shows `TIME m:ss.t`) is followed by the same board
   screen (B skips to the district map), which sends the clear: play time (to the boss kill) and kills per player, ordinary tanks by type plus turrets,
