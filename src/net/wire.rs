@@ -6,7 +6,7 @@ use crate::input::Intent;
 use bevy::math::Vec2;
 
 /// Bumped on any change to these formats or to what the simulation does per tick.
-pub const PROTO: u32 = 1;
+pub const PROTO: u32 = 2;
 /// UDP port the host's beacon goes to; joiners listen here.
 pub const BEACON_PORT: u16 = 47474;
 /// Set on the host's input for a tick after which both sides load the host's snapshot.
@@ -148,7 +148,8 @@ pub fn held(sent: Intent) -> Intent {
 }
 
 /// The lockstep datagram, sent every frame both ways: our inputs from tick `first` on (resent until acked, so a
-/// lost packet costs nothing), the next tick we still need from the peer, and our latest state hash.
+/// lost packet costs nothing), the next tick we still need from the peer, our latest state hash, and a clock stamp
+/// plus the echo of the peer's latest one (with how long we sat on it), which times the round trip.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Packet {
     pub session: u32,
@@ -156,6 +157,10 @@ pub struct Packet {
     pub inputs: Vec<u16>,
     pub ack: u32,
     pub hash: Option<(u32, u64)>,
+    /// Sender's clock, ms.
+    pub stamp: u32,
+    /// The peer's latest `stamp` we got, and ms since we got it.
+    pub echo: Option<(u32, u16)>,
 }
 
 impl Packet {
@@ -167,7 +172,9 @@ impl Packet {
         }
         w.u32(self.ack);
         let (t, h) = self.hash.unwrap_or((u32::MAX, 0));
-        w.u32(t).u64(h);
+        w.u32(t).u64(h).u32(self.stamp);
+        let (e, age) = self.echo.unwrap_or((u32::MAX, 0));
+        w.u32(e).u16(age);
         w.0
     }
 
@@ -177,8 +184,17 @@ impl Packet {
         let (session, first, n) = (r.u32()?, r.u32()?, r.u8()?);
         let inputs = (0..n).map(|_| r.u16()).collect::<Option<Vec<_>>>()?;
         let ack = r.u32()?;
-        let (t, h) = (r.u32()?, r.u64()?);
-        Some(Packet { session, first, inputs, ack, hash: (t != u32::MAX).then_some((t, h)) })
+        let (t, h, stamp) = (r.u32()?, r.u64()?, r.u32()?);
+        let (e, age) = (r.u32()?, r.u16()?);
+        Some(Packet {
+            session,
+            first,
+            inputs,
+            ack,
+            hash: (t != u32::MAX).then_some((t, h)),
+            stamp,
+            echo: (e != u32::MAX).then_some((e, age)),
+        })
     }
 }
 
@@ -234,7 +250,15 @@ mod tests {
 
     #[test]
     fn packets_round_trip() {
-        let p = Packet { session: 9, first: 120, inputs: vec![1, 2, RESYNC | 3], ack: 118, hash: Some((90, 0xDEAD_BEEF)) };
+        let p = Packet {
+            session: 9,
+            first: 120,
+            inputs: vec![1, 2, RESYNC | 3],
+            ack: 118,
+            hash: Some((90, 0xDEAD_BEEF)),
+            stamp: 5000,
+            echo: Some((4980, 7)),
+        };
         assert_eq!(Packet::decode(&p.encode()), Some(p));
         let bare = Packet { session: 1, ..default() };
         assert_eq!(Packet::decode(&bare.encode()), Some(bare));

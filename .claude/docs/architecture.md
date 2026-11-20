@@ -36,7 +36,7 @@ src/
                       # BT_LAN smoke: auto host/join, bot input, desync nudge, hash log
   net/                # LAN co-op (ADR 0014)
     mod.rs            # Net resource (host/join/handshake), Driver schedule in Update's place, session start/finish
-    lockstep.rs       # ticks: input exchange, fixed-dt step, hash checks, resync, "waiting for" overlay
+    lockstep.rs       # ticks: input exchange, fixed-dt step, hash checks, resync, round trip -> input delay, "waiting for" overlay
     snap.rs           # the live stage as bytes (hash, snapshot, load)
     wire.rs           # byte reader/writer, packed Intent, datagram, beacon, FNV       [pure]
     link.rs           # std sockets: beacon + TCP listener, beacon finder, linked TCP/UDP pair

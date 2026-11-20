@@ -198,7 +198,8 @@ same rules, each machine draws it and plays its own sound and rumble.
 - One machine going to the background pauses the stage on both. A slow or silent partner freezes both screens with
   "waiting for <name>..."; after 45 s the session ends and the remaining player goes on alone (the partner's slot is
   a lost controller: pause, any local pad takes it over). A mismatch found off a stage ends it with "lost sync".
-- Input delay 3 ticks (50 ms) for both players.
+- Input delay picked per machine from the measured round trip (ADR 0015): starts at 3 ticks (50 ms), usually settles
+  at 2 (33 ms) on home Wi-Fi, up to 5 on a bad link; the linked title shows the round trip and the delay.
 
 ## Known gaps / deliberate omissions
 - LAN: two players only, same network, same version; a phone acting as a hotspot host may not be found (the beacon

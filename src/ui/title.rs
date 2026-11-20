@@ -17,6 +17,10 @@ pub(crate) struct TitleMenu {
 #[derive(Component)]
 struct SlotLine(usize);
 
+/// Linked: the measured round trip and the input delay it picked.
+#[derive(Component)]
+struct PingLine;
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Item {
     Start,
@@ -85,6 +89,9 @@ fn spawn(mut commands: Commands, session: Res<Session>, gfx: Res<Gfx>, net: Res<
         });
         root.spawn(Node { height: vh(4), ..default() });
         root.spawn(text(format!("HI SCORE  {}", session.hi_score), 3.0, DIM));
+        if net.linked() {
+            root.spawn((text("", 2.6, DIM), PingLine));
+        }
         if !net.linked() && !net.note.is_empty() {
             root.spawn(text(format!("LAN: {}", net.note), 2.6, RED));
         }
@@ -193,10 +200,17 @@ fn refresh(
     session: Res<Session>,
     net: Res<Net>,
     platform: Res<crate::Platform>,
-    mut lines: Query<(&mut Text, Option<&MenuLine>, Option<&SlotLine>)>,
+    mut lines: Query<(&mut Text, Option<&MenuLine>, Option<&SlotLine>, Has<PingLine>)>,
 ) {
     let items = items(net.linked(), platform.lan.is_some());
-    for (mut t, line, slot) in &mut lines {
+    for (mut t, line, slot, ping) in &mut lines {
+        if ping {
+            let s = match net.ping {
+                Some((rtt, delay)) => format!("LAN  round trip {rtt} ms  -  input delay {delay} ({} ms)", (delay * 50).div_ceil(3)),
+                None => "LAN  measuring the connection...".into(),
+            };
+            set_text(&mut t, s);
+        }
         if let Some(MenuLine(i)) = line {
             let label = match items.get(*i) {
                 Some(Item::Start) if session.players() == 0 => "PRESS A TO JOIN".to_string(),

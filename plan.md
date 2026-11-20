@@ -86,7 +86,9 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Hash every 30 ticks, host snapshot on mismatch (checked: forced nudge healed after 7 ticks, 3.3 KB)
 - [x] LAN CO-OP screen (host / join by name), linked title and pause menu, board skipped, partner loss → takeover
 - [x] Two exes on one PC with bots: 4440 ticks, every hash equal
-- [ ] Two phones on home Wi-Fi (owner): feel of the 50 ms delay, beacon found, background pause, leaving
+- [x] Two phones on home Wi-Fi (owner, 2026-11-19): a City Run played, one short lag
+- [x] Input delay from the measured round trip, 1-5 ticks per machine (ADR 0015); loopback settles at 2
+- [ ] Owner: feel of the adaptive delay on the phones
 - [ ] Merge to `main` once played
 
 ## Current state

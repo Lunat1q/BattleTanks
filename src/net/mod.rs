@@ -60,6 +60,8 @@ pub struct Net {
     pub leave: bool,
     /// Seconds since the last tick ran while linked (the partner is slow or gone).
     pub stalled: f32,
+    /// While linked: (round trip p95 ms, our input delay in ticks), once measured.
+    pub ping: Option<(u32, u32)>,
     /// A finished handshake for the driver, which needs the whole world to start the session.
     ready: Option<(Conn, Hello, u8, Hello)>,
     /// This machine's first local device: it takes over our slot when the session ends.
@@ -254,7 +256,7 @@ fn start(world: &mut World, (conn, theirs, me, ours): (Conn, Hello, u8, Hello)) 
     world.resource_mut::<NextState<Screen>>().set(Screen::Title);
     world.insert_resource(Lockstep::new(conn, me, session, restore));
     let mut net = world.resource_mut::<Net>();
-    (net.me, net.names, net.pending, net.note, net.stalled) = (Some(me), names, Pending::None, String::new(), 0.0);
+    (net.me, net.names, net.pending, net.note, net.stalled, net.ping) = (Some(me), names, Pending::None, String::new(), 0.0, None);
     net.pending_intent = Intent::default();
 }
 
