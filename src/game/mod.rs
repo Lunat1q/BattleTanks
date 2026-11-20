@@ -25,6 +25,8 @@ pub enum Screen {
     CityMap,
     /// World board: name entry and rank, after a classic game over or a City Run district clear.
     Board,
+    /// HI SCORES from the title: the world board's top 10 per category.
+    HiScores,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]

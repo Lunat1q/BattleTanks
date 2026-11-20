@@ -14,12 +14,12 @@ levels/city/NN.txt    # 10 City Run districts, 15-24 screens tall (format in cit
 src/
   main.rs             # Windows exe: calls battle_tanks::run()
   lib.rs              # run() / run_with(Platform, extra plugins): loads Settings first so the window opens in the saved mode;
-                      # plugin list. Public API for wrapper crates: Platform (incl. post_score), TvRemote, canvas, paint_icon, paint_banner
+                      # plugin list. Public API for wrapper crates: Platform (incl. post_score, fetch_board), TvRemote, canvas, paint_icon, paint_banner
   geom.rs             # units (SUB 4, CELL 8, TILE 16, FIELD 208), Dir, rect overlap, grid snap  [pure]
   rng.rs              # xorshift64* Resource: below/range/chance/pick/shuffle                     [pure]
   scores.rs           # Best (hi score + last initials) <-> scores.txt; world board: payload (stage log JSON), city_payload
                       # (district clear time + kills), curl_post, Online (worker thread -> poll), parse_board (plain-text
-                      # answer); log_stage on leaving a stage or district; CITY_FACTS test = server table  [ADR 0009, 0010]
+                      # answer), curl_get (HI SCORES); log_stage on leaving a stage or district; CITY_FACTS test = server table  [ADR 0009, 0010]
   settings.rs         # Settings (fps, vsync, fullscreen, volume, music, shake, show_fps, friendly_fire, vibration) <-> %APPDATA%\BattleTanks\settings.txt;
                       # apply to window, F11 toggle, FPS overlay, frame limiter in Last
   rules.rs            # every gameplay number: speeds, timers, enemy stats, gun levels, scoring    [pure]
@@ -53,7 +53,7 @@ src/
     fx.rs             # Fx messages -> particles, score pop-ups (Text2d), camera shake
   ui/
     mod.rs            # text() in vh units, colours, menu helpers
-    title.rs          # join/leave slots, START / STAGE <n> / CITY RUN / SETTINGS / EXIT
+    title.rs          # join/leave slots, START / STAGE <n> / CITY RUN / HI SCORES / SETTINGS / EXIT
     city_map.rs       # district map: 10 dots + dotted roads, pick an unlocked district
     settings.rs       # rows from settings::ITEMS + BACK; saves on every change
     hud.rs            # side panels: lives, score, power, enemy reserve icons (City Run: district track), stage flag
@@ -61,6 +61,8 @@ src/
     tally.rs          # results / game over table; classic count-up (tally_view pure: rows, blips, time bonus, score)
     board.rs          # Screen::Board after game over (classic) / district results (City): 7-letter name entry per player
                       # (prefilled), A send / B skip, world rank + top 3 + 2 above / 1 below
+    hiscores.rs       # Screen::HiScores from the title: MODE / PLAYERS / DISTRICT selectors (Pick -> board id), top 10 per
+                      # board fetched once per visit on a worker thread (Platform::fetch_board), colour-coded rows
 ```
 
 ## Frame pipeline
@@ -82,11 +84,13 @@ Update          ├─ title / pause / results / game-over menus read DeviceInte
 
 Leaving Stage (classic): scores::log_stage ──▶ Session.log (StageLog per stage: time, kills, power-ups per player)
 Board: ui::board name entry ──▶ scores::Online::send (worker thread: Platform::post_score = curl) ──▶ scores::poll ──▶ ui::board::show
+HiScores: Pick (selectors) ──▶ ui::hiscores::fetch (worker thread: Platform::fetch_board = curl GET ?format=text) ──▶ parse_board ──▶ refresh
 ```
 
 ## State machine
 
 ```
+HiScores ◀──HI SCORES / B──▶ Title
 Settings ◀──SETTINGS / B──▶ Title ──START──▶ Stage ──all 20 killed──▶ Results ──tally, then A / 10 s──▶ Stage (n+1)
                              ▲                │
                              │                └──base destroyed or everyone out──▶ GameOver ──A──▶ [Board ──A / B──▶] Title

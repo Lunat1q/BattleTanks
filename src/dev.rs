@@ -1,5 +1,5 @@
 //! Agent/dev smoke hook: `BT_SHOT=out.png` auto-joins two keyboard players, starts `BT_STAGE`
-//! (default 1; 0 = stay on the title, or `BT_SCREEN=settings` / `city` (district map) / `results` / `gameover` (a
+//! (default 1; 0 = stay on the title, or `BT_SCREEN=settings` / `hiscores` / `city` (district map) / `results` / `gameover` (a
 //! made-up classic run, to look at the tally and the name entry)) or City Run
 //! district `BT_CITY`, saves a screenshot after `BT_SHOT_AT` seconds (default 7) and quits. `BT_VIEW=<units>` pins the
 //! City Run view that far up the map, to look at bastions and bosses. Inert unless `BT_SHOT` is set.
@@ -61,6 +61,7 @@ fn run(
     if shot.stage == 0 && shot.city == 0 && *state.get() == Screen::Title {
         match std::env::var("BT_SCREEN").as_deref() {
             Ok("settings") => next.set(Screen::Settings),
+            Ok("hiscores") => next.set(Screen::HiScores),
             Ok("city") if session.players() == 0 => {
                 session.slots = keys();
                 next.set(Screen::CityMap);

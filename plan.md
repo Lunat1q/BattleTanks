@@ -72,6 +72,8 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
   server checks time and kills against the district (ADR 0010)
 - [x] Couch feedback: rumble on enemy hits and kills, a sad three-pulse on losing a tank; world board on its own screen
   after results / game over (A send, B skip, top 3 + 2 above + 1 below); names up to 7 letters, prefilled
+- [x] HI SCORES screen on the title: world top 10 per category (classic 1P/2P, City Run district x 1P/2P), read live
+  from the server's public board (`?format=text`); checked against the live server in a smoke run
 - [ ] World board live check: server reachable at `scores.maxpodolski.com` (tunnel route + DNS added, key and rules checked live); first real run from the couch still to come
 
 ## Current state

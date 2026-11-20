@@ -2,6 +2,7 @@
 
 mod board;
 mod city_map;
+mod hiscores;
 mod hud;
 mod screens;
 mod settings;
@@ -18,7 +19,7 @@ pub const DIM: Color = Color::srgb(0.55, 0.58, 0.66);
 pub const RED: Color = Color::srgb(1.0, 0.36, 0.30);
 
 pub fn plugin(app: &mut App) {
-    app.add_plugins((title::plugin, hud::plugin, screens::plugin, settings::plugin, city_map::plugin, board::plugin));
+    app.add_plugins((title::plugin, hud::plugin, screens::plugin, settings::plugin, city_map::plugin, board::plugin, hiscores::plugin));
 }
 
 /// Text bundle sized in % of screen height.

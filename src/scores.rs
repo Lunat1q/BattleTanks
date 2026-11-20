@@ -125,19 +125,30 @@ pub fn clock_text(tenths: u32) -> String {
 /// Default `Post`: the `curl` that ships with Windows 10+ (and every desktop Linux/macOS), so the game needs no
 /// HTTP/TLS crates. ponytail: a missing curl just means offline; swap in a client crate if that ever bites.
 pub fn curl_post(url: &str, key: &str, body: &str) -> Result<String, String> {
+    let header = format!("X-Game-Key: {key}");
+    curl(&["-H", "Content-Type: application/json", "-H", &header, "--data-binary", "@-", url], Some(body))
+}
+
+/// Default `fetch_board`: a plain GET through the same `curl`.
+pub fn curl_get(url: &str) -> Result<String, String> {
+    curl(&[url], None)
+}
+
+fn curl(args: &[&str], body: Option<&str>) -> Result<String, String> {
     use std::io::Write;
     use std::process::{Command, Stdio};
     let mut cmd = Command::new("curl");
-    cmd.args(["-sS", "--fail-with-body", "--max-time", "15", "-H", "Content-Type: application/json", "-H"])
-        .arg(format!("X-Game-Key: {key}"))
-        .args(["--data-binary", "@-", url])
-        .stdin(Stdio::piped())
+    cmd.args(["-sS", "--fail-with-body", "--max-time", "15"])
+        .args(args)
+        .stdin(if body.is_some() { Stdio::piped() } else { Stdio::null() })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     #[cfg(windows)]
     std::os::windows::process::CommandExt::creation_flags(&mut cmd, 0x0800_0000); // CREATE_NO_WINDOW
     let mut child = cmd.spawn().map_err(|e| format!("curl: {e}"))?;
-    child.stdin.take().ok_or("curl stdin")?.write_all(body.as_bytes()).map_err(|e| e.to_string())?;
+    if let Some(body) = body {
+        child.stdin.take().ok_or("curl stdin")?.write_all(body.as_bytes()).map_err(|e| e.to_string())?;
+    }
     let out = child.wait_with_output().map_err(|e| e.to_string())?;
     let text = String::from_utf8_lossy(&out.stdout).trim().to_string();
     if out.status.success() {

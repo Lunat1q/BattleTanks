@@ -81,7 +81,7 @@ pub enum Fight {
 pub fn pick(screen: Screen, mode: Mode, stage: usize, fight: Fight) -> &'static [Track] {
     let n = stage.max(1) - 1;
     match screen {
-        Screen::Title | Screen::Settings => &[Menu],
+        Screen::Title | Screen::Settings | Screen::HiScores => &[Menu],
         Screen::CityMap => &[MenuAlt],
         Screen::Results => &[Victory],
         Screen::GameOver => &[Loss],

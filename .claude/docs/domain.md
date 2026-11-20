@@ -78,6 +78,15 @@ all 20 destroyed → 3 s → results tally → next stage. Base lost or every pl
   live on both sides (`scores.rs` `CITY_FACTS`, server `CityRules.Facts`); the test
   `city_facts_match_the_maps_and_the_server` fails on a map change until both are updated.
 
+- **HI SCORES** (title menu, between CITY RUN and SETTINGS; any pad, remote or keyboard): the world
+  board's top 10 for one category at a time. Selectors: MODE (CLASSIC / CITY RUN), PLAYERS (1 / 2), and in City Run
+  DISTRICT (1-10 with its name). Up/down picks a selector, left/right (or A) changes it, B goes back; the last board
+  looked at is kept until the game closes. Columns: rank, names, score + stages cleared (City Run: clear time + kills).
+  Ranks 1-3 are gold, silver and bronze; rows with a name this machine last entered are green. Each board is read once
+  per visit (`GET ...scores?format=text&take=10&board=<id>`, no key needed): "loading...", "no runs yet - be the
+  first!", or "can't reach the world board - A to retry". Classic boards also show this machine's local best. A host
+  without `Platform::fetch_board` shows "not available in this build".
+
 **Map rule (tested):** from every enemy and player spawn, a 16×16 tank must be able to reach the base treating
 bricks as open and steel/water as walls (`levels::tests::every_spawn_can_reach_the_base`). Watch for: a water gap
 that exits straight into steel, and 1-cell (8-unit) open bands between obstacle rows — a tank needs 2 cells.
@@ -178,13 +187,13 @@ play over it.
 
 ## Known gaps / deliberate omissions
 - The world board can't stop a careful cheat who extracts the key and fakes a plausible stage log (open source).
-- No way to see the world board in game except your own result at game over / district clear (the website shows it all).
+- HI SCORES shows the top 10 only; the website shows the top 100 of every board.
 - City Run keeps no local best time per district; only the world board has it.
 - Grenade-killed spawning enemies leave their sparkle to finish (cosmetic).
 - Keyboard layouts share Esc and Backspace; both act for whoever is joined on the keyboard.
 - Variable timestep (dt clamped 0.05 s) rather than fixed; fine at 60 fps vsync, revisit if behaviour drifts
   at very low frame rates.
-- No online play, no AI teammate, no level editor (maps are plain text). The world board is the only network use.
+- No online play, no AI teammate, no level editor (maps are plain text). The world board (sending runs, HI SCORES) is the only network use.
 - City Run: no boss HP bar (bosses fade to grey as they take damage); the view never scrolls back down.
 
 ## Operational lessons

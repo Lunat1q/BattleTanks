@@ -49,6 +49,9 @@ pub struct Platform {
     /// Sends a finished classic run to the world board: `(url, game key, JSON) -> answer`, on a worker thread.
     /// Default: the OS `curl`. `None` = offline (local hi score only).
     pub post_score: Option<fn(&str, &str, &str) -> Result<String, String>>,
+    /// Reads a world board for the HI SCORES screen: `url -> answer`, on a worker thread. Default: the OS `curl`.
+    /// `None` = the screen says the board is not available.
+    pub fetch_board: Option<fn(&str) -> Result<String, String>>,
 }
 
 impl Default for Platform {
@@ -60,6 +63,7 @@ impl Default for Platform {
             host_window: false,
             back_exits_title: false,
             post_score: Some(scores::curl_post),
+            fetch_board: Some(scores::curl_get),
         }
     }
 }

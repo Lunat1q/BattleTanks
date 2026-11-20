@@ -16,7 +16,7 @@ struct TitleMenu {
 #[derive(Component)]
 struct SlotLine(usize);
 
-const ITEMS: usize = 5; // START, STAGE, CITY RUN, SETTINGS, EXIT
+const ITEMS: usize = 6; // START, STAGE, CITY RUN, HI SCORES, SETTINGS, EXIT
 
 pub fn plugin(app: &mut App) {
     app.insert_resource(TitleMenu { sel: 0, stage: 1 })
@@ -139,8 +139,12 @@ fn input(
                 sfx.write(Sfx::MenuPick);
                 next.set(Screen::CityMap);
             }
-            3 => next.set(Screen::Settings),
-            4 => {
+            3 => {
+                sfx.write(Sfx::MenuPick);
+                next.set(Screen::HiScores);
+            }
+            4 => next.set(Screen::Settings),
+            5 => {
                 exit.write(AppExit::Success);
             }
             _ => {}
@@ -156,7 +160,8 @@ fn refresh(menu: Res<TitleMenu>, session: Res<Session>, mut lines: Query<(&mut T
                 0 => "START".to_string(),
                 1 => format!("STAGE  < {} >", menu.stage),
                 2 => "CITY RUN".to_string(),
-                3 => "SETTINGS".to_string(),
+                3 => "HI SCORES".to_string(),
+                4 => "SETTINGS".to_string(),
                 _ => "EXIT".to_string(),
             };
             set_text(&mut t, menu_label(menu.sel == *i, &label));
