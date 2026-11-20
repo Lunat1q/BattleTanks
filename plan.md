@@ -46,6 +46,9 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Districts redrawn by theme (`city_gen`): each looks like its name, no street stretch repeats (owner: copies bothered)
 - [x] No stash on a district's first screen; 3 secret stashes per district (core only players' shells break)
 - [x] Score per try per district (a retry starts at 0); 9 look-alike brick blocks per district hide the secrets
+- [x] Map validator (owner's reports: an unkillable turret behind steel, a co-op pocket that pinned the view):
+  `city_gen::sound` in the generator and over the committed districts; districts 2-5 and 7-10 redrawn; view keeps
+  16 units below the trailing tank
 - [ ] Couch-test difficulty and length; boss HP bar if bosses feel like sponges
 
 ### M4 — Ship to the TV ⏳

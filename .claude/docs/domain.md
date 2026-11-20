@@ -135,8 +135,8 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
 `%APPDATA%\BattleTanks\city.txt` (`unlocked=N`).
 
 - A district is 15 screens tall (district 1) up to ~24 (district 10). Only one field-sized slice is visible: the
-  `View`. It follows the lead player (kept at 55 % height) but never drops the trailing tank off the bottom and
-  never scrolls back down. Tanks can't leave the view; bullets pop at its edges.
+  `View`. It follows the lead player (kept at 55 % height) but keeps the trailing tank in view with 16 units (one
+  tank) of room below it, so a tank in a notch can still back out, and never scrolls back down. Tanks can't leave the view; bullets pop at its edges.
 - **District track** (HUD right panel, in place of the enemy reserve): a bar from the start to the boss icon on top,
   gold up to the top of the view (how much of the district you've seen), a 1P dot left of it and a 2P dot right of it
   at each tank's height.
@@ -165,6 +165,10 @@ later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved
   (2→5), faster turret/boss fire.
 - Map rule (tested): from the start, every mini-boss and the boss is reachable with gates open, and closing any one
   gate cuts the boss off (`city_map::tests`).
+- Map validator (`city_gen::sound`, tested on the committed files, and the generator redraws any band that fails it):
+  no reachable spot whose only way up means backing down more than 2 cells (the view's room), and every turret has
+  no steel or wall in the 6 rows in front of it across its columns and one either side (bricks and water are fine)
+  plus a reachable straight shot from below within one screen.
 - **Looks follow the name.** Maps are drawn by `city_gen` (test-only, `cargo test write_city_districts -- --ignored`)
   from per-theme brushes: Outskirts fields, hedgerows, farms and ponds; Market Row stalls, arcades and fountain squares;
   Canal Ward canals with bridges, terraces and locks; Old Town crooked house blocks, squares, a church and the old wall;
@@ -224,6 +228,8 @@ same rules, each machine draws it and plays its own sound and rumble.
 | Armor enemy looked like player 2 | green tint shared with 2P | enemy palette never uses gold/green |
 | ~1000 fps on the owner's PC despite `AutoVsync` | VSync not honoured (driver override / streaming setup) | own FPS limiter in Settings, default 60 |
 | New stages walled spawns off from the base | bridge exits into steel; 1-cell open bands between blob rows | reachability test over all stages |
+| Co-op stuck: P2 in a pocket beside a pond (only exit under it), the view pinned to P2, P1 couldn't go on | view stopped exactly at the trailing tank's bottom, so backing down was impossible | view keeps 16 units below the trailing tank; `city_gen::sound` rejects pockets needing a longer back-down |
+| A turret no shell could reach (steel straight under it, district 4) | street steel landed in the turret's column below the wall | `city_gen::sound`: steel-free rows in front of every turret + a clear shot |
 | City map had a river nobody could cross | two stacked bridges not overlapping (tank needs a 2-cell column through both) | `city_map` reachability test |
 | Map markers doubled (two bosses) | half rows are mirrored | draw single markers centred on cols 11–14 or as full 26-char rows |
 | Enemy killed the base from the centre spawn in 3 shots (stage 1 + 13 more) | open centre column, ring only 2 rows thick | centre-lane cover test over all stages |

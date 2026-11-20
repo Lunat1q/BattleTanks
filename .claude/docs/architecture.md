@@ -27,7 +27,8 @@ src/
   levels.rs           # parse stage files, force spawns/base clear, rosters, harder laps         [pure]
   city_map.rs         # parse district files: tall terrain, placed enemies/turrets/minis/boss, gates, stashes [pure]
   city_gen.rs         # test-only: write_city_districts draws levels/city/*.txt from each district's plan (height, turrets,
-                      # minis, enemies) in bands bottom-up, redrawing any band that leaves no tank-sized way up
+                      # minis, enemies) in bands bottom-up, redrawing any band that fails `sound` (way up, no pocket that
+                      # needs backing down past the view's room, turrets free of steel in front and shootable)
   city_brushes/       # test-only street brushes per district theme (picked by name): mod.rs helpers, outer.rs 1-5, inner.rs 6-10
   input.rs            # Device (pads, two keyboard layouts) -> Intent per frame (DeviceIntents); Rumble -> pad; TvRemote marker
   audio.rs            # synthesises WAVs at startup; plays Sfx messages (deduped per frame); BT_SHOT/BT_MUTE mute

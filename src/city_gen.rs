@@ -2,7 +2,8 @@
 //! `levels/city/NN.txt` (commit them; a rerun overwrites hand edits). Each district keeps its difficulty plan below
 //! (height, turrets per bastion, mini-bosses, placed enemies, mix) and draws its streets with its theme's brushes
 //! (`city_brushes.rs`, picked by the district name), so no stretch of street repeats. Bands are laid bottom-up; one that
-//! leaves no tank-sized way up (bricks count as open, like the `city_map` tests) is redrawn.
+//! fails `sound` (no tank-sized way up, a pocket only left by backing down, a turret no shell can reach; bricks count
+//! as open, like the `city_map` tests) is redrawn. `committed_districts_are_sound` runs the same checks on the files.
 
 use crate::city_brushes::{Band, Theme, W, band, rect, ri, theme};
 use crate::rng::Rng;
@@ -43,6 +44,10 @@ const ARENA: usize = 12;
 const BOSS: usize = 16;
 /// Tallest street band any brush draws.
 const TALLEST: usize = 12;
+/// Rows in front of a turret kept free of steel (bricks and water are fine), so nobody has to hug the wall to hit it.
+const APRON: usize = 6;
+/// Rows a tank may have to back down to get out of a notch: the room the view keeps below the trailing tank.
+const SLACK: usize = (crate::game::city::TRAIL_ROOM / crate::geom::CELL) as usize;
 
 /// Laid rows (index 0 = bottom) and whether placed enemies may stand in each.
 struct Map {
@@ -51,12 +56,13 @@ struct Map {
 }
 
 impl Map {
-    /// Append the first band from `draw` that keeps a way up (an open strip goes in after every 40 misses).
+    /// Append the first band from `draw` that keeps the map `sound` (an open strip goes in after every 40 misses).
     fn lay(&mut self, rng: &mut Rng, street: bool, mut draw: impl FnMut(&mut Rng) -> Band) {
         for miss in 1.. {
+            assert!(miss < 4000, "no band keeps the map sound at row {}", self.rows.len());
             let n = self.rows.len();
             self.rows.extend(draw(rng));
-            if way_up(&self.rows) {
+            if sound(&self.rows).is_ok() {
                 break;
             }
             self.rows.truncate(n);
@@ -72,10 +78,15 @@ fn blocked(c: u8) -> bool {
     matches!(c, b'@' | b'~' | b'=' | b'T')
 }
 
+/// A 2x2 tank fits with its bottom-left on cell (x, y).
+fn fits(rows: &Band, x: usize, y: usize) -> bool {
+    x + 1 < W && y + 1 < rows.len() && (0..2).all(|d| (0..2).all(|e| !blocked(rows[y + e][x + d])))
+}
+
 /// Cells (bottom-left of a 2x2 tank) reachable from player 1's start, as in the `city_map` tests.
 fn reach(rows: &Band) -> Vec<bool> {
     let h = rows.len();
-    let fits = |x: usize, y: usize| x + 1 < W && y + 1 < h && (0..2).all(|d| (0..2).all(|e| !blocked(rows[y + e][x + d])));
+    let fits = |x: usize, y: usize| fits(rows, x, y);
     let mut seen = vec![false; W * h];
     let mut todo = vec![(8, 0)];
     while let Some((x, y)) = todo.pop() {
@@ -89,10 +100,89 @@ fn reach(rows: &Band) -> Vec<bool> {
     seen
 }
 
-fn way_up(rows: &Band) -> bool {
+/// Why the map so far can't be played to its top row, if it can't.
+fn sound(rows: &Band) -> Result<(), String> {
     let r = reach(rows);
-    let y = rows.len() - 2;
-    (0..W).any(|x| r[y * W + x])
+    let top = rows.len() - 2;
+    if !(0..W).any(|x| r[top * W + x]) {
+        return Err("no way up".into());
+    }
+    if let Some((x, y)) = trap(rows, &r) {
+        return Err(format!("tank at column {x}, row {y} can only get out by backing down"));
+    }
+    if let Some((x, y)) = turrets(rows).into_iter().find(|&(x, y)| !hittable(rows, &r, x, y)) {
+        return Err(format!("turret at column {x}, row {y} has no line of fire"));
+    }
+    Ok(())
+}
+
+/// A reachable cell from which the top row can't be reached without dropping more than `SLACK` rows below it. The
+/// view never scrolls back down, and in co-op it stops rising at the trailing tank, so such a tank is stuck for good
+/// and holds its partner back too (district 3 had a pocket beside a pond whose only way out ran under it).
+/// Union-find, rows joined top-down: once row y is in, a cell of row y + SLACK linked to the top row climbs out
+/// without ever going lower than y.
+fn trap(rows: &Band, reach: &[bool]) -> Option<(usize, usize)> {
+    fn root(p: &mut [usize], mut i: usize) -> usize {
+        while p[i] != i {
+            p[i] = p[p[i]];
+            i = p[i];
+        }
+        i
+    }
+    let top = rows.len() - 2;
+    let sky = W * rows.len();
+    let mut p: Vec<usize> = (0..=sky).collect();
+    let join = |p: &mut Vec<usize>, a: usize, b: usize| {
+        let (a, b) = (root(p, a), root(p, b));
+        p[a] = b;
+    };
+    let stuck = |p: &mut Vec<usize>, y: usize| (0..W).find(|&x| reach[y * W + x] && root(p, y * W + x) != root(p, sky)).map(|x| (x, y));
+    for y in (0..=top).rev() {
+        for x in (0..W).filter(|&x| fits(rows, x, y)) {
+            let i = y * W + x;
+            if y == top {
+                join(&mut p, i, sky);
+            } else if fits(rows, x, y + 1) {
+                join(&mut p, i, i + W);
+            }
+            if x > 0 && fits(rows, x - 1, y) {
+                join(&mut p, i, i - 1);
+            }
+        }
+        // The bottom rows can only drop to row 0, so they are judged once everything is in.
+        let judged = if y == 0 { 0..=SLACK.min(top) } else { y + SLACK..=y + SLACK };
+        if let Some(c) = judged.filter(|&j| j <= top).find_map(|j| stuck(&mut p, j)) {
+            return Some(c);
+        }
+    }
+    None
+}
+
+/// Bottom-left cells of every turret (`TT/TT` squares; neighbours may touch).
+fn turrets(rows: &Band) -> Vec<(usize, usize)> {
+    let mut out = Vec::new();
+    for y in 0..rows.len() {
+        let mut x = 0;
+        while x < W {
+            if rows[y][x] == b'T' && (y == 0 || rows[y - 1][x] != b'T') {
+                out.push((x, y));
+                x += 2;
+            } else {
+                x += 1;
+            }
+        }
+    }
+    out
+}
+
+/// No steel or wall in the `APRON` rows in front of the turret, across its columns and one either side (owner: no
+/// steel that forces you to hug the turret), and a reachable tank square straight below it, close enough to share
+/// the view, with a clear shot (bricks and water are fine).
+fn hittable(rows: &Band, reach: &[bool], tx: usize, ty: usize) -> bool {
+    let hard = |c: &u8| matches!(c, b'@' | b'=' | b'T');
+    let apron = (ty.saturating_sub(APRON)..ty).all(|y| !rows[y][tx.saturating_sub(1)..(tx + 3).min(W)].iter().any(hard));
+    let clear = |y: usize| !rows[y][tx..tx + 2].iter().any(hard);
+    apron && (ty.saturating_sub(20)..ty.saturating_sub(1)).any(|y| reach[y * W + tx] && (y + 2..ty).all(clear))
 }
 
 /// A few 2x2 cover blocks at random spots outside `keep` (x0, y0, x1, y1).
@@ -114,10 +204,11 @@ fn start(rng: &mut Rng, th: &Theme) -> Band {
 
 /// Full-width fortress wall (rows 1-2) with a 4-wide gate and `n` turrets spread along it.
 fn bastion(rng: &mut Rng, th: &Theme, n: usize) -> Band {
+    let w = 1;
     let mut b = band(5);
-    rect(&mut b, 0, 1, W, 2, b'=');
+    rect(&mut b, 0, w, W, 2, b'=');
     let g = ri(rng, 1, W - 5);
-    rect(&mut b, g, 1, 4, 2, b'G');
+    rect(&mut b, g, w, 4, 2, b'G');
     let slots: Vec<usize> = (ri(rng, 0, 1)..W - 1).filter(|&x| x + 2 < g || x > g + 4).collect();
     let picked = (2..=5)
         .rev()
@@ -133,13 +224,13 @@ fn bastion(rng: &mut Rng, th: &Theme, n: usize) -> Band {
         .find(|p| p.len() >= n)
         .expect("room for the turrets");
     for i in 0..n {
-        rect(&mut b, picked[i * picked.len() / n], 1, 2, 2, b'T');
+        rect(&mut b, picked[i * picked.len() / n], w, 2, 2, b'T');
     }
     // Yard cover behind the wall, never in front of the gate.
     for _ in 0..2 {
         let x = ri(rng, 0, W - 2);
         if x + 2 <= g || x >= g + 4 {
-            rect(&mut b, x, 3, 2, 2, rng.pick(th.cover));
+            rect(&mut b, x, w + 2, 2, 2, rng.pick(th.cover));
         }
     }
     b
@@ -298,6 +389,40 @@ fn render(n: usize, p: &Plan, rows: &Band) -> String {
     s
 }
 
+/// Map rows of a district file, bottom first.
+fn rows_of(text: &str) -> Band {
+    let mut rows: Band = text.lines().filter_map(|l| l.as_bytes().try_into().ok()).collect();
+    rows.reverse();
+    rows
+}
+
+#[test]
+fn committed_districts_are_sound() {
+    for n in 1..=PLANS.len() {
+        let text = std::fs::read_to_string(format!("levels/city/{n:02}.txt")).unwrap();
+        sound(&rows_of(&text)).unwrap_or_else(|e| panic!("district {n}: {e}"));
+    }
+}
+
+#[test]
+fn the_validator_catches_both_owner_reports() {
+    // District 4: steel straight under a turret. District 3: a pocket beside a pond, its only exit under the pond.
+    let mut walled = band(12);
+    rect(&mut walled, 0, 8, W, 2, b'=');
+    rect(&mut walled, 12, 8, 4, 2, b'G');
+    rect(&mut walled, 4, 8, 2, 2, b'T');
+    assert!(sound(&walled).is_ok());
+    rect(&mut walled, 4, 0, 2, 8, b'@');
+    assert!(sound(&walled).unwrap_err().contains("turret"));
+    let mut pond = band(12);
+    rect(&mut pond, 0, 8, W, 2, b'~');
+    rect(&mut pond, 4, 8, 3, 2, b'.');
+    rect(&mut pond, 14, 2, 4, 4, b'~');
+    assert!(sound(&pond).is_ok());
+    rect(&mut pond, 14, 2, 4, 6, b'~');
+    assert!(sound(&pond).unwrap_err().contains("backing down"));
+}
+
 #[test]
 #[ignore]
 fn write_city_districts() {
@@ -305,6 +430,7 @@ fn write_city_districts() {
         let mut rng = Rng::new(0xC17E + i as u64 * 7919);
         let text = render(i + 1, p, &district(p, &mut rng));
         crate::city_map::parse(&text, 0).unwrap_or_else(|e| panic!("district {}: {e}", i + 1));
+        sound(&rows_of(&text)).unwrap_or_else(|e| panic!("district {}: {e}", i + 1));
         std::fs::write(format!("levels/city/{:02}.txt", i + 1), text).unwrap();
     }
 }
