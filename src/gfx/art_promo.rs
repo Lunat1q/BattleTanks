@@ -6,17 +6,6 @@ use super::canvas::*;
 use super::icon::paint as paint_icon;
 use bevy::math::Vec2;
 
-/// 5x7 pixel glyphs for "BATTLE TANKS"; `#` = lit.
-pub(super) const GLYPHS: [(char, [&str; 7]); 8] = [
-    ('A', [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"]),
-    ('B', ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."]),
-    ('E', ["#####", "#....", "#....", "####.", "#....", "#....", "#####"]),
-    ('K', ["#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"]),
-    ('L', ["#....", "#....", "#....", "#....", "#....", "#....", "#####"]),
-    ('N', ["#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#", "#...#"]),
-    ('S', [".####", "#....", "#....", ".###.", "....#", "....#", "####."]),
-    ('T', ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."]),
-];
 const TITLE_GOLD: C = [0.98, 0.80, 0.34, 1.0];
 
 fn backdrop(p: Vec2, height: f32) -> C {
@@ -35,7 +24,7 @@ fn word(c: &mut Canvas, k: f32, text: &str, x: f32, y: f32, cell: f32, color: C)
     let mut dot = Canvas::new(cell, cell, k);
     dot.fill(|_| color);
     for (n, ch) in text.chars().enumerate() {
-        let Some((_, rows)) = GLYPHS.iter().find(|g| g.0 == ch) else { continue };
+        let Some(rows) = super::font::glyph(ch) else { continue };
         for (r, row) in rows.iter().enumerate() {
             for (col, _) in row.chars().enumerate().filter(|(_, b)| *b == '#') {
                 let (px, py) = (x + (n * 6 + col) as f32 * cell, y + r as f32 * cell);
@@ -84,7 +73,7 @@ pub fn logo() -> Canvas {
     shadow.fill(|_| [0.03, 0.04, 0.08, 0.92]);
     // Outline first (each lit pixel's square, grown), then the gold on top.
     for (n, ch) in "BATTLE TANKS".chars().enumerate() {
-        let Some((_, rows)) = GLYPHS.iter().find(|g| g.0 == ch) else { continue };
+        let Some(rows) = super::font::glyph(ch) else { continue };
         for (r, row) in rows.iter().enumerate() {
             for (col, _) in row.chars().enumerate().filter(|(_, b)| *b == '#') {
                 let (px, py) = (x + (n * 6 + col) as f32 * cell - edge, y + r as f32 * cell - edge);

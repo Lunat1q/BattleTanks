@@ -33,6 +33,35 @@ pub fn sparkle() -> Image {
     c.into_image()
 }
 
+/// Chunky pixel-art gold star (17 x 17 px, nearest sampling): the in-stage achievement flyout.
+pub fn gold_star() -> Image {
+    const N: f32 = 17.0;
+    let pts = star(Vec2::new(0.0, -0.6), 8.4, 4.0, 5);
+    let mut c = Canvas::new(N, N, 1.0);
+    c.fill(|p| {
+        let d = sd_poly(p, &pts);
+        if d < -0.4 {
+            // Light top-right, deep orange bottom-left, a white glint near the top.
+            if (p - Vec2::new(-1.5, 2.5)).length() < 1.2 {
+                rgb(1.0, 1.0, 0.9)
+            } else if p.x + p.y > 2.0 {
+                rgb(1.0, 0.88, 0.36)
+            } else if p.x + p.y < -3.0 {
+                rgb(0.90, 0.52, 0.10)
+            } else {
+                rgb(0.98, 0.72, 0.20)
+            }
+        } else if d < 0.6 {
+            rgb(0.36, 0.18, 0.04)
+        } else {
+            [0.0; 4]
+        }
+    });
+    let mut img = c.into_image();
+    img.sampler = bevy::image::ImageSampler::nearest();
+    img
+}
+
 /// Shield bubble ring.
 pub fn ring() -> Image {
     let mut c = Canvas::new(22.0, 22.0, 8.0);

@@ -76,64 +76,82 @@ pub fn steel_at(q: Vec2) -> C {
     shade(face, brushed)
 }
 
+/// Gold block at `q` (units, y up): 8 x 8 bevelled plates like steel, with a diagonal shine. Not a field tile; it
+/// builds headings (achievements).
+pub fn gold_at(q: Vec2) -> C {
+    let face = rgb(0.96, 0.70, 0.22);
+    let (x, y) = (q.x.rem_euclid(8.0), q.y.rem_euclid(8.0));
+    let b = 0.9;
+    if x < b || y > 8.0 - b {
+        return shade(face, 1.3);
+    }
+    if x > 8.0 - b || y < b {
+        return shade(face, 0.55);
+    }
+    let shine = ((x + y - 9.0).abs() < 1.1) as u8 as f32;
+    let grain = 0.94 + 0.08 * noise(q * 2.0, 71, 64);
+    mix(shade(face, grain * (0.9 + 0.04 * (x - y))), rgb(1.0, 0.97, 0.8), 0.55 * shine)
+}
+
 pub fn water(frame: u32) -> Image {
     let mut c = Canvas::new(TILE_UNITS, TILE_UNITS, PPU);
     let phase = frame as f32 * TAU / 3.0;
-    c.fill(|p| {
-        let q = local(p);
-        let w = (q.x * TAU / 8.0 + (q.y * TAU / 16.0).sin() * 1.6 + phase).sin();
-        let w2 = (q.y * TAU / 4.0 + (q.x * TAU / 16.0).cos() * 2.0 - phase).sin();
-        let deep = mix(rgb(0.05, 0.20, 0.45), rgb(0.10, 0.34, 0.64), 0.5 + 0.25 * w + 0.15 * w2);
-        let crest = ((w * w2) - 0.55).max(0.0) * 2.2;
-        mix(deep, rgb(0.75, 0.88, 1.0), crest)
-    });
+    c.fill(|p| water_at(local(p), phase));
     c.into_image()
+}
+
+/// Water colour at `q` (units, y up), the waves shifted by `phase` (radians, one loop = TAU).
+pub fn water_at(q: Vec2, phase: f32) -> C {
+    let w = (q.x * TAU / 8.0 + (q.y * TAU / 16.0).sin() * 1.6 + phase).sin();
+    let w2 = (q.y * TAU / 4.0 + (q.x * TAU / 16.0).cos() * 2.0 - phase).sin();
+    let deep = mix(rgb(0.05, 0.20, 0.45), rgb(0.10, 0.34, 0.64), 0.5 + 0.25 * w + 0.15 * w2);
+    let crest = ((w * w2) - 0.55).max(0.0) * 2.2;
+    mix(deep, rgb(0.75, 0.88, 1.0), crest)
 }
 
 pub fn trees() -> Image {
     let mut c = Canvas::new(TILE_UNITS, TILE_UNITS, PPU);
-    // Jittered blob centres on a 4-unit grid; wrapped so the tile repeats seamlessly.
-    let blobs: Vec<(Vec2, f32)> = (0..16)
-        .map(|i| {
-            let (gx, gy) = (i % 4, i / 4);
-            let j = Vec2::new(hash(gx, gy, 21), hash(gx, gy, 22)) * 2.0 - Vec2::ONE;
-            (Vec2::new(gx as f32 * 4.0 + 2.0, gy as f32 * 4.0 + 2.0) + j * 0.9, 2.3 + hash(gx, gy, 23) * 0.8)
-        })
-        .collect();
-    c.fill(|p| {
-        let q = local(p);
-        let mut best: Option<(f32, Vec2, f32)> = None; // (distance - radius, offset, radius), topmost blob wins
-        for &(b, r) in &blobs {
-            let mut d = q - b;
-            d = Vec2::new((d.x + 8.0).rem_euclid(16.0) - 8.0, (d.y + 8.0).rem_euclid(16.0) - 8.0);
-            let s = d.length() - r;
-            if s < 0.0 && best.is_none_or(|(bs, _, _)| s < bs) {
-                best = Some((s, d, r));
-            }
-        }
-        match best {
-            None => rgb(0.03, 0.12, 0.05),
-            Some((_, d, r)) => {
-                let light = 1.0 - ((d - Vec2::new(-0.8, 0.8)).length() / (r * 1.4)).clamp(0.0, 1.0);
-                let leaf = 0.85 + 0.3 * noise(q * 2.5, 31, 40);
-                shade(mix(rgb(0.08, 0.30, 0.10), rgb(0.32, 0.62, 0.22), light), leaf)
-            }
-        }
-    });
+    c.fill(|p| trees_at(local(p)));
     c.into_image()
+}
+
+/// Canopy colour at `q` (units, y up): jittered leaf blobs on a 4-unit grid, repeating every 16 units.
+pub fn trees_at(q: Vec2) -> C {
+    let mut best: Option<(f32, Vec2, f32)> = None; // (distance - radius, offset, radius), topmost blob wins
+    for i in 0..16 {
+        let (gx, gy) = (i % 4, i / 4);
+        let j = Vec2::new(hash(gx, gy, 21), hash(gx, gy, 22)) * 2.0 - Vec2::ONE;
+        let (b, r) = (Vec2::new(gx as f32 * 4.0 + 2.0, gy as f32 * 4.0 + 2.0) + j * 0.9, 2.3 + hash(gx, gy, 23) * 0.8);
+        let d = q - b;
+        let d = Vec2::new((d.x + 8.0).rem_euclid(16.0) - 8.0, (d.y + 8.0).rem_euclid(16.0) - 8.0);
+        let s = d.length() - r;
+        if s < 0.0 && best.is_none_or(|(bs, _, _)| s < bs) {
+            best = Some((s, d, r));
+        }
+    }
+    match best {
+        None => rgb(0.03, 0.12, 0.05),
+        Some((_, d, r)) => {
+            let light = 1.0 - ((d - Vec2::new(-0.8, 0.8)).length() / (r * 1.4)).clamp(0.0, 1.0);
+            let leaf = 0.85 + 0.3 * noise(q * 2.5, 31, 40);
+            shade(mix(rgb(0.08, 0.30, 0.10), rgb(0.32, 0.62, 0.22), light), leaf)
+        }
+    }
 }
 
 pub fn ice() -> Image {
     let mut c = Canvas::new(TILE_UNITS, TILE_UNITS, PPU);
-    c.fill(|p| {
-        let q = local(p);
-        let streak = ((q.x + q.y) * TAU / 5.33).sin() * 0.5 + 0.5;
-        let frost = noise(q * 1.5, 41, 24);
-        let crack = ((q.x - q.y * 0.5) * TAU / 16.0 * 3.0).sin().abs() < 0.03;
-        let base = mix(rgb(0.62, 0.76, 0.88), rgb(0.86, 0.94, 1.0), streak * 0.5 + frost * 0.4);
-        if crack { shade(base, 0.8) } else { base }
-    });
+    c.fill(|p| ice_at(local(p)));
     c.into_image()
+}
+
+/// Ice colour at `q` (units, y up): diagonal streaks, frost, the odd crack.
+pub fn ice_at(q: Vec2) -> C {
+    let streak = ((q.x + q.y) * TAU / 5.33).sin() * 0.5 + 0.5;
+    let frost = noise(q * 1.5, 41, 24);
+    let crack = ((q.x - q.y * 0.5) * TAU / 16.0 * 3.0).sin().abs() < 0.03;
+    let base = mix(rgb(0.62, 0.76, 0.88), rgb(0.86, 0.94, 1.0), streak * 0.5 + frost * 0.4);
+    if crack { shade(base, 0.8) } else { base }
 }
 
 /// Play-field floor (208x208 units) at a lower resolution.

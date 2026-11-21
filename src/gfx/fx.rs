@@ -1,4 +1,5 @@
-//! Particle effects driven by `Fx` messages, screen shake, floating score numbers.
+//! Particle effects driven by `Fx` messages, screen shake, floating score numbers, and a gold star that flies onto
+//! the dark margin beside the field and bursts for each achievement unlocked in a stage.
 
 use super::{Gfx, MainCamera, z};
 use crate::game::{Fx, FxKind, Paused, Screen};
@@ -27,7 +28,12 @@ struct FxRng(Rng);
 pub fn plugin(app: &mut App) {
     app.init_resource::<Shake>()
         .insert_resource(FxRng(Rng::from_time()))
-        .add_systems(Update, (spawn_fx, update_particles, shake_camera).chain().after(crate::game::Sim).run_if(|p: Res<Paused>| !p.0));
+        // Counting unlocks never pauses, so the count can't go stale across a quit from the pause menu.
+        .add_systems(Update, launch_stars.after(crate::game::Sim))
+        .add_systems(
+            Update,
+            (spawn_fx, fly_stars, update_particles, shake_camera).chain().after(launch_stars).run_if(|p: Res<Paused>| !p.0),
+        );
 }
 
 fn lerp(a: LinearRgba, b: LinearRgba, t: f32) -> LinearRgba {
@@ -164,6 +170,98 @@ fn spawn_fx(mut commands: Commands, gfx: Res<Gfx>, mut rng: ResMut<FxRng>, mut e
     }
 }
 
+/// An achievement star in flight. `at` is camera-relative, so it rides along when City Run scrolls.
+#[derive(Component)]
+struct Flyer {
+    age: f32,
+    from: Vec2,
+    to: Vec2,
+}
+
+/// Seconds: flying out, hanging there, and between two stars unlocked together.
+const FLY: f32 = 0.8;
+const HOLD: f32 = 0.45;
+const STAGGER: f32 = 0.4;
+/// Star size and the burst's pixel cubes, units.
+const STAR: f32 = 22.0;
+const CUBE: f32 = 2.6;
+
+/// Where star `k` flies, camera-relative: in from off the screen's side at mid height to the middle of the margin
+/// beside the field, even ones right, odd ones left; later pairs a little lower, then higher.
+fn flight(k: usize, half: Vec2) -> (Vec2, Vec2) {
+    let side = if k.is_multiple_of(2) { 1.0 } else { -1.0 };
+    // Middle of the strip between the field (half 104 wide) and the screen edge; on a narrow screen, the field edge.
+    let x = side * if half.x - 104.0 < 24.0 { 96.0 } else { (104.0 + half.x) / 2.0 };
+    let y = [0.0, -30.0, 30.0][k / 2 % 3];
+    (Vec2::new(side * (half.x + STAR), y), Vec2::new(x, y))
+}
+
+fn launch_stars(
+    mut commands: Commands,
+    gfx: Res<Gfx>,
+    rec: Res<crate::achieve::Record>,
+    screen: Res<State<Screen>>,
+    cam: Query<&Projection, With<MainCamera>>,
+    mut seen: Local<usize>,
+) {
+    let fresh = rec.news.len().saturating_sub(*seen);
+    *seen = rec.news.len();
+    let (Screen::Stage, Ok(Projection::Orthographic(o))) = (screen.get(), cam.single()) else { return };
+    for i in 0..fresh {
+        let (from, to) = flight(*seen - fresh + i, o.area.half_size());
+        commands.spawn((
+            Sprite { image: gfx.gold_star.clone(), custom_size: Some(Vec2::splat(STAR)), ..default() },
+            Transform::from_translation(from.extend(z::TEXT)).with_scale(Vec3::ZERO),
+            Flyer { age: -(i as f32) * STAGGER, from, to },
+            DespawnOnExit(Screen::Stage),
+        ));
+    }
+}
+
+fn fly_stars(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut rng: ResMut<FxRng>,
+    mut sfx: MessageWriter<crate::game::Sfx>,
+    cam: Query<&Transform, (With<MainCamera>, Without<Flyer>)>,
+    mut stars: Query<(Entity, &mut Flyer, &mut Transform)>,
+) {
+    let Ok(cam) = cam.single() else { return };
+    let centre = cam.translation.truncate();
+    for (e, mut f, mut tf) in &mut stars {
+        f.age += time.delta_secs();
+        let t = (f.age / FLY).clamp(0.0, 1.0);
+        let ease = 1.0 - (1.0 - t).powi(3);
+        let hold = (f.age - FLY).max(0.0);
+        tf.translation = (centre + f.from.lerp(f.to, ease)).extend(z::TEXT);
+        // Swells and throbs while it hangs there, then pops.
+        let grow = if f.age < 0.0 { 0.0 } else { 1.0 };
+        tf.scale = Vec3::splat(grow * (1.0 + 0.35 * (hold / HOLD).powi(2) + 0.1 * (hold * 20.0).sin()));
+        if hold < HOLD {
+            continue;
+        }
+        let p = centre + f.to;
+        // Pixel cubes in the star's colours: fly apart, slow down, shrink and fade.
+        let colours = [lin(1.0, 0.88, 0.36, 1.0), lin(0.98, 0.72, 0.20, 1.0), lin(0.90, 0.52, 0.10, 1.0), lin(1.0, 1.0, 0.9, 1.0)];
+        for i in 0..28 {
+            let r = &mut rng.0;
+            let vel = Vec2::from_angle(r.range(0.0, std::f32::consts::TAU)) * r.range(25.0, 95.0);
+            let c = colours[i % colours.len()];
+            // On the star's own pixel grid, so the burst starts as the star itself.
+            let at = p + (Vec2::new(r.range(-1.0, 1.0), r.range(-1.0, 1.0)) * STAR * 0.3 / CUBE).round() * CUBE;
+            let life = r.range(0.5, 1.0);
+            commands.spawn((
+                Sprite::from_color(Color::from(c), Vec2::splat(CUBE)),
+                Transform::from_translation(at.extend(z::TEXT)),
+                Particle { vel, drag: 0.06, age: 0.0, life, size: (CUBE, CUBE * 0.4), color: (c, c.with_alpha(0.0)) },
+                DespawnOnExit(Screen::Stage),
+            ));
+        }
+        sfx.write(crate::game::Sfx::PowerPick);
+        commands.entity(e).try_despawn();
+    }
+}
+
 fn update_particles(
     mut commands: Commands,
     time: Res<Time>,
@@ -206,4 +304,23 @@ fn shake_camera(
     let k = if settings.shake { shake.0 * shake.0 * 3.5 } else { 0.0 };
     tf.translation.x = 104.0 + rng.0.range(-k, k);
     tf.translation.y = 104.0 + view.bottom + rng.0.range(-k, k);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stars_fly_from_the_middle_onto_the_margins() {
+        let half = Vec2::new(199.0, 112.0); // 16:9
+        let (from, to) = flight(0, half);
+        assert!(
+            from.x > half.x && from.y == 0.0 && to.x > 104.0 && to.x < half.x && to.y == 0.0,
+            "first star: in from the right edge, mid height"
+        );
+        let (from, to) = flight(1, half);
+        assert!(from.x < -half.x && to.x < -104.0 && to.x > -half.x, "second star: left margin");
+        assert!(flight(2, half).1.y < 0.0, "the next pair sits lower");
+        assert_eq!(flight(0, Vec2::new(104.0, 112.0)).1.x, 96.0, "no margin: inside the field's edge");
+    }
 }

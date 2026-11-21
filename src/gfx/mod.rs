@@ -10,11 +10,13 @@ mod art_world;
 mod badge_art;
 mod badge_city;
 pub mod canvas;
+mod font;
 mod fx;
 pub mod icon;
 mod world;
 
 use crate::rules::{EnemyKind, PowerKind, Rank};
+pub use art_title::{Block, block_text};
 use bevy::camera::ScalingMode;
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
@@ -60,6 +62,8 @@ pub struct Gfx {
     pub bullet: Handle<Image>,
     pub dot: Handle<Image>,
     pub sparkle: Handle<Image>,
+    /// Achievement flyout star.
+    pub gold_star: Handle<Image>,
     pub ring: Handle<Image>,
     pub flag: Handle<Image>,
     pub powerups: Vec<Handle<Image>>,
@@ -127,7 +131,7 @@ fn build_textures(images: &mut Assets<Image>) -> Gfx {
         boss: art_tanks::boss().map(&mut add),
         turret: add(art_tanks::turret()),
         city_backdrop: add(art_map::city_backdrop()),
-        title_logo: add(art_title::logo(4.0)),
+        title_logo: add(art_title::block_text(&art_title::LOGO, 4.0)),
         card_frame: add(art_title::card_frame()),
         stage_maps: (1..=crate::levels::stage_count()).map(|n| add(art_map::stage_map(&crate::levels::load(n).terrain))).collect(),
         brick: add(art_world::brick()),
@@ -141,6 +145,7 @@ fn build_textures(images: &mut Assets<Image>) -> Gfx {
         bullet: add(art_icons::bullet()),
         dot: add(art_icons::dot()),
         sparkle: add(art_icons::sparkle()),
+        gold_star: add(art_icons::gold_star()),
         ring: add(art_icons::ring()),
         flag: add(art_icons::flag()),
         powerups: PowerKind::ALL.iter().map(|&k| add(art_icons::powerup(k))).collect(),

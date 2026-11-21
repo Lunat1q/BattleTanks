@@ -28,7 +28,7 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 - **Agents build and test; they don't play.** The only allowed run is the smoke hook above (auto-joins two
   keyboard players, screenshots, exits by itself; sound is muted while `BT_SHOT` is set, `BT_MUTE=1` mutes
   any run). Use it after visual or startup changes and *look at the PNG*.
-  `BT_STAGE=0` screenshots the title (`BT_SCREEN=joined` with player 1 joined, `stages` the classic stage tiles (9 open), `settings` the settings screen, `achievements` the list, `unlocks` the NEW ACHIEVEMENTS screen, `results` / `gameover` / `cityresults` a made-up run; `BT_ACHIEVE=1` turns achievements on with logged host calls). It logs `smoke: N fps average` on exit. Write screenshots to the scratchpad, never the repo.
+  `BT_STAGE=0` screenshots the title (`BT_SCREEN=joined` with player 1 joined, `stages` the classic stage tiles (9 open), `settings` the settings screen, `achievements` the list, `unlocks` the NEW ACHIEVEMENTS screen, `results` / `gameover` / `cityresults` / `board` a made-up run, `city` the district map, `lan` LAN CO-OP, `hiscores`; `BT_ACHIEVE=1` turns achievements on with logged host calls). In a stage `BT_PAUSE=1` opens the pause menu and `BT_FLYOUT=<secs>` fakes two unlocks that long before the shot (achievement stars). It logs `smoke: N fps average` on exit. Write screenshots to the scratchpad, never the repo.
 
 ## Tech stack
 

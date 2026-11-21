@@ -42,10 +42,10 @@ pub fn earned(rec: &Record) -> u32 {
     LIST.iter().filter(|a| rec.done.contains(a.key)).map(|a| a.pts).sum()
 }
 
-fn spawn(mut commands: Commands, rec: Res<Record>) {
+fn spawn(mut commands: Commands, rec: Res<Record>, mut heads: Headings) {
     let root = Node { row_gap: vh(1.2), ..screen_root() };
     commands.spawn((root, DespawnOnExit(Screen::Achievements))).with_children(|root| {
-        root.spawn(text("ACHIEVEMENTS", 8.0, GOLD));
+        root.spawn(heads.node("ACHIEVEMENTS", Block::Gold, 7.0));
         root.spawn(text(
             format!("{} of {} points earned   |   {} / {} unlocked", earned(&rec), total_pts(), rec.done.len(), LIST.len()),
             3.0,

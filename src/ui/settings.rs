@@ -37,12 +37,12 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (input, refresh).chain().run_if(in_state(Screen::Settings)));
 }
 
-fn spawn(mut commands: Commands, mut sel: ResMut<Sel>, mut asking: ResMut<Asking>, platform: Res<Platform>) {
+fn spawn(mut commands: Commands, mut sel: ResMut<Sel>, mut asking: ResMut<Asking>, platform: Res<Platform>, mut heads: Headings) {
     let n = rows(&platform).len();
     sel.0 = 0;
     asking.0 = false;
     commands.spawn((screen_root(), DespawnOnExit(Screen::Settings))).with_children(|root| {
-        root.spawn(text("SETTINGS", 10.0, GOLD));
+        root.spawn(heads.node("SETTINGS", Block::Trees, 8.0));
         root.spawn(Node { height: vh(2), ..default() });
         for i in 0..=n {
             root.spawn((text("", 4.0, INK), MenuLine(i)));

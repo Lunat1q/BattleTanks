@@ -46,10 +46,17 @@ fn step(sel: usize, dir: Dir, open: usize, count: usize) -> usize {
     to.filter(|&n| (1..=last).contains(&n)).unwrap_or(sel)
 }
 
-fn spawn(mut commands: Commands, gfx: Res<Gfx>, progress: Res<Progress>, settings: Res<crate::settings::Settings>, mut sel: ResMut<Sel>) {
+fn spawn(
+    mut commands: Commands,
+    gfx: Res<Gfx>,
+    progress: Res<Progress>,
+    settings: Res<crate::settings::Settings>,
+    mut sel: ResMut<Sel>,
+    mut heads: Headings,
+) {
     sel.0 = progress.open(Mode::Classic, settings.easy_mode).min(count());
     commands.spawn((screen_root(), DespawnOnExit(Screen::StageSelect))).with_children(|root| {
-        root.spawn(text("CLASSIC", 7.0, GOLD));
+        root.spawn(heads.node("CLASSIC", Block::Brick, 6.5));
         root.spawn(Node {
             display: Display::Grid,
             grid_template_columns: RepeatedGridTrack::auto(COLS as u16),

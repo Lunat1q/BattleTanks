@@ -3,7 +3,9 @@
 //! `settings` / `hiscores` / `city` (district map) / `results` / `gameover` (a
 //! made-up classic run, to look at the tally and the name entry)) or City Run
 //! district `BT_CITY`, saves a screenshot after `BT_SHOT_AT` seconds (default 7) and quits. `BT_VIEW=<units>` pins the
-//! City Run view that far up the map, to look at bastions and bosses. Inert unless `BT_SHOT` is set.
+//! City Run view that far up the map, to look at bastions and bosses. `BT_SCREEN=lan` the LAN CO-OP screen. In a stage,
+//! `BT_PAUSE=1` opens the pause menu and `BT_FLYOUT=<secs>` fakes two unlocks that long before the shot (the achievement stars).
+//! Inert unless `BT_SHOT` is set.
 
 use crate::game::{Mode, Screen, Session, Slot, StageLog, View};
 use crate::input::Device;
@@ -47,6 +49,7 @@ fn run(
     mut view: ResMut<View>,
     mut rec: ResMut<crate::achieve::Record>,
     mut progress: ResMut<crate::game::progress::Progress>,
+    mut paused: ResMut<crate::game::Paused>,
 ) {
     shot.t += time.delta_secs();
     shot.frames += 1;
@@ -65,10 +68,19 @@ fn run(
     if let Some(v) = shot.view.filter(|_| *state.get() == Screen::Stage) {
         view.bottom = v;
     }
+    let lead = std::env::var("BT_FLYOUT").ok().and_then(|v| v.parse::<f32>().ok());
+    if let Some(lead) = lead.filter(|&l| *state.get() == Screen::Stage && shot.t > shot.at - l && rec.news.is_empty()) {
+        info!("smoke: two unlocks {lead} s before the shot");
+        rec.news = vec!["first_blood", "stage_1"];
+    }
+    if *state.get() == Screen::Stage && shot.t > shot.at - 0.9 && std::env::var("BT_PAUSE").is_ok() {
+        paused.0 = true;
+    }
     if shot.stage == 0 && shot.city == 0 && *state.get() == Screen::Title {
         match std::env::var("BT_SCREEN").as_deref() {
             Ok("settings") => next.set(Screen::Settings),
             Ok("hiscores") => next.set(Screen::HiScores),
+            Ok("lan") => next.set(Screen::Lan),
             Ok("joined") if session.players() == 0 => session.slots[0] = Some(Slot::new(Device::KeysLeft)),
             Ok("stages") if session.players() == 0 => {
                 // Shown only, not saved.

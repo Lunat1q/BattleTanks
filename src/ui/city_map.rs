@@ -43,7 +43,14 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (input, refresh).chain().run_if(in_state(Screen::CityMap)));
 }
 
-fn spawn(mut commands: Commands, gfx: Res<Gfx>, progress: Res<Progress>, settings: Res<crate::settings::Settings>, mut sel: ResMut<Sel>) {
+fn spawn(
+    mut commands: Commands,
+    gfx: Res<Gfx>,
+    progress: Res<Progress>,
+    settings: Res<crate::settings::Settings>,
+    mut sel: ResMut<Sel>,
+    mut heads: Headings,
+) {
     sel.0 = progress.open(Mode::City, settings.easy_mode).min(CITY_DISTRICTS);
     let at = |(x, y): (f32, f32), size: f32| Node {
         position_type: PositionType::Absolute,
@@ -58,7 +65,7 @@ fn spawn(mut commands: Commands, gfx: Res<Gfx>, progress: Res<Progress>, setting
         ..default()
     };
     commands.spawn((screen_root(), DespawnOnExit(Screen::CityMap))).with_children(|root| {
-        root.spawn(text("CITY RUN", 9.0, GOLD));
+        root.spawn(heads.node("CITY RUN", Block::Steel, 7.5));
         root.spawn((
             Node { width: vh(130), height: vh(56), border_radius: BorderRadius::all(vh(3)), ..default() },
             ImageNode::new(gfx.city_backdrop.clone()),

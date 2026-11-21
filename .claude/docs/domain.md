@@ -58,6 +58,14 @@ All numbers live in `src/rules.rs` unless noted.
 Helmet (shield 10 s) · Clock (enemies freeze 10 s, tinted icy) · Shovel (steel base ring 20 s, blinks back to
 brick in the last 3 s) · Star (+1 level) · Grenade (destroys all enemies on the field, no points) · Tank (+1 life).
 
+## Screen headings (`gfx/art_title.rs` `block_text`, `ui::Headings`)
+Every screen heading is built from terrain blocks like the logo, one 5x7 glyph pixel per 8-unit cell: CLASSIC brick,
+CITY RUN and HI SCORES steel, LAN CO-OP and WORLD BOARD water, ACHIEVEMENTS and NEW ACHIEVEMENTS gold, SETTINGS
+forest, PAUSED ice, GAME OVER brick. The stage banner (STAGE n / STAGE CLEAR) and the results heading are brick in
+classic and steel in City Run (DISTRICT n with the district's name under it). Water and trees are lifted brighter
+than on the field so they read on black; the banner darkens the field more (85 % at the start, 55 % at the end) so a
+brick heading reads over bricks.
+
 ## Title (`ui/title.rs`, ADR 0018)
 - Menu: CLASSIC, CITY RUN, LAN CO-OP (hosts with `Platform::lan`), HI SCORES, ACHIEVEMENTS (hosts with
   `Platform::achieve`), SETTINGS, EXIT. CLASSIC and CITY RUN are dimmed until someone has joined.
@@ -238,6 +246,9 @@ Only on hosts with `Platform::achieve` (Android: Play Games); the exe has none (
   colour (classic olive, duo teal, City Run slate, City Run extras violet, combat crimson, fun amber) with a gold rim,
   an emblem that tells the story (stage flags, a scarecrow for the Outskirts, the burning Citadel, popcorn for the
   Backseat Driver...) and a number tag where it has one (10, 1K, 100K). Locked badges are grey; hidden ones a "?".
+- **In a stage**, each unlock sends a pixel-art gold star in from the screen's side onto the dark margin beside the
+  field (right first, then left; more pairs a little lower, then higher); it swells, then bursts into gold pixel cubes
+  with a chime. The run summary still comes after the stage.
 - Title → ACHIEVEMENTS: points earned (of 940) and `N / 55`; a tab per group with its count (CLASSIC, DUO, CITY,
   CITY+, COMBAT, FUN); 7 rows per page, each with the badge, name, description and points (gold gem). Unlocked rows
   are gold with a gold edge; counters still running show `n / target` and a progress bar; hidden ones `???`.

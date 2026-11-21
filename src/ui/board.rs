@@ -91,13 +91,13 @@ fn open(mut entry: ResMut<Entry>, mut online: ResMut<Online>, session: Res<Sessi
     entry.slots = slots;
 }
 
-fn spawn(mut commands: Commands, session: Res<Session>) {
+fn spawn(mut commands: Commands, session: Res<Session>, mut heads: Headings) {
     let run = match (session.mode, session.log.last()) {
         (Mode::City, Some(l)) => format!("DISTRICT {}   TIME {}", l.stage, scores::clock_text(l.tenths)),
         _ => format!("SCORE {}", session.team_score()),
     };
     commands.spawn((screen_root(), DespawnOnExit(Screen::Board))).with_children(|r| {
-        r.spawn(text("WORLD BOARD", 8.0, GOLD));
+        r.spawn(heads.node("WORLD BOARD", Block::Water, 7.0));
         r.spawn(text(run, 3.8, DIM));
         r.spawn((text("", 3.6, INK), OnlineText));
         r.spawn((text("", 3.0, DIM), HintText));

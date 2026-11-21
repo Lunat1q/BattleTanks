@@ -130,18 +130,19 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Bolder looks per level: short barrel at 0, star pips on the hull from 1, floats at 4; white flash on a star
 - [ ] Owner: feel on the couch (is level 4 too strong in City Run canals / moats?)
 
-### M12 — Block-built screen titles (planned)
+### M12 — Block-built screen titles (v0.7.4) ✅
 Every menu / screen heading drawn from terrain cells like the title logo (`gfx/art_title.rs`: one glyph pixel = one
 8-unit cell), not plain text.
-- [ ] Generalise `art_title::logo` to `block_text(text, material)` for brick, steel, water, ice (frost) and trees
-  (forest); `brick_at` / `steel_at` exist, water / ice / trees need `*_at` point painters split out of
-  `art_world::water` / `ice` / `trees`
-- [ ] Pick a material per screen, e.g. CLASSIC brick, CITY RUN steel, LAN CO-OP water, HI SCORES steel, ACHIEVEMENTS
-  forest, SETTINGS frost; PAUSED, STAGE CLEAR / DISTRICT CLEAR, GAME OVER, NEW ACHIEVEMENTS, WORLD BOARD (owner to
-  confirm the mapping)
-- [ ] Bake each heading once at startup into `GameArt` (like `title_logo`); dynamic ones (`STAGE {n}`) from per-glyph
-  images or baked on demand
-- [ ] Smoke screenshots of every screen (TV and phone sizes: headings must not crowd the rows below)
+- [x] `block_text(words, k)`: brick, steel, water, ice, trees and gold (`gold_at`, owner: achievements in gold);
+  `water_at` / `ice_at` / `trees_at` split out of `art_world`; full 5x7 font (`gfx/font.rs`, A-Z 0-9 - ! ? .)
+- [x] Materials: CLASSIC brick, CITY RUN / HI SCORES steel, LAN CO-OP / WORLD BOARD water, ACHIEVEMENTS / NEW
+  ACHIEVEMENTS gold, SETTINGS forest, PAUSED ice, GAME OVER brick; stage banner and results: classic brick, City Run
+  steel
+- [x] Painted on first use and kept (`ui::Headings`), so `STAGE {n}` needs nothing special; a stage paints its
+  clear / game over banners when it starts
+- [x] Smoke screenshots of every screen at 16:9 (phones are wider: only more margin)
+- [x] In-stage achievement star (owner): a pixel-art gold star flies in from the screen's side onto the margin beside
+  the field, swells, and bursts into pixel cubes with a chime (smoke `BT_FLYOUT=<secs>`)
 
 ## Current state
 

@@ -64,7 +64,7 @@ fn ease(x: f32) -> f32 {
     1.0 - (1.0 - x.clamp(0.0, 1.0)).powi(3)
 }
 
-fn spawn(mut commands: Commands, rec: Res<Record>, gfx: Res<Gfx>, mut reveal: ResMut<Reveal>) {
+fn spawn(mut commands: Commands, rec: Res<Record>, gfx: Res<Gfx>, mut reveal: ResMut<Reveal>, mut heads: Headings) {
     let keys: Vec<usize> = rec.news.iter().filter_map(|k| LIST.iter().position(|a| a.key == *k)).collect();
     // The list is as tall as its rows (up to `VISIBLE`), so a short one sits centred under the title.
     let rows = keys.len().clamp(1, VISIBLE);
@@ -90,7 +90,7 @@ fn spawn(mut commands: Commands, rec: Res<Record>, gfx: Res<Gfx>, mut reveal: Re
                     Twinkle(k as f32 * 1.7, 2.0 + (k % 4) as f32 * 0.7),
                 ));
             }
-            head.spawn((text("NEW ACHIEVEMENTS", 8.0, GOLD), UiTransform::IDENTITY, Title));
+            head.spawn((heads.node("NEW ACHIEVEMENTS", Block::Gold, 7.0), UiTransform::IDENTITY, Title));
             head.spawn((
                 Node { width: vh(0), height: vh(0.6), margin: UiRect::top(vh(0.6)), ..default() },
                 BackgroundColor(GOLD),

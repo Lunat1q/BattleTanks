@@ -88,10 +88,10 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (input, fetch, refresh).chain().run_if(in_state(Screen::HiScores)));
 }
 
-fn spawn(mut commands: Commands) {
+fn spawn(mut commands: Commands, mut heads: Headings) {
     let root = Node { row_gap: vh(1.0), ..screen_root() };
     commands.spawn((root, DespawnOnExit(Screen::HiScores))).with_children(|root| {
-        root.spawn(text("HI SCORES", 8.0, GOLD));
+        root.spawn(heads.node("HI SCORES", Block::Steel, 7.0));
         root.spawn(text("world top 10", 2.6, DIM));
         root.spawn(Node { height: vh(1), ..default() });
         for i in 0..3 {

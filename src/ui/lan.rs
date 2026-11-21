@@ -39,9 +39,9 @@ fn close(mut net: ResMut<Net>, platform: Res<Platform>) {
     }
 }
 
-fn spawn(mut commands: Commands) {
+fn spawn(mut commands: Commands, mut heads: Headings) {
     commands.spawn((screen_root(), DespawnOnExit(Screen::Lan))).with_children(|root| {
-        root.spawn(text("LAN CO-OP", 8.0, GOLD));
+        root.spawn(heads.node("LAN CO-OP", Block::Water, 7.5));
         root.spawn(text("two players, one game, same Wi-Fi", 3.0, DIM));
         root.spawn(Node { height: vh(3), ..default() });
         root.spawn((text("", 4.4, INK), Node { flex_direction: FlexDirection::Column, ..default() }, Body));

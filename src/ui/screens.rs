@@ -7,8 +7,12 @@ use crate::game::{Mode, Paused, Phase, Screen, Session, Sfx, StageRun};
 use crate::geom::Dir;
 use crate::input::{DeviceIntents, Intent};
 
+/// The stage banner's block heading; holds the text it shows.
+#[derive(Component, Default)]
+struct Banner(String);
+/// The district's name under its banner.
 #[derive(Component)]
-struct Banner;
+struct BannerSub;
 #[derive(Component)]
 struct PauseOverlay;
 #[derive(Component)]
@@ -42,11 +46,31 @@ fn overlay(bg: f32) -> impl Bundle {
     )
 }
 
-fn spawn_overlays(mut commands: Commands, mut sel: ResMut<PauseSel>) {
+/// Banner heading for `phase`; empty while playing. Classic is brick, City Run steel.
+fn banner_head(phase: Phase, session: &Session) -> (String, Block) {
+    let m = if session.mode == Mode::City { Block::Steel } else { Block::Brick };
+    let s = match phase {
+        Phase::Intro => format!("{} {}", place(session), session.stage),
+        Phase::Play => String::new(),
+        Phase::Won => format!("{} CLEAR", place(session)),
+        Phase::Lost => "GAME OVER".into(),
+    };
+    (s, if phase == Phase::Lost { Block::Brick } else { m })
+}
+
+fn spawn_overlays(mut commands: Commands, mut sel: ResMut<PauseSel>, session: Res<Session>, mut heads: Headings) {
     sel.0 = 0;
-    commands.spawn(overlay(0.0)).with_child((text("", 9.0, INK), Banner));
+    // Painted now, so the stage's end doesn't stall a frame to paint its banner.
+    for phase in [Phase::Won, Phase::Lost] {
+        let (s, m) = banner_head(phase, &session);
+        heads.image(&s, m);
+    }
+    commands.spawn(overlay(0.0)).with_children(|b| {
+        b.spawn((ImageNode::default(), Node { height: vh(9.0), ..default() }, Visibility::Hidden, Banner::default()));
+        b.spawn((text("", 4.6, INK), BannerSub));
+    });
     commands.spawn((overlay(0.65), PauseOverlay, Visibility::Hidden)).with_children(|p| {
-        p.spawn(text("PAUSED", 9.0, GOLD));
+        p.spawn(heads.node("PAUSED", Block::Ice, 8.0));
         for i in 0..PAUSE_ITEMS.len() {
             p.spawn((text("", 4.6, INK), MenuLine(i)));
         }
@@ -57,31 +81,32 @@ fn spawn_overlays(mut commands: Commands, mut sel: ResMut<PauseSel>) {
 fn banner(
     run: Option<Res<StageRun>>,
     session: Res<Session>,
-    mut q: Query<(&mut Text, &mut TextColor, &ChildOf), With<Banner>>,
+    mut heads: Headings,
+    mut q: Query<(&mut Banner, &mut ImageNode, &mut Visibility, &ChildOf)>,
+    mut sub: Query<&mut Text, With<BannerSub>>,
     mut bg: Query<&mut BackgroundColor>,
 ) {
     let Some(run) = run else { return };
-    let Ok((mut t, mut color, parent)) = q.single_mut() else { return };
+    let Ok((mut shown, mut img, mut vis, parent)) = q.single_mut() else { return };
+    let (s, m) = banner_head(run.phase, &session);
+    if shown.0 != s {
+        if !s.is_empty() {
+            img.image = heads.image(&s, m);
+        }
+        vis.set_if_neq(if s.is_empty() { Visibility::Hidden } else { Visibility::Inherited });
+        shown.0 = s;
+    }
     let city = session.mode == Mode::City;
-    let (s, c, back) = match run.phase {
-        Phase::Intro if city => (
-            format!(
-                "DISTRICT {}
-{}",
-                session.stage,
-                crate::city_map::name(session.stage).to_uppercase()
-            ),
-            INK,
-            0.75,
-        ),
-        Phase::Intro => (format!("STAGE {}", session.stage), INK, 0.75),
-        Phase::Play => (String::new(), INK, 0.0),
-        Phase::Won if city => ("DISTRICT CLEAR".into(), GOLD, 0.0),
-        Phase::Won => ("STAGE CLEAR".into(), GOLD, 0.0),
-        Phase::Lost => ("GAME OVER".into(), RED, 0.35),
+    if let Ok(mut t) = sub.single_mut() {
+        let name = if city && run.phase == Phase::Intro { crate::city_map::name(session.stage).to_uppercase() } else { String::new() };
+        set_text(&mut t, name);
+    }
+    // Dark enough that a brick heading reads over a brick field.
+    let back = match run.phase {
+        Phase::Intro => 0.85,
+        Phase::Play => 0.0,
+        _ => 0.55,
     };
-    set_text(&mut t, s);
-    color.0 = c;
     if let Ok(mut b) = bg.get_mut(parent.parent()) {
         b.0 = Color::srgba(0.0, 0.0, 0.0, back);
     }
@@ -152,19 +177,21 @@ fn place(session: &Session) -> &'static str {
     if session.mode == Mode::City { "DISTRICT" } else { "STAGE" }
 }
 
-fn spawn_results(mut commands: Commands, session: Res<Session>, mut time: ResMut<ScreenTime>) {
+fn spawn_results(mut commands: Commands, session: Res<Session>, mut time: ResMut<ScreenTime>, mut heads: Headings) {
     time.0 = 0.0;
+    let (head, m) = banner_head(Phase::Won, &session);
+    let head = head.replace(" CLEAR", &format!(" {} CLEAR", session.stage));
     commands.spawn((screen_root(), DespawnOnExit(Screen::Results))).with_children(|r| {
-        r.spawn(text(format!("{} {} CLEAR", place(&session), session.stage), 8.0, GOLD));
+        r.spawn(heads.node(&head, m, 7.0));
         r.spawn((text(table(&session, Some(tally_view(0.0, kill_maxes(&session)))), 3.8, INK), Tally));
         r.spawn(text("press A to continue", 3.0, DIM));
     });
 }
 
-fn spawn_game_over(mut commands: Commands, session: Res<Session>, mut time: ResMut<ScreenTime>) {
+fn spawn_game_over(mut commands: Commands, session: Res<Session>, mut time: ResMut<ScreenTime>, mut heads: Headings) {
     time.0 = 0.0;
     commands.spawn((screen_root(), DespawnOnExit(Screen::GameOver))).with_children(|r| {
-        r.spawn(text("GAME OVER", 12.0, RED));
+        r.spawn(heads.node("GAME OVER", Block::Brick, 10.0));
         r.spawn(text(format!("reached {} {}", place(&session).to_lowercase(), session.stage), 3.6, DIM));
         r.spawn(text(table(&session, None), 3.8, INK));
         r.spawn(text(format!("HI SCORE  {}", session.hi_score), 4.2, GOLD));
