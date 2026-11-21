@@ -135,6 +135,45 @@ pub fn city_backdrop() -> Image {
     img
 }
 
+/// A classic stage at one pixel per terrain sub-cell, for its stage tile: bricks, steel, water, trees, ice, and
+/// the base in gold. Nearest sampling keeps it crisp.
+pub fn stage_map(t: &crate::terrain::Terrain) -> Image {
+    use crate::terrain::Tile;
+    let n = crate::geom::SUBS;
+    let px = |x: usize, y: usize| -> [u8; 4] {
+        if (24..28).contains(&x) && y < 4 {
+            return [255, 204, 82, 255]; // the base
+        }
+        let rgb = match t.get(x, y) {
+            Tile::Empty => [22, 24, 30],
+            // Brick courses: every other sub-row a shade darker, so walls read as brick, not as a red blob.
+            Tile::Brick | Tile::Secret => {
+                if y.is_multiple_of(2) {
+                    [176, 82, 50]
+                } else {
+                    [140, 62, 38]
+                }
+            }
+            Tile::Steel | Tile::Wall | Tile::Gate => [160, 166, 178],
+            Tile::Water => [44, 92, 170],
+            Tile::Trees => [52, 118, 58],
+            Tile::Ice => [190, 214, 232],
+        };
+        [rgb[0], rgb[1], rgb[2], 255]
+    };
+    // Row 0 of the image is the top of the field.
+    let data = (0..n).rev().flat_map(|y| (0..n).flat_map(move |x| px(x, y))).collect();
+    let mut img = Image::new(
+        bevy::render::render_resource::Extent3d { width: n as u32, height: n as u32, depth_or_array_layers: 1 },
+        bevy::render::render_resource::TextureDimension::D2,
+        data,
+        bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
+        bevy::asset::RenderAssetUsages::RENDER_WORLD,
+    );
+    img.sampler = ImageSampler::nearest();
+    img
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

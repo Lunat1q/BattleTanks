@@ -1,5 +1,6 @@
 //! Agent/dev smoke hook: `BT_SHOT=out.png` auto-joins two keyboard players, starts `BT_STAGE`
-//! (default 1; 0 = stay on the title, or `BT_SCREEN=settings` / `hiscores` / `city` (district map) / `results` / `gameover` (a
+//! (default 1; 0 = stay on the title, or `BT_SCREEN=joined` (the title with 1P joined) / `stages` (classic tiles, 9 open) /
+//! `settings` / `hiscores` / `city` (district map) / `results` / `gameover` (a
 //! made-up classic run, to look at the tally and the name entry)) or City Run
 //! district `BT_CITY`, saves a screenshot after `BT_SHOT_AT` seconds (default 7) and quits. `BT_VIEW=<units>` pins the
 //! City Run view that far up the map, to look at bastions and bosses. Inert unless `BT_SHOT` is set.
@@ -45,6 +46,7 @@ fn run(
     mut exit: MessageWriter<AppExit>,
     mut view: ResMut<View>,
     mut rec: ResMut<crate::achieve::Record>,
+    mut progress: ResMut<crate::game::progress::Progress>,
 ) {
     shot.t += time.delta_secs();
     shot.frames += 1;
@@ -67,6 +69,13 @@ fn run(
         match std::env::var("BT_SCREEN").as_deref() {
             Ok("settings") => next.set(Screen::Settings),
             Ok("hiscores") => next.set(Screen::HiScores),
+            Ok("joined") if session.players() == 0 => session.slots[0] = Some(Slot::new(Device::KeysLeft)),
+            Ok("stages") if session.players() == 0 => {
+                // Shown only, not saved.
+                session.slots = keys();
+                progress.classic = 9;
+                next.set(Screen::StageSelect);
+            }
             Ok("unlocks") if session.players() == 0 => {
                 // A made-up run's unlocks, shown only (not saved).
                 session.slots = keys();

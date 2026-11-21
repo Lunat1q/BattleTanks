@@ -1,7 +1,7 @@
-# Title menu rework (planned, not started)
+# Title menu rework (built in 0.7.0, ADR 0018)
 
-Owner decisions of 2026-11-21. Build only on the owner's go. When built: ADR, `domain.md`, `architecture.md`,
-`plan.md` milestone, version bump.
+Owner decisions of 2026-11-21, kept for the record; `domain.md` and ADR 0018 describe what shipped. Changes made while
+building: the cards say PLAYER 1 / PLAYER 2 (owner), and the LAN ping line stays under the hi score.
 
 ## Goal
 

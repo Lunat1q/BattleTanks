@@ -7,7 +7,7 @@ use super::icon::paint as paint_icon;
 use bevy::math::Vec2;
 
 /// 5x7 pixel glyphs for "BATTLE TANKS"; `#` = lit.
-const GLYPHS: [(char, [&str; 7]); 8] = [
+pub(super) const GLYPHS: [(char, [&str; 7]); 8] = [
     ('A', [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"]),
     ('B', ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."]),
     ('E', ["#####", "#....", "#....", "####.", "#....", "#....", "#####"]),

@@ -70,13 +70,13 @@ pub struct Lockstep {
     waiting: bool,
     snapshot: Option<Vec<u8>>,
     heard: Instant,
-    /// The joiner's own friendly fire, keep power and City Run unlocks, put back afterwards.
-    pub restore: (bool, bool, usize),
+    /// The joiner's own friendly fire and keep power, put back afterwards (their unlocks: `OwnProgress`).
+    pub restore: (bool, bool),
     resyncs: u32,
 }
 
 impl Lockstep {
-    pub fn new(conn: Conn, me: u8, session: u32, restore: (bool, bool, usize)) -> Self {
+    pub fn new(conn: Conn, me: u8, session: u32, restore: (bool, bool)) -> Self {
         // The first START_DELAY ticks have no input from anyone; both sides know that without asking.
         let blank: BTreeMap<u32, u16> = (0..START_DELAY).map(|t| (t, 0)).collect();
         Lockstep {

@@ -14,7 +14,7 @@ levels/city/NN.txt    # 10 City Run districts, 15-24 screens tall (format in cit
 src/
   main.rs             # Windows exe: calls battle_tanks::run()
   lib.rs              # run() / run_with(Platform, extra plugins): loads Settings first so the window opens in the saved mode;
-                      # plugin list. Public API for wrapper crates: Platform (incl. post_score, fetch_board, cloud_load / cloud_save, achieve), TvRemote, canvas, paint_icon, paint_banner,
+                      # plugin list. Public API for wrapper crates: Platform (incl. keyboard, post_score, fetch_board, cloud_load / cloud_save, achieve), TvRemote, canvas, paint_icon, paint_banner,
                       # ACHIEVEMENTS + badge_pixels (store icons)
   achieve/            # achievements (ADR 0017), only with Platform::achieve
     mod.rs            # Record (done keys + counters) <-> achievements.txt, merge; track (Feat -> Tracker) after Sim;
@@ -51,7 +51,9 @@ src/
   game/
     mod.rs            # Screen state, Mode, Session/Slot, StageRun, View, components, Fx/Sfx messages, Sim schedule
     stage.rs          # OnEnter build (classic or city), spawn_enemy, respawn point, timers, borrow a tank, win/lose, pause (+ app in background), pad loss
-    city.rs           # City Run: scroll the View, wake placed enemies, reinforcements, turret->gate, reveal secrets, cull, Progress save
+    city.rs           # City Run: scroll the View, wake placed enemies, reinforcements, turret->gate, reveal secrets, cull
+    progress.rs       # Progress (open district + classic stage) <-> city.txt; frontier rule; save on Results; OwnProgress
+                      # (a LAN joiner's own copy while linked)   [ADR 0018]
     cloud.rs          # Progress + achievements Record <-> the host's cloud copy (Platform::cloud_load / cloud_save): one sync at a
                       # time (Pull.want), at start, per City Run unlock and after new achievements; max / union merge
     tank.rs           # player_control (intent -> want/trigger), drive (collisions, snap, ice), fire
@@ -65,6 +67,9 @@ src/
     art_world.rs      # brick, steel, water x3, trees, ice, ground, base (alive/destroyed)
     art_icons.rs      # bullet, particle dot, spawn sparkle, shield ring, flag, 6 power-up icons
     world.rs          # terrain sub-cell sprites from the dirty list, water anim, attach/update tank/bullet/base/power-up sprites
+    art_title.rs      # title logo ("BATTLE" in brick, "TANKS" in steel, from art_world's brick_at / steel_at + art_promo's
+                      # glyphs) and the player cards' pixel frame
+    art_map.rs        # City Run map backdrop (pixel-art night city); classic stage mini-maps (stage_map, one pixel per sub-cell)
     icon.rs           # app icon painter; runtime window/taskbar icon (winit); ICO writer (test-only)
     art_badges.rs     # achievement badges, 32x32 pixel art: plate per group + gold rim, crisp outlined emblem, number tag;
                       # locked (grey) copies, hidden "?", points gem; badge_sheet test writes a contact sheet
@@ -75,8 +80,10 @@ src/
     fx.rs             # Fx messages -> particles, score pop-ups (Text2d), camera shake
   ui/
     mod.rs            # text() in vh units, colours, menu helpers
-    title.rs          # join/leave slots, START / STAGE <n> / CITY RUN / LAN CO-OP / HI SCORES / SETTINGS / EXIT
-                      # (linked: START / STAGE / CITY RUN / LEAVE LAN)
+    title.rs          # brick/steel logo; player tanks drive in beside it on join (step_toward, tank_offset);
+                      # player cards (join/leave, controller found) left and right of CLASSIC / CITY RUN / LAN CO-OP /
+                      # HI SCORES / ACHIEVEMENTS / SETTINGS / EXIT (linked: CLASSIC / CITY RUN / LEAVE LAN); host's hints
+    stages.rs         # Screen::StageSelect: 6x5 classic stage tiles with mini-maps, open ones only (step pure)
     city_map.rs       # district map: 10 dots + dotted roads, pick an unlocked district
     settings.rs       # rows from settings::ITEMS + BACK; saves on every change
     hud.rs            # side panels: lives, score, power, enemy reserve icons (City Run: district track), stage flag
@@ -126,7 +133,7 @@ HiScores: Pick (selectors) ──▶ ui::hiscores::fetch (worker thread: Platfor
 Achievements ◀──ACHIEVEMENTS / B──▶ Title (hosts with Platform::achieve)
 GameOver / district Results ──A──▶ [Unlocks (new achievements, not in LAN)] ──A──▶ [Board] ──▶ Title / CityMap
 HiScores ◀──HI SCORES / B──▶ Title ◀──B / linked──▶ Lan (LAN CO-OP)
-Settings ◀──SETTINGS / B──▶ Title ──START──▶ Stage ──all 20 killed──▶ Results ──tally, then A / 10 s──▶ Stage (n+1)
+Settings ◀──SETTINGS / B──▶ Title ──CLASSIC──▶ StageSelect ──A──▶ Stage ──all 20 killed──▶ Results ──tally, then A / 10 s──▶ Stage (n+1)
                              ▲                │
                              │                └──base destroyed or everyone out──▶ GameOver ──A──▶ [Board ──A / B──▶] Title
                              └────────────── pause menu "QUIT TO TITLE" ◀──────────┘

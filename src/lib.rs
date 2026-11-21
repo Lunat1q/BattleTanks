@@ -50,6 +50,8 @@ pub struct Platform {
     pub host_window: bool,
     /// Back on the title with nobody joined quits (TV launcher convention).
     pub back_exits_title: bool,
+    /// The host has a keyboard players may use: the title's hints name the keys. Off on a TV or phone.
+    pub keyboard: bool,
     /// Sends a finished classic run to the world board: `(url, game key, JSON) -> answer`, on a worker thread.
     /// Default: the OS `curl`. `None` = offline (local hi score only).
     pub post_score: Option<fn(&str, &str, &str) -> Result<String, String>>,
@@ -84,6 +86,7 @@ impl Default for Platform {
             gilrs: true,
             host_window: false,
             back_exits_title: false,
+            keyboard: true,
             post_score: Some(scores::curl_post),
             fetch_board: Some(scores::curl_get),
             lan: Some(computer_name),

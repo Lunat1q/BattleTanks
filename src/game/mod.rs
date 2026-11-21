@@ -6,6 +6,7 @@ pub mod cloud;
 pub mod combat;
 pub mod enemy;
 pub mod powerup;
+pub mod progress;
 pub mod stage;
 pub mod tank;
 
@@ -25,6 +26,8 @@ pub enum Screen {
     Settings,
     /// City Run district map: pick an unlocked district.
     CityMap,
+    /// Classic stage tiles: pick an unlocked stage.
+    StageSelect,
     /// World board: name entry and rank, after a classic game over or a City Run district clear.
     Board,
     /// HI SCORES from the title: the world board's top 10 per category.
@@ -411,5 +414,5 @@ pub fn plugin(app: &mut App) {
                 .chain()
                 .in_set(Sim),
         )
-        .add_plugins((stage::plugin, city::plugin));
+        .add_plugins((stage::plugin, city::plugin, progress::plugin));
 }

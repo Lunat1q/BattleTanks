@@ -17,59 +17,63 @@ fn local(p: Vec2) -> Vec2 {
 
 pub fn brick() -> Image {
     let mut c = Canvas::new(TILE_UNITS, TILE_UNITS, PPU);
-    let mortar = rgb(0.36, 0.32, 0.29);
-    c.fill(|p| {
-        let q = local(p);
-        let row = (q.y / 2.0).floor();
-        let shift = if row as i32 % 2 == 0 { 0.0 } else { 2.0 };
-        let col = ((q.x + shift) / 4.0).floor();
-        let (bx, by) = (((q.x + shift) / 4.0).fract() * 4.0, (q.y / 2.0).fract() * 2.0);
-        let m = 0.28;
-        if bx < m || by < m {
-            return shade(mortar, 0.9 + 0.2 * hash(q.x as i32 * 8, q.y as i32 * 8, 3));
-        }
-        let k = hash(col as i32, row as i32, 11);
-        let base = mix(rgb(0.70, 0.30, 0.17), rgb(0.80, 0.42, 0.22), k);
-        let grain = 0.9 + 0.2 * noise(q * 3.0, 5, 48);
-        let edge = if by > 2.0 - 0.45 {
-            1.18
-        } else if by < m + 0.4 {
-            0.78
-        } else if bx > 4.0 - 0.4 {
-            0.85
-        } else {
-            1.0
-        };
-        shade(base, grain * edge)
-    });
+    c.fill(|p| brick_at(local(p)));
     c.into_image()
+}
+
+/// Brick wall colour at `q` (units, y up): 4 x 2 bricks in offset courses. Also builds the title's "BATTLE".
+pub fn brick_at(q: Vec2) -> C {
+    let mortar = rgb(0.36, 0.32, 0.29);
+    let row = (q.y / 2.0).floor();
+    let shift = if row as i32 % 2 == 0 { 0.0 } else { 2.0 };
+    let col = ((q.x + shift) / 4.0).floor();
+    let (bx, by) = (((q.x + shift) / 4.0).fract() * 4.0, (q.y / 2.0).fract() * 2.0);
+    let m = 0.28;
+    if bx < m || by < m {
+        return shade(mortar, 0.9 + 0.2 * hash(q.x as i32 * 8, q.y as i32 * 8, 3));
+    }
+    let k = hash(col as i32, row as i32, 11);
+    let base = mix(rgb(0.70, 0.30, 0.17), rgb(0.80, 0.42, 0.22), k);
+    let grain = 0.9 + 0.2 * noise(q * 3.0, 5, 48);
+    let edge = if by > 2.0 - 0.45 {
+        1.18
+    } else if by < m + 0.4 {
+        0.78
+    } else if bx > 4.0 - 0.4 {
+        0.85
+    } else {
+        1.0
+    };
+    shade(base, grain * edge)
 }
 
 pub fn steel() -> Image {
     let mut c = Canvas::new(TILE_UNITS, TILE_UNITS, PPU);
-    let face = rgb(0.58, 0.62, 0.68);
-    c.fill(|p| {
-        let q = local(p);
-        let (x, y) = (q.x.rem_euclid(8.0), q.y.rem_euclid(8.0));
-        let brushed = 0.94 + 0.08 * noise(Vec2::new(q.x * 6.0, q.y * 0.6), 9, 96);
-        let b = 0.9; // bevel width
-        if x < b || y > 8.0 - b {
-            return shade(face, 1.35 * brushed);
-        }
-        if x > 8.0 - b || y < b {
-            return shade(face, 0.55 * brushed);
-        }
-        // Raised centre plate.
-        let d = (x - 4.0).abs().max((y - 4.0).abs());
-        if d < 2.0 {
-            return shade(face, 1.12 * brushed);
-        }
-        if d < 2.45 {
-            return shade(face, if x - 4.0 > y - 4.0 { 0.72 } else { 1.25 });
-        }
-        shade(face, brushed)
-    });
+    c.fill(|p| steel_at(local(p)));
     c.into_image()
+}
+
+/// Steel colour at `q` (units, y up): 8 x 8 bevelled plates with a raised centre. Also builds the title's "TANKS".
+pub fn steel_at(q: Vec2) -> C {
+    let face = rgb(0.58, 0.62, 0.68);
+    let (x, y) = (q.x.rem_euclid(8.0), q.y.rem_euclid(8.0));
+    let brushed = 0.94 + 0.08 * noise(Vec2::new(q.x * 6.0, q.y * 0.6), 9, 96);
+    let b = 0.9; // bevel width
+    if x < b || y > 8.0 - b {
+        return shade(face, 1.35 * brushed);
+    }
+    if x > 8.0 - b || y < b {
+        return shade(face, 0.55 * brushed);
+    }
+    // Raised centre plate.
+    let d = (x - 4.0).abs().max((y - 4.0).abs());
+    if d < 2.0 {
+        return shade(face, 1.12 * brushed);
+    }
+    if d < 2.45 {
+        return shade(face, if x - 4.0 > y - 4.0 { 0.72 } else { 1.25 });
+    }
+    shade(face, brushed)
 }
 
 pub fn water(frame: u32) -> Image {

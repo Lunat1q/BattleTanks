@@ -110,6 +110,15 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Docs, version 0.6.0
 - [ ] Owner: play a few stages on the phone once Play Console has the achievements (Android plan, section M)
 
+### M10 — Title rework (v0.7.0, ADR 0018) ✅
+- [x] Title: no tagline / START / STAGE lines; menu CLASSIC, CITY RUN, LAN CO-OP, HI SCORES, ACHIEVEMENTS, SETTINGS, EXIT
+- [x] Logo in brick + steel; player tanks drive in beside it on join, back out on leave
+- [x] PLAYER 1 / PLAYER 2 pixel-frame join cards beside the menu (blinking PRESS A, CONTROLLER FOUND, READY); hints per host (`Platform::keyboard`)
+- [x] CLASSIC → stage tiles (6 x 5, mini-maps, padlocks), cursor only on open tiles (`stages::step` tested)
+- [x] `Progress.classic` (`classic=N` in `city.txt` + cloud), frontier rule for both modes; LAN joiner keeps and saves
+  their own copy (`OwnProgress`), host's in `Hello` (PROTO 3); LAN smoke: linked, hashes equal
+- [ ] Owner: try the title and the tiles on the TV / phone
+
 ## Current state
 
 City Run added, released as v0.3.0 on GitHub: 10 districts, district map, smoke screenshots checked for the map, a district start, a

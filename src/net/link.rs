@@ -105,13 +105,14 @@ pub struct Hello {
     pub friendly_fire: bool,
     pub keep_power: bool,
     pub unlocked: u8,
+    pub classic: u8,
 }
 
 impl Hello {
     pub fn encode(&self) -> Vec<u8> {
         let mut w = W::default();
         w.u32(PROTO).str(&self.version).str(&self.name).u16(self.udp).u32(self.session).u64(self.seed);
-        w.bool(self.friendly_fire).bool(self.keep_power).u8(self.unlocked);
+        w.bool(self.friendly_fire).bool(self.keep_power).u8(self.unlocked).u8(self.classic);
         w.0
     }
 
@@ -128,6 +129,7 @@ impl Hello {
             friendly_fire: r.bool()?,
             keep_power: r.bool()?,
             unlocked: r.u8()?,
+            classic: r.u8()?,
         })
     }
 }
@@ -246,6 +248,7 @@ mod tests {
             friendly_fire: true,
             keep_power: false,
             unlocked: 4,
+            classic: 12,
         };
         assert_eq!(Hello::decode(&h.encode()), Some(h));
         assert_eq!(Hello::decode(&[9, 9, 9]), None);

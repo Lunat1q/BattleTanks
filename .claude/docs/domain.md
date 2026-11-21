@@ -49,8 +49,28 @@ All numbers live in `src/rules.rs` unless noted.
 Helmet (shield 10 s) · Clock (enemies freeze 10 s, tinted icy) · Shovel (steel base ring 20 s, blinks back to
 brick in the last 3 s) · Star (+1 level) · Grenade (destroys all enemies on the field, no points) · Tank (+1 life).
 
+## Title (`ui/title.rs`, ADR 0018)
+- Menu: CLASSIC, CITY RUN, LAN CO-OP (hosts with `Platform::lan`), HI SCORES, ACHIEVEMENTS (hosts with
+  `Platform::achieve`), SETTINGS, EXIT. CLASSIC and CITY RUN are dimmed until someone has joined.
+- The logo is built from terrain: "BATTLE" in brick, "TANKS" in steel. When a player joins, their tank drives in
+  from their side of the screen (1.8 s, slowing as it parks) and parks beside the logo; it backs out when they leave.
+- A **card per player** (pixel-art frame in the player's colour): PLAYER 1 left of the menu, PLAYER 2 right. Joining: A (Space / Enter) from any device that hasn't
+  joined takes the first free card; B leaves it.
+  - Empty card: a dim tank and a blinking "PRESS A TO JOIN" ("or Space / Enter" on hosts with a keyboard). When a pad
+    is on but in no slot, the card says "CONTROLLER FOUND".
+  - Joined card: the device ("CONTROLLER", "KEYS WASD", or the machine's name over LAN) and "READY   B leave".
+- Under the menu: the local hi score and the controls. The pad line is always shown; the keys line only with
+  `Platform::keyboard`.
+
+## Classic stage select (`ui/stages.rs`, `game/progress.rs`, ADR 0018)
+CLASSIC → a 6 × 5 grid of stage tiles, each showing its map in miniature with the stage number. Cleared tiles have a
+gold frame, the next unbeaten one a white frame; the rest are dark with a padlock. Stage 1 is open from the start.
+Clearing the highest open stage opens the next; replays and clears past it open nothing. The cursor moves only over
+open tiles and starts on the highest: left/right step through the stages in order, up/down jump a row, A starts,
+B goes back. Saved as `classic=N` in `city.txt` and the cloud copy (see City Run).
+
 ## Flow
-Title → join (A / Space / Enter) → START (or pick STAGE n first) → stage banner 2.2 s → play →
+Title → join (A / Space / Enter) → CLASSIC → pick a stage tile → stage banner 2.2 s → play →
 all 20 destroyed → 3 s → results tally → next stage. Base lost or every player out → 3 s → game over → title.
 30 stages, rosters ramping from mostly LIGHT (1) to mostly HEAVY (30). After stage 30 the maps loop; each lap converts
 4 weaker enemies into stronger ones.
@@ -132,7 +152,8 @@ Controller disconnect → game pauses with a note; any unassigned controller pre
 ## City Run (`game/city.rs`, `city_map.rs`, `levels/city/NN.txt`)
 Title → CITY RUN → district map (10 dots on a pixel-art city, dotted roads). Cleared = gold, next = white,
 later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved to
-`%APPDATA%\BattleTanks\city.txt` (`unlocked=N`). A host with a cloud copy (`Platform::cloud_load` / `cloud_save`,
+`%APPDATA%\BattleTanks\city.txt` (`unlocked=N`, classic stages `classic=N`). A district opens only by clearing the one
+before it (no gaps; same rule as classic stages). A host with a cloud copy (`Platform::cloud_load` / `cloud_save`,
 none on the exe) syncs it at start and after each new unlock: the higher count wins on both sides, and a cloud that
 can't be read is never written.
 
@@ -213,7 +234,6 @@ Only on hosts with `Platform::achieve` (Android: Play Games); the exe has none (
   results or game over, when that run unlocked something. The rows arrive one by one (slide in, gold flash, badge
   pop, chime), the points total counts up under a twinkling title; A shows all at once, then moves on. Not shown in
   LAN sessions (both machines must change screens on the same tick); the list has them.
-- With LAN CO-OP and ACHIEVEMENTS both on, the title menu packs tighter (8 items).
 
 ## LAN co-op (`net/`, `ui/lan.rs`, ADR 0014)
 Title → LAN CO-OP (hosts whose `Platform::lan` is set). One player picks HOST GAME (the screen says "HOSTING AS
@@ -221,9 +241,12 @@ Title → LAN CO-OP (hosts whose `Platform::lan` is set). One player picks HOST 
 (the list says which version a host runs). Once linked both go to the title with nobody joined; each player joins
 with A on their own device and is shown by machine name. Then it is the normal game for two: classic or City Run,
 same rules, each machine draws it and plays its own sound and rumble.
-- Linked title: START, STAGE, CITY RUN, LEAVE LAN (no HI SCORES / SETTINGS / EXIT). Pause menu: EXIT GAME becomes
-  LEAVE LAN. Leaving ends it for both. The host's FRIENDLY FIRE, KEEP POWER and City Run unlocks apply; the joiner's
-  own come back afterwards, and only the host saves unlocks.
+- Linked title: CLASSIC, CITY RUN, LEAVE LAN (no HI SCORES / SETTINGS / EXIT). Pause menu: EXIT GAME becomes
+  LEAVE LAN. Leaving ends it for both. The host's FRIENDLY FIRE, KEEP POWER, open stages and districts apply; the
+  joiner's own come back afterwards.
+- Unlocks over LAN (ADR 0018): the host's move as always. A stage or district cleared together also counts for the
+  joiner, but only from their own frontier: own open stage 3, clear 5 with the host → nothing opens for them (3 and 4
+  stay locked); own 5, clear 5, 6, 7 in a row → own 8. Each side saves and syncs only its own progress.
 - LAN runs don't go to the world board (the local hi score still counts).
 - One machine going to the background pauses the stage on both. A slow or silent partner freezes both screens with
   "waiting for <name>..."; after 45 s the session ends and the remaining player goes on alone (the partner's slot is
@@ -264,5 +287,4 @@ same rules, each machine draws it and plays its own sound and rumble.
 | 10 fps on a TV-class GPU (Mali-G57), CPU idle | Bevy's default 4x MSAA + bloom passes at 1080p, each ~halving fps | `Msaa::Off` everywhere (sprites are pre-anti-aliased); bloom is `Platform::bloom`, off on such hosts: 56 fps |
 | Looping music would hold ~55 MB per song | rodio `repeat_infinite` buffers every decoded sample | play once (DESPAWN), respawn when it ends |
 | New track failed `every_track_decodes` (`UnrecognizedFormat`) | MP3 cover art became a Theora video stream in the .ogg | encode with `ffmpeg -i x.mp3 -map 0:a -vn -map_metadata -1 -af volume=<-16 − measured LUFS>dB -ar 44100 -c:a libvorbis -q:a 1 x.ogg` (measure with `-af loudnorm=print_format=json -f null -`) |
-| Title's bottom lines (slots, hi score, controls) off screen with 8 menu items | spacers sized for 7 | `title::spawn` packs items and spacers when the menu is longer |
 | `adb pull /sdcard/...` "no such file" from Git Bash | MSYS rewrites the remote path to `C:/Program Files/Git/sdcard/...` | prefix `MSYS_NO_PATHCONV=1` |

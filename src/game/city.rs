@@ -1,13 +1,13 @@
 //! City Run: a tall district scrolls as the players push up. Placed enemies wake when they come into
 //! view, reinforcements drop in from the top, bastion gates open once their turrets fall, a living
-//! mini-boss or boss holds the camera, and killing the boss clears the district. Unlocks are saved.
+//! mini-boss or boss holds the camera, and killing the boss clears the district (unlocks: `progress`).
 
 use super::stage::spawn_enemy;
 use super::*;
 use crate::city_map::{self, Spawn};
 use crate::geom::{FIELD, overlaps, rect_at};
 use crate::rng::Rng;
-use crate::rules::{CITY_DISTRICTS, Rank};
+use crate::rules::Rank;
 use crate::terrain::{Terrain, Tile};
 
 #[derive(Resource)]
@@ -27,54 +27,16 @@ pub struct CityRun {
     pub(crate) secrets: Vec<(Vec2, PowerKind)>,
 }
 
-/// Highest district the players may start (1-based); `CITY_DISTRICTS + 1` once all are cleared.
-#[derive(Resource, Clone, Copy, PartialEq, Debug)]
-pub struct Progress {
-    pub unlocked: usize,
-}
-
-impl Progress {
-    pub fn parse(text: &str) -> Self {
-        let n = text.lines().find_map(|l| l.trim().strip_prefix("unlocked=")).and_then(|v| v.trim().parse().ok()).unwrap_or(1);
-        Progress { unlocked: usize::clamp(n, 1, CITY_DISTRICTS + 1) }
-    }
-    /// District `n` cleared: open the next one. True if that is news.
-    pub fn clear(&mut self, n: usize) -> bool {
-        let next = (n + 1).min(CITY_DISTRICTS + 1);
-        let news = next > self.unlocked;
-        self.unlocked = self.unlocked.max(next);
-        news
-    }
-    pub fn text(&self) -> String {
-        format!("unlocked={}\n", self.unlocked)
-    }
-    /// Writes `city.txt` in the data folder.
-    pub fn save_local(&self) {
-        let Some(p) = crate::settings::data_file(SAVE) else { return };
-        if let Err(e) = p.parent().map_or(Ok(()), std::fs::create_dir_all).and_then(|_| std::fs::write(&p, self.text())) {
-            warn!("could not save City Run progress to {}: {e}", p.display());
-        }
-    }
-}
-
-const SAVE: &str = "city.txt";
-
 pub fn plugin(app: &mut App) {
-    let progress = crate::settings::data_file(SAVE)
-        .and_then(|p| std::fs::read_to_string(p).ok())
-        .map_or(Progress { unlocked: 1 }, |t| Progress::parse(&t));
-    app.insert_resource(progress)
-        .add_plugins(super::cloud::plugin)
-        .add_systems(OnEnter(Screen::Results), save_clear.run_if(|s: Res<Session>| s.mode == Mode::City))
-        .add_systems(
-            Update,
-            (scroll, wake, reinforce, watch, reveal, cull)
-                .chain()
-                .in_set(Sim)
-                .after(stage::tick_timers)
-                .before(tank::player_control)
-                .run_if(resource_exists::<CityRun>),
-        );
+    app.add_systems(
+        Update,
+        (scroll, wake, reinforce, watch, reveal, cull)
+            .chain()
+            .in_set(Sim)
+            .after(stage::tick_timers)
+            .before(tank::player_control)
+            .run_if(resource_exists::<CityRun>),
+    );
 }
 
 /// Builds district `session.stage`: resets lives and power (every district starts fresh), fills the stashes,
@@ -252,14 +214,6 @@ fn cull(mut commands: Commands, view: Res<View>, things: Query<(Entity, &Transfo
     }
 }
 
-/// A LAN joiner plays on the host's unlocks: it moves them along (both maps must match) but doesn't save them.
-fn save_clear(session: Res<Session>, mut progress: ResMut<Progress>, net: Res<crate::net::Net>, mut pull: ResMut<super::cloud::Pull>) {
-    if progress.clear(session.stage) && net.me() != Some(1) {
-        progress.save_local();
-        pull.want = true;
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -272,18 +226,5 @@ mod tests {
         assert_eq!(scroll_to(0.0, &[5000.0], 400.0, false), 400.0, "stops at the map top");
         assert_eq!(scroll_to(10.0, &[300.0], 1000.0, true), 10.0, "boss holds the camera");
         assert_eq!(scroll_to(10.0, &[], 1000.0, false), 10.0);
-    }
-
-    #[test]
-    fn progress_parses_and_only_moves_forward() {
-        assert_eq!(Progress::parse("").unlocked, 1);
-        assert_eq!(Progress::parse("unlocked=4\n").unlocked, 4);
-        assert_eq!(Progress::parse("unlocked=99").unlocked, CITY_DISTRICTS + 1);
-        let mut p = Progress { unlocked: 3 };
-        assert!(!p.clear(1), "replaying an old district changes nothing");
-        assert!(p.clear(3));
-        assert_eq!(p.unlocked, 4);
-        p.clear(CITY_DISTRICTS);
-        assert_eq!(p.unlocked, CITY_DISTRICTS + 1);
     }
 }

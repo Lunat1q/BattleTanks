@@ -1,21 +1,36 @@
-//! Title: players join by pressing A (or Space / Enter), then pick START. B leaves a slot.
+//! Title: players join by pressing A (or Space / Enter) on a card, player 1 left of the menu, player 2 right; B leaves
+//! a slot.
+//! CLASSIC goes to the stage tiles, CITY RUN to the district map.
 
 use super::*;
 use crate::game::{Mode, Screen, Session, Sfx, Slot};
 use crate::geom::Dir;
 use crate::gfx::Gfx;
 use crate::input::{Device, DeviceIntents, Intent};
-use crate::levels;
 use crate::net::Net;
 
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub(crate) struct TitleMenu {
     pub(crate) sel: usize,
-    pub(crate) stage: usize,
 }
 
+/// Player card `n`: its frame and its two text lines.
 #[derive(Component)]
-struct SlotLine(usize);
+struct Card(usize);
+#[derive(Component)]
+struct CardLine(usize, usize);
+
+/// Player `slot`'s tank beside the logo: drives in from its side of the screen when the player joins (`at` 0 = off
+/// screen, 1 = parked), backs out when they leave.
+#[derive(Component)]
+struct TitleTank {
+    slot: usize,
+    at: f32,
+    tread: f32,
+}
+
+/// Seconds for the drive in.
+const DRIVE: f32 = 1.8;
 
 /// Linked: the measured round trip and the input delay it picked.
 #[derive(Component)]
@@ -23,8 +38,7 @@ struct PingLine;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Item {
-    Start,
-    Stage,
+    Classic,
     City,
     Lan,
     HiScores,
@@ -38,9 +52,9 @@ enum Item {
 fn items(linked: bool, platform: &crate::Platform) -> Vec<Item> {
     use Item::*;
     if linked {
-        return vec![Start, Stage, City, Leave];
+        return vec![Classic, City, Leave];
     }
-    [Start, Stage, City]
+    [Classic, City]
         .into_iter()
         .chain(platform.lan.is_some().then_some(Lan))
         .chain([HiScores])
@@ -49,10 +63,12 @@ fn items(linked: bool, platform: &crate::Platform) -> Vec<Item> {
         .collect()
 }
 
+const SLOT_COLORS: [Color; 2] = [GOLD, GREEN];
+
 pub fn plugin(app: &mut App) {
-    app.insert_resource(TitleMenu { sel: 0, stage: 1 })
+    app.init_resource::<TitleMenu>()
         .add_systems(OnEnter(Screen::Title), (reset_session, spawn).chain())
-        .add_systems(Update, (input, refresh).chain().run_if(in_state(Screen::Title)));
+        .add_systems(Update, (input, refresh, drive).chain().run_if(in_state(Screen::Title)));
 }
 
 /// Back on the title: keep who joined (if still connected), reset their game stats.
@@ -63,6 +79,13 @@ fn reset_session(mut session: ResMut<Session>, devices: Res<DeviceIntents>) {
     session.log.clear();
 }
 
+/// The controls that this host has, one line each.
+fn hints(platform: &crate::Platform) -> Vec<&'static str> {
+    let pad = "stick / D-pad move   A fire / pick   B back   Start pause";
+    let keys = "keys: 1P WASD + Space   2P arrows + Enter   Backspace back   Esc pause";
+    std::iter::once(pad).chain(platform.keyboard.then_some(keys)).collect()
+}
+
 fn spawn(mut commands: Commands, session: Res<Session>, gfx: Res<Gfx>, net: Res<Net>, platform: Res<crate::Platform>) {
     // Version in the corner, so a TV screenshot says which build it was.
     commands.spawn((
@@ -71,33 +94,67 @@ fn spawn(mut commands: Commands, session: Res<Session>, gfx: Res<Gfx>, net: Res<
         DespawnOnExit(Screen::Title),
     ));
     let n = items(net.linked(), &platform).len();
-    // Seven items fill the screen; a longer menu (LAN + ACHIEVEMENTS) packs tighter so the bottom lines stay on it.
-    let (item_vh, gap) = if n > 7 { (4.2, vh(1.5)) } else { (5.0, vh(4)) };
+    // The frame is 30 x 22 chunky pixels, so one pixel is 1 vh.
+    let card = |slot: usize| {
+        (
+            Node {
+                width: vh(30),
+                height: vh(22),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                row_gap: vh(1.4),
+                ..default()
+            },
+            ImageNode::new(gfx.card_frame.clone()).with_color(SLOT_COLORS[slot]),
+            Card(slot),
+        )
+    };
     commands.spawn((screen_root(), DespawnOnExit(Screen::Title))).with_children(|root| {
         root.spawn(Node { align_items: AlignItems::Center, column_gap: vh(4), ..default() }).with_children(|row| {
-            let tank = |slot: usize, color| {
+            // Players already in (back from a game) are parked; the others wait off screen.
+            let tank = |slot: usize| {
+                let at = if session.slots[slot].is_some() { 1.0 } else { 0.0 };
                 (
-                    ImageNode::new(gfx.players[3][0].clone()).with_color(color),
+                    ImageNode::new(gfx.players[3][0].clone()).with_color(SLOT_COLORS[slot]),
                     Node { width: vh(14), height: vh(14), ..default() },
-                    UiTransform::from_rotation(Rot2::degrees(if slot == 0 { 90.0 } else { -90.0 })),
+                    UiTransform {
+                        translation: Val2::new(Val::Vw(tank_offset(slot, at)), Val::ZERO),
+                        ..UiTransform::from_rotation(Rot2::degrees(if slot == 0 { 90.0 } else { -90.0 }))
+                    },
+                    TitleTank { slot, at, tread: 0.0 },
                 )
             };
-            row.spawn(tank(0, GOLD));
-            row.spawn(text("BATTLE TANKS", 13.0, GOLD));
-            row.spawn(tank(1, GREEN));
+            row.spawn(tank(0));
+            row.spawn((ImageNode::new(gfx.title_logo.clone()), Node { height: vh(12), ..default() }));
+            row.spawn(tank(1));
         });
-        root.spawn(text("two-player tank defence", 3.2, DIM));
-        root.spawn(Node { height: gap, ..default() });
-        for i in 0..n {
-            root.spawn((text("", item_vh, INK), MenuLine(i)));
-        }
-        root.spawn(Node { height: gap, ..default() });
-        root.spawn(Node { column_gap: vw(8), ..default() }).with_children(|row| {
-            for i in 0..2 {
-                row.spawn((text("", 3.6, if i == 0 { GOLD } else { GREEN }), SlotLine(i)));
+        root.spawn(Node { height: vh(3), ..default() });
+        root.spawn(Node { align_items: AlignItems::Center, column_gap: vh(10), ..default() }).with_children(|row| {
+            for (slot, &color) in SLOT_COLORS.iter().enumerate() {
+                if slot == 1 {
+                    row.spawn(Node {
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        row_gap: vh(1.8),
+                        // Fixed width: the selection marks ("> ... <") must not shift the cards.
+                        width: vh(54),
+                        ..default()
+                    })
+                    .with_children(|menu| {
+                        for i in 0..n {
+                            menu.spawn((text("", 4.8, INK), MenuLine(i)));
+                        }
+                    });
+                }
+                row.spawn(card(slot)).with_children(|c| {
+                    c.spawn(text(format!("PLAYER {}", slot + 1), 4.4, color));
+                    c.spawn((text("", 2.8, INK), CardLine(slot, 0)));
+                    c.spawn((text("", 2.4, DIM), CardLine(slot, 1)));
+                });
             }
         });
-        root.spawn(Node { height: gap, ..default() });
+        root.spawn(Node { height: vh(3), ..default() });
         root.spawn(text(format!("HI SCORE  {}", session.hi_score), 3.0, DIM));
         if net.linked() {
             root.spawn((text("", 2.6, DIM), PingLine));
@@ -105,7 +162,9 @@ fn spawn(mut commands: Commands, session: Res<Session>, gfx: Res<Gfx>, net: Res<
         if !net.linked() && !net.note.is_empty() {
             root.spawn(text(format!("LAN: {}", net.note), 2.6, RED));
         }
-        root.spawn(text("Controller: stick/D-pad move  A fire  Start pause  |  Keys: P1 WASD+Space  P2 Arrows+Enter  Esc pause", 2.2, DIM));
+        for hint in hints(&platform) {
+            root.spawn(text(hint, 2.2, DIM));
+        }
     });
 }
 
@@ -152,7 +211,7 @@ fn input(
                 sfx.write(Sfx::MenuPick);
             }
         } else {
-            // Unjoined devices can still move the cursor (e.g. to reach EXIT).
+            // Devices that haven't joined can still move the cursor (e.g. to reach EXIT).
             nav.nav = nav.nav.or(intent.nav);
         }
     }
@@ -164,60 +223,80 @@ fn input(
     match nav.nav {
         Some(Dir::Up) => menu.sel = (menu.sel + n - 1) % n,
         Some(Dir::Down) => menu.sel = (menu.sel + 1) % n,
-        Some(Dir::Left) if menu.sel == 1 => menu.stage = if menu.stage <= 1 { levels::stage_count() } else { menu.stage - 1 },
-        Some(Dir::Right) if menu.sel == 1 => menu.stage = menu.stage % levels::stage_count() + 1,
         _ => {}
     }
-    if nav.nav.is_some() {
+    if matches!(nav.nav, Some(Dir::Up | Dir::Down)) {
         sfx.write(Sfx::MenuMove);
     }
     if nav.confirm || nav.start {
-        match items[menu.sel] {
-            Item::Start | Item::Stage if session.players() > 0 => {
+        let to = match items[menu.sel] {
+            Item::Classic if session.players() > 0 => {
                 session.mode = Mode::Classic;
-                session.stage = menu.stage;
-                sfx.write(Sfx::MenuPick);
-                next.set(Screen::Stage);
+                Some(Screen::StageSelect)
             }
             Item::City if session.players() > 0 => {
                 session.mode = Mode::City;
-                sfx.write(Sfx::MenuPick);
-                next.set(Screen::CityMap);
+                Some(Screen::CityMap)
             }
-            Item::Lan => {
-                sfx.write(Sfx::MenuPick);
-                next.set(Screen::Lan);
-            }
-            Item::HiScores => {
-                sfx.write(Sfx::MenuPick);
-                next.set(Screen::HiScores);
-            }
-            Item::Achievements => {
-                sfx.write(Sfx::MenuPick);
-                next.set(Screen::Achievements);
-            }
-            Item::Settings => next.set(Screen::Settings),
+            Item::Lan => Some(Screen::Lan),
+            Item::HiScores => Some(Screen::HiScores),
+            Item::Achievements => Some(Screen::Achievements),
+            Item::Settings => Some(Screen::Settings),
             Item::Exit => {
                 exit.write(AppExit::Success);
+                None
             }
             Item::Leave => {
                 sfx.write(Sfx::MenuPick);
                 net.leave = true;
+                None
             }
-            _ => {}
+            _ => None,
+        };
+        if let Some(to) = to {
+            if to != Screen::Settings {
+                sfx.write(Sfx::MenuPick);
+            }
+            next.set(to);
         }
     }
 }
 
+/// What an empty card says: a controller that is on but hasn't joined, or just how to join.
+fn empty_card(free_pad: bool, keyboard: bool) -> (&'static str, &'static str) {
+    match (free_pad, keyboard) {
+        (true, _) => ("CONTROLLER FOUND", "PRESS A TO JOIN"),
+        (false, true) => ("PRESS A TO JOIN", "or Space / Enter"),
+        (false, false) => ("PRESS A TO JOIN", ""),
+    }
+}
+
 fn refresh(
+    time: Res<Time>,
     menu: Res<TitleMenu>,
     session: Res<Session>,
     net: Res<Net>,
+    devices: Res<DeviceIntents>,
     platform: Res<crate::Platform>,
-    mut lines: Query<(&mut Text, Option<&MenuLine>, Option<&SlotLine>, Has<PingLine>)>,
+    mut lines: Query<(&mut Text, &mut TextColor, Option<&MenuLine>, Option<&CardLine>, Has<PingLine>)>,
+    mut cards: Query<(&Card, &mut ImageNode)>,
 ) {
     let items = items(net.linked(), &platform);
-    for (mut t, line, slot, ping) in &mut lines {
+    let blink = 0.7 + 0.3 * (time.elapsed_secs() * 4.0).sin();
+    let joined: Vec<Device> = session.slots.iter().flatten().map(|s| s.device).collect();
+    // Pads that are on but in no slot, handed to the empty cards in order (offline only: linked, pads are this
+    // machine's alone and the cards show both machines).
+    let mut free = devices.0.iter().filter(|(d, _)| matches!(d, Device::Pad(_)) && !joined.contains(d)).filter(|_| !net.linked());
+    let card_text: Vec<(String, String)> = (0..2)
+        .map(|i| match &session.slots[i] {
+            Some(s) => (device_name(s.device, &net), "READY   B leave".into()),
+            None => {
+                let (a, b) = empty_card(free.next().is_some(), platform.keyboard && !net.linked());
+                (a.into(), b.into())
+            }
+        })
+        .collect();
+    for (mut t, mut color, line, card, ping) in &mut lines {
         if ping {
             let s = match net.ping {
                 Some((rtt, delay)) => format!("LAN  round trip {rtt} ms  -  input delay {delay} ({} ms)", (delay * 50).div_ceil(3)),
@@ -227,26 +306,104 @@ fn refresh(
         }
         if let Some(MenuLine(i)) = line {
             let label = match items.get(*i) {
-                Some(Item::Start) if session.players() == 0 => "PRESS A TO JOIN".to_string(),
-                Some(Item::Start) => "START".to_string(),
-                Some(Item::Stage) => format!("STAGE  < {} >", menu.stage),
-                Some(Item::City) => "CITY RUN".to_string(),
-                Some(Item::Lan) => "LAN CO-OP".to_string(),
-                Some(Item::HiScores) => "HI SCORES".to_string(),
-                Some(Item::Achievements) => "ACHIEVEMENTS".to_string(),
-                Some(Item::Settings) => "SETTINGS".to_string(),
-                Some(Item::Exit) => "EXIT".to_string(),
-                Some(Item::Leave) => "LEAVE LAN".to_string(),
-                None => String::new(),
+                Some(Item::Classic) => "CLASSIC",
+                Some(Item::City) => "CITY RUN",
+                Some(Item::Lan) => "LAN CO-OP",
+                Some(Item::HiScores) => "HI SCORES",
+                Some(Item::Achievements) => "ACHIEVEMENTS",
+                Some(Item::Settings) => "SETTINGS",
+                Some(Item::Exit) => "EXIT",
+                Some(Item::Leave) => "LEAVE LAN",
+                None => "",
             };
-            set_text(&mut t, menu_label(menu.sel == *i, &label));
+            set_text(&mut t, menu_label(menu.sel == *i, label));
+            // The modes wait for a player.
+            let waiting = session.players() == 0 && matches!(items.get(*i), Some(Item::Classic | Item::City));
+            color.0 = if waiting { DIM } else { INK };
         }
-        if let Some(SlotLine(i)) = slot {
-            let s = match &session.slots[*i] {
-                Some(s) => format!("{}P  {}  READY", i + 1, device_name(s.device, &net)),
-                None => format!("{}P  press A to join", i + 1),
-            };
-            set_text(&mut t, s);
+        if let Some(&CardLine(i, row)) = card {
+            let (a, b) = &card_text[i];
+            set_text(&mut t, if row == 0 { a.clone() } else { b.clone() });
+            // The line that says to press A blinks.
+            let base = if row == 0 { INK } else { DIM };
+            let press = session.slots[i].is_none() && (if row == 0 { a } else { b }).starts_with("PRESS");
+            color.0 = if press { SLOT_COLORS[i].with_alpha(blink) } else { base };
         }
+    }
+    for (card, mut frame) in &mut cards {
+        let c = SLOT_COLORS[card.0];
+        frame.color = if session.slots[card.0].is_some() { c } else { c.with_alpha(0.45) };
+    }
+}
+
+/// `at` moved toward `goal` by up to `step`; exactly `goal` once there (a parked tank stays put).
+fn step_toward(at: f32, goal: f32, step: f32) -> f32 {
+    if at < goal { (at + step).min(goal) } else { (at - step).max(goal) }
+}
+
+/// How far off its parking spot a title tank is, in % of screen width: eased, so it slows as it parks.
+fn tank_offset(slot: usize, at: f32) -> f32 {
+    let away = (1.0 - at).powi(2) * 60.0;
+    if slot == 0 { -away } else { away }
+}
+
+fn drive(
+    time: Res<Time>,
+    session: Res<Session>,
+    gfx: Res<Gfx>,
+    mut tanks: Query<(&mut TitleTank, &mut UiTransform, &mut ImageNode, &mut Visibility)>,
+) {
+    let dt = time.delta_secs();
+    for (mut tank, mut tf, mut img, mut vis) in &mut tanks {
+        let goal = if session.slots[tank.slot].is_some() { 1.0 } else { 0.0 };
+        let before = tank.at;
+        tank.at = step_toward(before, goal, dt / DRIVE);
+        // Treads roll while it moves and rest on the still frame once it stops.
+        let frame = if tank.at != before {
+            tank.tread += dt;
+            (tank.tread / 0.08) as usize % 2
+        } else {
+            tank.tread = 0.0;
+            0
+        };
+        if img.image != gfx.players[3][frame] {
+            img.image = gfx.players[3][frame].clone();
+        }
+        tf.translation.x = Val::Vw(tank_offset(tank.slot, tank.at));
+        *vis = if tank.at > 0.0 { Visibility::Inherited } else { Visibility::Hidden };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn menu_fits_and_drops_what_a_link_cant_share() {
+        let all = crate::Platform { achieve: Some(|_, _| {}), ..default() };
+        assert_eq!(items(false, &all).len(), 7, "the longest menu");
+        assert_eq!(items(true, &all), vec![Item::Classic, Item::City, Item::Leave]);
+        assert!(!items(false, &crate::Platform { lan: None, ..default() }).contains(&Item::Lan));
+    }
+
+    #[test]
+    fn hints_name_keys_only_with_a_keyboard() {
+        assert_eq!(hints(&crate::Platform::default()).len(), 2);
+        assert_eq!(hints(&crate::Platform { keyboard: false, ..default() }).len(), 1);
+        assert_eq!(empty_card(true, true).0, "CONTROLLER FOUND");
+        assert_eq!(empty_card(false, false), ("PRESS A TO JOIN", ""));
+    }
+
+    #[test]
+    fn tanks_drive_in_from_their_own_side_and_park() {
+        assert_eq!(tank_offset(0, 1.0), 0.0);
+        assert_eq!(tank_offset(1, 1.0), 0.0);
+        assert!(tank_offset(0, 0.0) < -50.0, "player 1 waits off the left edge");
+        assert!(tank_offset(1, 0.0) > 50.0, "player 2 off the right");
+        assert_eq!(step_toward(1.0, 1.0, 0.1), 1.0, "a parked tank doesn't rock back and forth");
+        assert_eq!(step_toward(0.0, 0.0, 0.1), 0.0);
+        assert_eq!(step_toward(0.95, 1.0, 0.1), 1.0);
+        assert_eq!(step_toward(0.5, 0.0, 0.1), 0.4);
+        assert!(tank_offset(0, 0.9).abs() < (tank_offset(0, 0.1) - tank_offset(0, 0.0)).abs(), "slows as it parks");
     }
 }

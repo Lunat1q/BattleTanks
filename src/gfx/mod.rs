@@ -5,6 +5,7 @@ mod art_icons;
 mod art_map;
 pub mod art_promo;
 mod art_tanks;
+mod art_title;
 mod art_world;
 mod badge_art;
 mod badge_city;
@@ -42,6 +43,12 @@ pub struct Gfx {
     pub turret: Handle<Image>,
     /// City Run district-map backdrop (pixel art).
     pub city_backdrop: Handle<Image>,
+    /// Title logo: "BATTLE" in brick, "TANKS" in steel.
+    pub title_logo: Handle<Image>,
+    /// Player card frame on the title (greyscale, tinted per player).
+    pub card_frame: Handle<Image>,
+    /// Classic stage tiles' mini-maps, stage 1 first.
+    pub stage_maps: Vec<Handle<Image>>,
     pub brick: Handle<Image>,
     pub steel: Handle<Image>,
     pub trees: Handle<Image>,
@@ -120,6 +127,9 @@ fn build_textures(images: &mut Assets<Image>) -> Gfx {
         boss: art_tanks::boss().map(&mut add),
         turret: add(art_tanks::turret()),
         city_backdrop: add(art_map::city_backdrop()),
+        title_logo: add(art_title::logo(4.0)),
+        card_frame: add(art_title::card_frame()),
+        stage_maps: (1..=crate::levels::stage_count()).map(|n| add(art_map::stage_map(&crate::levels::load(n).terrain))).collect(),
         brick: add(art_world::brick()),
         steel: add(art_world::steel()),
         trees: add(art_world::trees()),

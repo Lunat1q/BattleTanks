@@ -13,7 +13,7 @@ pub mod snap;
 mod tests;
 pub mod wire;
 
-use crate::game::city::Progress;
+use crate::game::progress::{OwnProgress, Progress};
 use crate::game::{Paused, Screen, Session};
 use crate::input::{Device, DeviceIntents, Intent};
 use crate::settings::Settings;
@@ -197,6 +197,7 @@ fn shake_hands(mut net: ResMut<Net>, settings: Res<Settings>, progress: Res<Prog
                         friendly_fire: settings.friendly_fire,
                         keep_power: settings.keep_power,
                         unlocked: progress.unlocked as u8,
+                        classic: progress.classic as u8,
                         ..net.hello(0)
                     };
                     // Sent even on a version mismatch, so the joiner can say which version we run.
@@ -238,20 +239,20 @@ fn rand32() -> u32 {
 /// Both machines start from the host's state, on the title, with nobody joined.
 fn start(world: &mut World, (conn, theirs, me, ours): (Conn, Hello, u8, Hello)) {
     let host = if me == 0 { &ours } else { &theirs };
-    let (seed, session, ff, keep, unlocked) = (host.seed, host.session, host.friendly_fire, host.keep_power, host.unlocked as usize);
+    let (seed, session, ff, keep) = (host.seed, host.session, host.friendly_fire, host.keep_power);
+    let hosts = Progress { unlocked: host.unlocked as usize, classic: host.classic as usize };
     let names = if me == 0 { [ours.name.clone(), theirs.name.clone()] } else { [theirs.name.clone(), ours.name.clone()] };
     info!("lan: linked as player {} ({} + {}), session {session:08x}", me + 1, names[0], names[1]);
     let mut settings = world.resource_mut::<Settings>();
-    let restore = (settings.friendly_fire, settings.keep_power, 0);
+    let restore = (settings.friendly_fire, settings.keep_power);
     (settings.friendly_fire, settings.keep_power) = (ff, keep);
-    let mut progress = world.resource_mut::<Progress>();
-    let restore = (restore.0, restore.1, progress.unlocked);
-    progress.unlocked = unlocked;
+    let own = std::mem::replace(&mut *world.resource_mut::<Progress>(), hosts);
+    world.resource_mut::<OwnProgress>().0 = (me == 1).then_some(own);
     world.insert_resource(crate::rng::Rng::new(seed));
     let mut s = world.resource_mut::<Session>();
     (s.slots, s.mode, s.stage, s.bonus) = ([None, None], crate::game::Mode::Classic, 1, 0);
     s.log.clear();
-    world.insert_resource(crate::ui::title::TitleMenu { sel: 0, stage: 1 });
+    world.insert_resource(crate::ui::title::TitleMenu::default());
     world.resource_mut::<Paused>().0 = false;
     world.resource_mut::<NextState<Screen>>().set(Screen::Title);
     world.insert_resource(Lockstep::new(conn, me, session, restore));
@@ -265,11 +266,13 @@ fn start(world: &mut World, (conn, theirs, me, ours): (Conn, Hello, u8, Hello)) 
 fn finish(world: &mut World, why: String) {
     if let Some(mut ls) = world.remove_resource::<Lockstep>() {
         ls.bye();
-        let (ff, keep, unlocked) = ls.restore;
+        let (ff, keep) = ls.restore;
         if ls.me == 1 {
             let mut settings = world.resource_mut::<Settings>();
             (settings.friendly_fire, settings.keep_power) = (ff, keep);
-            world.resource_mut::<Progress>().unlocked = unlocked;
+        }
+        if let Some(own) = world.resource_mut::<OwnProgress>().0.take() {
+            *world.resource_mut::<Progress>() = own;
         }
     }
     let mut net = world.resource_mut::<Net>();

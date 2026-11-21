@@ -9,6 +9,7 @@ mod hud;
 mod lan;
 mod screens;
 mod settings;
+mod stages;
 mod tally;
 pub mod title;
 mod unlocks;
@@ -34,6 +35,7 @@ pub fn plugin(app: &mut App) {
         lan::plugin,
         achievements::plugin,
         unlocks::plugin,
+        stages::plugin,
     ));
 }
 

@@ -2,7 +2,7 @@
 //! the next one is open, the rest are locked. Left/right (or up/down) picks, A starts, B goes back.
 
 use super::*;
-use crate::game::city::Progress;
+use crate::game::progress::Progress;
 use crate::game::{Mode, Screen, Session, Sfx};
 use crate::geom::Dir;
 use crate::gfx::Gfx;
