@@ -26,6 +26,8 @@ mod settings;
 mod terrain;
 mod ui;
 
+pub use achieve::{Ach, LIST as ACHIEVEMENTS};
+pub use gfx::art_badges::{PX as BADGE_PX, pixels as badge_pixels};
 pub use gfx::art_promo::banner as paint_banner;
 pub use gfx::canvas;
 pub use gfx::icon::paint as paint_icon;

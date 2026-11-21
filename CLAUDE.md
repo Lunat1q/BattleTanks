@@ -56,7 +56,7 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 - **Pure rules in plain functions** (`geom`, `terrain`, `levels`, `rules`, `enemy::choose_dir`,
   `tank::advance`, `combat::can_hit`, `canvas` SDFs) with unit tests in the same file.
 - **Public API is a contract.** A wrapper crate outside this repo builds on `run_with(Platform, extra plugins)`,
-  `Platform`, `TvRemote`, `canvas`, `paint_icon` and `paint_banner`. Change them only on purpose; keep `Platform::default()` = the exe.
+  `Platform`, `TvRemote`, `canvas`, `paint_icon`, `paint_banner`, `ACHIEVEMENTS` and `badge_pixels`. Change them only on purpose; keep `Platform::default()` = the exe.
 - Lazy and small: stdlib/Bevy before new crates, shortest diff, `// ponytail:` comments on deliberate
   shortcuts naming the ceiling and the upgrade path.
 

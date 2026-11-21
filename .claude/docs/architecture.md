@@ -14,7 +14,8 @@ levels/city/NN.txt    # 10 City Run districts, 15-24 screens tall (format in cit
 src/
   main.rs             # Windows exe: calls battle_tanks::run()
   lib.rs              # run() / run_with(Platform, extra plugins): loads Settings first so the window opens in the saved mode;
-                      # plugin list. Public API for wrapper crates: Platform (incl. post_score, fetch_board, cloud_load / cloud_save, achieve), TvRemote, canvas, paint_icon, paint_banner
+                      # plugin list. Public API for wrapper crates: Platform (incl. post_score, fetch_board, cloud_load / cloud_save, achieve), TvRemote, canvas, paint_icon, paint_banner,
+                      # ACHIEVEMENTS + badge_pixels (store icons)
   achieve/            # achievements (ADR 0017), only with Platform::achieve
     mod.rs            # Record (done keys + counters) <-> achievements.txt, merge; track (Feat -> Tracker) after Sim;
                       # mirror off the stage: save, Platform::achieve on a worker thread, cloud sync after an unlock
