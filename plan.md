@@ -128,6 +128,19 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Bolder looks per level: short barrel at 0, star pips on the hull from 1, floats at 4; white flash on a star
 - [ ] Owner: feel on the couch (is level 4 too strong in City Run canals / moats?)
 
+### M12 — Block-built screen titles (planned)
+Every menu / screen heading drawn from terrain cells like the title logo (`gfx/art_title.rs`: one glyph pixel = one
+8-unit cell), not plain text.
+- [ ] Generalise `art_title::logo` to `block_text(text, material)` for brick, steel, water, ice (frost) and trees
+  (forest); `brick_at` / `steel_at` exist, water / ice / trees need `*_at` point painters split out of
+  `art_world::water` / `ice` / `trees`
+- [ ] Pick a material per screen, e.g. CLASSIC brick, CITY RUN steel, LAN CO-OP water, HI SCORES steel, ACHIEVEMENTS
+  forest, SETTINGS frost; PAUSED, STAGE CLEAR / DISTRICT CLEAR, GAME OVER, NEW ACHIEVEMENTS, WORLD BOARD (owner to
+  confirm the mapping)
+- [ ] Bake each heading once at startup into `GameArt` (like `title_logo`); dynamic ones (`STAGE {n}`) from per-glyph
+  images or baked on demand
+- [ ] Smoke screenshots of every screen (TV and phone sizes: headings must not crowd the rows below)
+
 ## Current state
 
 City Run added, released as v0.3.0 on GitHub: 10 districts, district map, smoke screenshots checked for the map, a district start, a
