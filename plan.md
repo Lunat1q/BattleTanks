@@ -94,6 +94,21 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [ ] Owner: feel of the adaptive delay on the phones
 - [x] Merged to `main`, released as 0.5.0 (2026-11-19)
 
+### M9 — Achievements ⏳ (planned, ADR 0017; list in `.claude/docs/achievements.md`)
+55 achievements (940 pts), on hosts with `Platform::achieve` (Android: Play Games); the exe gets none for now.
+- [ ] `Platform::achieve: Option<fn(&str, u32)>` (`None` in `Platform::default()`); with `None` nothing below runs
+- [ ] `achieve.rs`: the list (key, steps, hidden, name, description) + pure `Tracker` (streaks, losses per stage,
+  flawless in a row, borrows, stuns, pauses, stars per slot); tests for each rule kind and local slots only
+- [ ] `Feat` messages written in the sim: kill (kind/rank, slot), tank lost (stunned?), stun (shooter, target),
+  borrow (partner's spares left), pickup (kind, slot), grenade (count), shell cancel, base hit (by a player), secret
+  opened, pause; stage won / district cleared (+ base ring all gone), run over (scores). Read-only: LAN hashes unchanged
+- [ ] `achievements.txt` (done keys + counters); cloud copy carries it next to `unlocked=N` (union / max merge, `cloud.rs`)
+- [ ] Host hook on a worker thread: each change, plus everything once at start
+- [ ] Run summary: new unlocks on the game over screen (classic) and district results / game over (City Run)
+- [ ] Title → ACHIEVEMENTS: `N / 55`, rows grouped as in the list; done = name + description, pending = progress,
+  hidden pending = `???`; up/down scroll, B back; smoke screenshot (`BT_SCREEN=achievements`)
+- [ ] Docs: architecture tree, domain (rules + menu), version 0.6.0
+
 ## Current state
 
 City Run added, released as v0.3.0 on GitHub: 10 districts, district map, smoke screenshots checked for the map, a district start, a
