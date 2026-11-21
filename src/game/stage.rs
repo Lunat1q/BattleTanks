@@ -54,6 +54,7 @@ fn setup(
     mut commands: Commands,
     mut session: ResMut<Session>,
     mut view: ResMut<View>,
+    settings: Res<crate::settings::Settings>,
     mut sfx: MessageWriter<Sfx>,
     mut feats: MessageWriter<Feat>,
 ) {
@@ -70,6 +71,11 @@ fn setup(
         commands.spawn((Base, Transform::from_translation(BASE_POS.extend(0.0)), DespawnOnExit(Screen::Stage)));
         (stage.terrain, stage.roster)
     };
+    if fresh && settings.easy_mode {
+        for slot in session.slots.iter_mut().flatten() {
+            slot.lives += rules::EASY_EXTRA_LIVES;
+        }
+    }
     // Everything is dirty once so the renderer builds the whole map.
     terrain.dirty = terrain.cells().collect();
     commands.insert_resource(terrain);
@@ -93,7 +99,7 @@ fn setup(
             if !slot.out {
                 // Already there when the banner lifts: no spawn twinkle to sit through, just the respawn shield.
                 let e = spawn_player(&mut commands, i, slot.level, PLAYER_SPAWNS[i]);
-                commands.entity(e).remove::<Spawning>().insert(Shield(rules::RESPAWN_SHIELD));
+                commands.entity(e).remove::<Spawning>().insert(Shield(rules::respawn_shield(settings.easy_mode)));
             }
         }
     }
@@ -178,6 +184,7 @@ pub fn tick_timers(
     time: Res<Time>,
     mut run: ResMut<StageRun>,
     mut terrain: ResMut<Terrain>,
+    settings: Res<crate::settings::Settings>,
     mut timed: Query<(Entity, &Tank, &mut Gun, Option<&mut Spawning>, Option<&mut Shield>, Option<&mut Paralyzed>, Option<&mut HitFlash>)>,
 ) {
     let dt = time.delta_secs();
@@ -188,7 +195,7 @@ pub fn tick_timers(
             if s.0 <= 0.0 {
                 commands.entity(e).remove::<Spawning>();
                 if matches!(tank.team, Team::Player(_)) {
-                    commands.entity(e).insert(Shield(rules::RESPAWN_SHIELD));
+                    commands.entity(e).insert(Shield(rules::respawn_shield(settings.easy_mode)));
                 }
             }
         }

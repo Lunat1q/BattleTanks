@@ -46,8 +46,8 @@ fn step(sel: usize, dir: Dir, open: usize, count: usize) -> usize {
     to.filter(|&n| (1..=last).contains(&n)).unwrap_or(sel)
 }
 
-fn spawn(mut commands: Commands, gfx: Res<Gfx>, progress: Res<Progress>, mut sel: ResMut<Sel>) {
-    sel.0 = progress.classic.min(count());
+fn spawn(mut commands: Commands, gfx: Res<Gfx>, progress: Res<Progress>, settings: Res<crate::settings::Settings>, mut sel: ResMut<Sel>) {
+    sel.0 = progress.open(Mode::Classic, settings.easy_mode).min(count());
     commands.spawn((screen_root(), DespawnOnExit(Screen::StageSelect))).with_children(|root| {
         root.spawn(text("CLASSIC", 7.0, GOLD));
         root.spawn(Node {
@@ -119,6 +119,7 @@ fn lock() -> impl Bundle {
 fn input(
     devices: Res<DeviceIntents>,
     progress: Res<Progress>,
+    settings: Res<crate::settings::Settings>,
     mut session: ResMut<Session>,
     mut sel: ResMut<Sel>,
     mut next: ResMut<NextState<Screen>>,
@@ -126,7 +127,7 @@ fn input(
 ) {
     let nav = devices.0.iter().map(|(_, i)| *i).fold(Default::default(), crate::input::merge);
     if let Some(dir) = nav.nav {
-        let to = step(sel.0, dir, progress.classic, count());
+        let to = step(sel.0, dir, progress.open(Mode::Classic, settings.easy_mode), count());
         if to != sel.0 {
             sel.0 = to;
             sfx.write(Sfx::MenuMove);
@@ -145,13 +146,14 @@ fn input(
 fn refresh(
     time: Res<Time>,
     progress: Res<Progress>,
+    settings: Res<crate::settings::Settings>,
     sel: Res<Sel>,
     mut tiles: Query<(&Tile, &mut BorderColor, &mut Outline)>,
     mut maps: Query<(&TileMap, &mut ImageNode)>,
     mut locks: Query<(&TileLock, &mut Visibility)>,
     mut info: Query<&mut Text, With<Info>>,
 ) {
-    let open = progress.classic;
+    let open = progress.open(Mode::Classic, settings.easy_mode);
     let pulse = 0.75 + 0.25 * (time.elapsed_secs() * 5.0).sin();
     for (tile, mut border, mut outline) in &mut tiles {
         *border = BorderColor::all(match tile.0 {

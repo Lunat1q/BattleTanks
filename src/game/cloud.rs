@@ -103,18 +103,26 @@ mod tests {
 
     #[test]
     fn sync_merges_upward_and_never_writes_blind() {
-        let at = |n| Progress { unlocked: n, classic: 1 };
+        let at = |n| Progress { unlocked: n, ..Progress::default() };
         let none = Record::default();
         *CLOUD.lock().unwrap() = Some(String::new());
         assert_eq!(sync(load, save, at(3), &none).map(|m| m.0.unlocked), Some(3), "empty cloud takes the local unlocks");
-        assert_eq!(cloud().as_deref(), Some("unlocked=3\nclassic=1\n"));
+        assert_eq!(cloud().as_deref(), Some("unlocked=3\nclassic=1\neasy_unlocked=1\neasy_classic=1\n"));
         assert_eq!(sync(load, save, at(1), &none).map(|m| m.0.unlocked), Some(3), "a fresh device gets them back");
-        assert_eq!(cloud().as_deref(), Some("unlocked=3\nclassic=1\n"), "and doesn't push its lower count");
+        assert_eq!(
+            cloud().as_deref(),
+            Some("unlocked=3\nclassic=1\neasy_unlocked=1\neasy_classic=1\n"),
+            "and doesn't push its lower count"
+        );
         let mut rec = Record::default();
         rec.unlock("digger");
         rec.add("kills_100", 7);
         let (_, merged) = sync(load, save, at(1), &rec).unwrap();
-        assert_eq!(cloud().as_deref(), Some("unlocked=3\nclassic=1\ndone=digger\nkills_100=7\n"), "achievements ride along");
+        assert_eq!(
+            cloud().as_deref(),
+            Some("unlocked=3\nclassic=1\neasy_unlocked=1\neasy_classic=1\ndone=digger\nkills_100=7\n"),
+            "achievements ride along"
+        );
         assert!(merged.done.contains("digger"));
         *CLOUD.lock().unwrap() = Some("unlocked=2\n".into());
         let (n, merged) = sync(load, save, at(1), &none).unwrap();

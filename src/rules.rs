@@ -74,6 +74,14 @@ pub fn armour_holds(level: u8) -> bool {
     level >= MAX_LEVEL
 }
 
+/// EASY MODE: spare tanks added at the start of a classic run or a district try.
+pub const EASY_EXTRA_LIVES: u32 = 2;
+
+/// Shield after (re)spawning; EASY MODE doubles it so a fresh tank isn't shot at the spawn.
+pub fn respawn_shield(easy: bool) -> f32 {
+    if easy { RESPAWN_SHIELD * 2.0 } else { RESPAWN_SHIELD }
+}
+
 /// Star level after losing a tank (or spending level-4 armour): back to 0, or one star less in EASY MODE.
 pub fn level_after_loss(level: u8, easy_mode: bool) -> u8 {
     if easy_mode { level.saturating_sub(1) } else { 0 }
@@ -247,6 +255,7 @@ mod tests {
         assert_eq!(level_after_loss(MAX_LEVEL, false), 0);
         assert_eq!(level_after_loss(MAX_LEVEL, true), 3, "EASY MODE costs one star");
         assert_eq!(level_after_loss(0, true), 0);
+        assert!(respawn_shield(true) > respawn_shield(false));
     }
 
     #[test]

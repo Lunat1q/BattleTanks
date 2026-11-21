@@ -76,7 +76,8 @@ CLASSIC → a 6 × 5 grid of stage tiles, each showing its map in miniature with
 gold frame, the next unbeaten one a white frame; the rest are dark with a padlock. Stage 1 is open from the start.
 Clearing the highest open stage opens the next; replays and clears past it open nothing. The cursor moves only over
 open tiles and starts on the highest: left/right step through the stages in order, up/down jump a row, A starts,
-B goes back. Saved as `classic=N` in `city.txt` and the cloud copy (see City Run).
+B goes back. Saved as `classic=N` in `city.txt` and the cloud copy (see City Run). EASY MODE keeps its own frontier
+(see Settings).
 
 ## Flow
 Title → join (A / Space / Enter) → CLASSIC → pick a stage tile → stage banner 1.2 s (world frozen) → play →
@@ -151,7 +152,7 @@ Title → SETTINGS (any controller or keyboard; left/right or A changes, B back)
 | SCREEN SHAKE | ON/OFF | ON | comfort on a big TV |
 | SHOW FPS | ON/OFF | OFF | smoothed FPS, top-right, every screen |
 | FRIENDLY FIRE | ON/OFF | ON | ON = classic (players paralyze each other); OFF = player bullets pass through the other player |
-| EASY MODE | ON/OFF | OFF | ON = losing a tank (or spending level-4 armour) costs one star, not all of them (City Run districts still start at 0). Such runs skip the world board and earn no achievements (the local hi score counts); the row shows `ON - NOT RANKED`. Turning it on opens a popup that explains this: A turns it on, B keeps it off. Saved as `easy_mode` (older files' `keep_power` is read as it) |
+| EASY MODE | ON/OFF | OFF | ON = losing a tank (or spending level-4 armour) costs one star, not all of them (City Run districts still start at 0); 2 more spare tanks at the start of a classic run or district try; a 6 s respawn shield instead of 3 s. Stages and districts cleared in easy mode open only for easy mode (`easy_classic=` / `easy_unlocked=` in `city.txt` and the cloud copy; an easy run may start anything either frontier opened). Such runs skip the world board and earn no achievements (the local hi score counts); the row shows `ON - NOT RANKED`. Turning it on opens a popup that explains this: A turns it on, B keeps it off. Saved as `easy_mode` (older files' `keep_power` is read as it) |
 | VIBRATION | ON/OFF | ON | rumble on the slot's own pad: own tank destroyed (a sad, falling three-pulse), enemy hit (short), kill (medium), mini-boss / boss kill (strong), paralyzed (medium), base lost (everyone, long), power-up (tick) |
 
 A host that owns the window (`Platform::host_window`) hides VSYNC and FULLSCREEN.

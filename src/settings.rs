@@ -88,7 +88,7 @@ impl Settings {
                 "show_fps" => s.show_fps = flag(v, s.show_fps),
                 "friendly_fire" => s.friendly_fire = flag(v, s.friendly_fire),
                 "vibration" => s.vibration = flag(v, s.vibration),
-                // `keep_power`: the setting's name before 0.8.0.
+                // `keep_power`: the setting's name before 0.7.2.
                 "easy_mode" | "keep_power" => s.easy_mode = flag(v, s.easy_mode),
                 _ => {}
             }

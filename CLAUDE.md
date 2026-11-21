@@ -96,5 +96,6 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
   succeeds, and a smoke screenshot looked at when visuals/startup changed. Then copy
   `target/release/battle_tanks.exe` to `<folder>\BattleTanks.exe`, where `<folder>` is the single line in the
   gitignored `target_game_folder.env` (the owner's local game folder; skip if the file is absent). Then commit straight to `main` and
-  push. Releases: bump `version` in `Cargo.toml` (shown on the title), tag `vX.Y.Z`, `gh release create` with
+  push. Releases: bump `version` in `Cargo.toml` (shown on the title; only the patch number, 0.7.2 -> 0.7.3, never
+  the minor unless the owner says so), tag `vX.Y.Z`, `gh release create` with
   the release exe attached as `BattleTanks.exe` (no branches/PRs unless asked, no AI co-author trailers).

@@ -18,7 +18,7 @@ struct Asking(bool);
 #[derive(Component)]
 struct Popup;
 
-const EASY_TEXT: &str = "EASY MODE\n\nLosing a tank costs only one star\ninstead of all of them.\n\nRuns played in easy mode don't go\nto the world board and earn no\nachievements. Your hi score still counts.\n\nA  turn it on        B  keep it off";
+const EASY_TEXT: &str = "EASY MODE\n\nLosing a tank costs only one star, not all.\nTwo more spare tanks, a longer shield\nafter a respawn.\n\nStages and districts opened in easy mode\nopen only for easy mode. Easy runs don't go\nto the world board and earn no achievements.\nYour hi score still counts.\n\nA  turn it on        B  keep it off";
 
 /// A settings change that turns EASY MODE on waits for the player's yes; everything else applies at once.
 fn needs_asking(before: &Settings, after: &Settings) -> bool {

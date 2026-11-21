@@ -43,8 +43,8 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (input, refresh).chain().run_if(in_state(Screen::CityMap)));
 }
 
-fn spawn(mut commands: Commands, gfx: Res<Gfx>, progress: Res<Progress>, mut sel: ResMut<Sel>) {
-    sel.0 = progress.unlocked.min(CITY_DISTRICTS);
+fn spawn(mut commands: Commands, gfx: Res<Gfx>, progress: Res<Progress>, settings: Res<crate::settings::Settings>, mut sel: ResMut<Sel>) {
+    sel.0 = progress.open(Mode::City, settings.easy_mode).min(CITY_DISTRICTS);
     let at = |(x, y): (f32, f32), size: f32| Node {
         position_type: PositionType::Absolute,
         left: percent(x),
@@ -96,13 +96,14 @@ fn spawn(mut commands: Commands, gfx: Res<Gfx>, progress: Res<Progress>, mut sel
 fn input(
     devices: Res<DeviceIntents>,
     progress: Res<Progress>,
+    settings: Res<crate::settings::Settings>,
     mut session: ResMut<Session>,
     mut sel: ResMut<Sel>,
     mut next: ResMut<NextState<Screen>>,
     mut sfx: MessageWriter<Sfx>,
 ) {
     let nav = devices.0.iter().map(|(_, i)| *i).fold(Default::default(), crate::input::merge);
-    let last = progress.unlocked.min(CITY_DISTRICTS);
+    let last = progress.open(Mode::City, settings.easy_mode).min(CITY_DISTRICTS);
     let moved = match nav.nav {
         Some(Dir::Left | Dir::Down) if sel.0 > 1 => Some(sel.0 - 1),
         Some(Dir::Right | Dir::Up) if sel.0 < last => Some(sel.0 + 1),
@@ -125,30 +126,32 @@ fn input(
 fn refresh(
     time: Res<Time>,
     progress: Res<Progress>,
+    settings: Res<crate::settings::Settings>,
     sel: Res<Sel>,
     mut dots: Query<(&DistrictDot, &mut BackgroundColor, &mut Outline), Without<RoadDot>>,
     mut roads: Query<(&RoadDot, &mut BackgroundColor), Without<DistrictDot>>,
     mut labels: Query<(&DotLabel, &mut TextColor)>,
     mut info: Query<&mut Text, With<Info>>,
 ) {
+    let open = progress.open(Mode::City, settings.easy_mode);
     let locked = Color::srgb(0.20, 0.22, 0.27);
     let pulse = 0.75 + 0.25 * (time.elapsed_secs() * 5.0).sin();
     for (dot, mut bg, mut outline) in &mut dots {
         bg.0 = match dot.0 {
-            n if n < progress.unlocked => GOLD,
-            n if n == progress.unlocked => INK,
+            n if n < open => GOLD,
+            n if n == open => INK,
             _ => locked,
         };
         outline.color = if dot.0 == sel.0 { Color::WHITE.with_alpha(pulse) } else { Color::NONE };
     }
     for (road, mut bg) in &mut roads {
-        bg.0 = if road.0 + 2 <= progress.unlocked { GOLD } else { DIM };
+        bg.0 = if road.0 + 2 <= open { GOLD } else { DIM };
     }
     for (label, mut color) in &mut labels {
-        color.0 = if label.0 <= progress.unlocked { Color::srgb(0.08, 0.08, 0.1) } else { DIM };
+        color.0 = if label.0 <= open { Color::srgb(0.08, 0.08, 0.1) } else { DIM };
     }
     if let Ok(mut t) = info.single_mut() {
-        let status = if sel.0 < progress.unlocked { "   CLEARED" } else { "" };
+        let status = if sel.0 < open { "   CLEARED" } else { "" };
         set_text(&mut t, format!("DISTRICT {}  {}{status}", sel.0, crate::city_map::name(sel.0).to_uppercase()));
     }
 }

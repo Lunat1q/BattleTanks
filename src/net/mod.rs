@@ -196,8 +196,9 @@ fn shake_hands(mut net: ResMut<Net>, settings: Res<Settings>, progress: Res<Prog
                         seed: crate::rng::Rng::from_time().0,
                         friendly_fire: settings.friendly_fire,
                         easy_mode: settings.easy_mode,
-                        unlocked: progress.unlocked as u8,
-                        classic: progress.classic as u8,
+                        // What this host may start, so the joiner's copy opens the same tiles.
+                        unlocked: progress.open(crate::game::Mode::City, settings.easy_mode) as u8,
+                        classic: progress.open(crate::game::Mode::Classic, settings.easy_mode) as u8,
                         ..net.hello(0)
                     };
                     // Sent even on a version mismatch, so the joiner can say which version we run.
@@ -240,7 +241,7 @@ fn rand32() -> u32 {
 fn start(world: &mut World, (conn, theirs, me, ours): (Conn, Hello, u8, Hello)) {
     let host = if me == 0 { &ours } else { &theirs };
     let (seed, session, ff, keep) = (host.seed, host.session, host.friendly_fire, host.easy_mode);
-    let hosts = Progress { unlocked: host.unlocked as usize, classic: host.classic as usize };
+    let hosts = Progress { unlocked: host.unlocked as usize, classic: host.classic as usize, ..Progress::default() };
     let names = if me == 0 { [ours.name.clone(), theirs.name.clone()] } else { [theirs.name.clone(), ours.name.clone()] };
     info!("lan: linked as player {} ({} + {}), session {session:08x}", me + 1, names[0], names[1]);
     let mut settings = world.resource_mut::<Settings>();

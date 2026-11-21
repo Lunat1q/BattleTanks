@@ -62,7 +62,7 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Borrow a spare tank from the partner when out (both modes); HUD hint
 - [x] Scouts slower (66 → 54) and less twitchy (longer turn gap)
 - [x] City Run: +1 spare tank at district start; brick stashes with a star pair and an extra-tank pair per district
-- [x] Setting KEEP POWER (stars survive losing a tank; EASY MODE since 0.8.0)
+- [x] Setting KEEP POWER (stars survive losing a tank; EASY MODE since 0.7.2)
 - [x] README screenshots (`docs/screenshots`, smoke hook)
 
 ### Next ideas (not started — confirm before building)
@@ -77,7 +77,7 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
   after results / game over (A send, B skip, top 3 + 2 above + 1 below); names up to 7 letters, prefilled
 - [x] HI SCORES screen on the title: world top 10 per category (classic 1P/2P, City Run district x 1P/2P), read live
   from the server's public board (`?format=text`); checked against the live server in a smoke run
-- [x] Assisted runs stay off the world board: EASY MODE (was KEEP POWER) runs skip the board and achievements (0.8.0).
+- [x] Assisted runs stay off the world board: EASY MODE (was KEEP POWER) runs skip the board and achievements (0.7.2).
   Still open: FRIENDLY FIRE off in 2P counts as ranked. Runs sent since 0.4.0 carry no flag, so the boards may hold
   assisted runs
 - [ ] World board live check: server reachable at `scores.maxpodolski.com` (tunnel route + DNS added, key and rules checked live); first real run from the couch still to come
@@ -118,13 +118,15 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
   their own copy (`OwnProgress`), host's in `Hello` (PROTO 3); LAN smoke: linked, hashes equal
 - [ ] Owner: try the title and the tiles on the TV / phone
 
-### M11 — Star levels 3 and 4 (v0.8.0) ✅
+### M11 — Star levels 3 and 4 (v0.7.2) ✅
 - [x] Star level 3 shells cut the first trees they fly into (one cell), then pass the rest (`Terrain::cut_trees`,
   `Bullet.trees`)
 - [x] Star level 4: same gun, drives over water (`Terrain::blocks(r, swimmer)`, `rules::SWIM_LEVEL`)
 - [x] Level 4 is armour: a hit blinks the tank 3 s (untouchable), then the stars drop; still on water then → sinks
 - [x] KEEP POWER became EASY MODE: losing a tank costs one star (owner: level 4 + old KEEP POWER = OP); unranked (no
   world board, no achievements), confirm popup on turning it on
+- [x] EASY MODE extras: +2 spare tanks per run / district try, 6 s respawn shield; its own unlock frontier (easy clears
+  open stages only for easy mode)
 - [x] Bolder looks per level: short barrel at 0, star pips on the hull from 1, floats at 4; white flash on a star
 - [ ] Owner: feel on the couch (is level 4 too strong in City Run canals / moats?)
 
