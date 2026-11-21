@@ -137,7 +137,8 @@ fn compose(base: C, c: &Canvas) -> Px {
     for y in 0..n {
         for x in 0..n {
             let i = (y * n + x) as usize;
-            if out[i][3] == 0 {
+            // The rim stays whole: emblems end inside it.
+            if out[i][3] == 0 || x < 3 || y < 3 || x >= n - 3 || y >= n - 3 {
                 continue;
             }
             if solid(x, y) {

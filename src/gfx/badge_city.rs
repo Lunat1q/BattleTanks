@@ -154,18 +154,20 @@ fn district(n: usize, c: &mut Canvas) {
         }
         // The Citadel: fallen, and still on fire.
         _ => {
-            let stone = shade(STONE, 0.8);
+            // Towers in light stone, the keep between them darker, so the blocks read apart.
+            let (tower, keep) = (shade(STONE, 0.9), shade(STONE, 0.62));
             for x in [-7.5, 7.5] {
-                bx(c, v(x, -3.0), v(3.0, 8.5), stone);
-                crenels(c, &[x - 2.0, x + 2.0], 6.5, stone);
+                bx(c, v(x, -4.0), v(3.0, 7.5), tower);
+                crenels(c, &[x - 2.0, x + 2.0], 4.5, tower);
+                c.paint(|p| sd_box(p, v(x, -1.0), v(0.6, 1.2)), flat(DARK));
             }
-            bx(c, v(0.0, -5.0), v(5.0, 6.5), stone);
-            crenels(c, &[-3.5, 0.0, 3.5], 2.5, stone);
-            c.paint(|p| sd_box(p, v(0.0, -9.0), v(2.0, 2.5)).min(sd_circle(p, v(0.0, -6.5), 2.0)), flat(DARK));
-            c.paint(|p| sd_box(p, v(0.0, 6.5), v(0.4, 4.0)), flat(rgb(0.86, 0.86, 0.86)));
-            c.paint(|p| sd_poly(p, &[v(0.4, 10.5), v(6.0, 9.0), v(0.4, 7.5)]), flat(GOLD));
+            bx(c, v(0.0, -6.0), v(4.4, 5.5), keep);
+            crenels(c, &[-3.0, 0.0, 3.0], 0.5, keep);
+            c.paint(|p| sd_box(p, v(0.0, -9.5), v(1.8, 2.0)).min(sd_circle(p, v(0.0, -7.5), 1.8)), flat(DARK));
+            c.paint(|p| sd_box(p, v(0.0, 5.0), v(0.45, 4.5)), flat(rgb(0.86, 0.86, 0.86)));
+            c.paint(|p| sd_poly(p, &[v(0.45, 9.5), v(5.5, 8.0), v(0.45, 6.5)]), flat(GOLD));
             for x in [-7.5, 7.5] {
-                flame(c, v(x, 10.0), 4.2, [RED, rgb(1.0, 0.56, 0.14), rgb(1.0, 0.9, 0.4)]);
+                flame(c, v(x, 8.0), 4.4, [RED, rgb(1.0, 0.56, 0.14), rgb(1.0, 0.9, 0.4)]);
             }
         }
     }
