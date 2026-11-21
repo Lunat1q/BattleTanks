@@ -186,32 +186,23 @@ mod tests {
         }
     }
 
-    /// Shots a bullet fired straight down from the centre spawn needs before it reaches the base ring:
-    /// each shot clears one 4-deep row of the 16-wide strip (sub-cells 24..28). Steel counts as a full cover.
-    fn centre_lane_cover(ter: &Terrain) -> usize {
-        let mut shots = 0;
-        for y in 6..48 {
-            let row: Vec<Tile> = (24..28).map(|x| ter.get(x, y)).collect();
-            if row.contains(&Tile::Steel) {
-                return usize::MAX;
-            }
-            shots += row.contains(&Tile::Brick) as usize;
-        }
-        shots
+    /// Every column over the base ring (sub-cells 22..30) has steel between the top spawns and the ring, so no
+    /// enemy can shoot the base straight down the centre lane; the base is open only from the sides.
+    fn ring_roofed_with_steel(ter: &Terrain) -> bool {
+        (22..30).all(|x| (6..48).any(|y| ter.get(x, y) == Tile::Steel))
     }
 
     #[test]
     fn centre_spawn_has_no_free_shot_at_the_base() {
-        // Regression: stage 1 had an open column from the centre spawn, so an enemy killed the base
-        // in 3 shots (2 ring rows + base) before players could react.
+        // Regression: stage 1 had an open column from the centre spawn, so an enemy killed the base in 3 shots;
+        // later most stages had only 2 brick cells in the lane, so the base needed a full-time guard.
         let open: Vec<String> = STAGES
             .iter()
             .enumerate()
-            .map(|(i, src)| (i + 1, centre_lane_cover(&parse(src).unwrap().0)))
-            .filter(|&(_, cover)| cover < 4)
-            .map(|(n, cover)| format!("levels/{n:02}.txt ({cover} brick rows)"))
+            .filter(|(_, src)| !ring_roofed_with_steel(&parse(src).unwrap().0))
+            .map(|(i, _)| format!("levels/{:02}.txt", i + 1))
             .collect();
-        assert!(open.is_empty(), "centre lane too open above the base ring: {open:?}");
+        assert!(open.is_empty(), "no steel roof over the base ring: {open:?}");
     }
 
     #[test]

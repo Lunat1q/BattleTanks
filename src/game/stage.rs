@@ -12,7 +12,8 @@ use bevy::window::AppLifecycle;
 pub const PLAYER_SPAWNS: [Vec2; 2] = [Vec2::new(72.0, 8.0), Vec2::new(136.0, 8.0)];
 pub const ENEMY_SPAWNS: [Vec2; 3] = [Vec2::new(104.0, FIELD - 8.0), Vec2::new(FIELD - 8.0, FIELD - 8.0), Vec2::new(8.0, FIELD - 8.0)];
 pub const BASE_POS: Vec2 = Vec2::new(104.0, 8.0);
-const INTRO_TIME: f32 = 2.2;
+// Short: the world (and the players' tanks) wait out the STAGE banner.
+const INTRO_TIME: f32 = 1.2;
 
 pub fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Screen::Stage), setup)
@@ -90,21 +91,25 @@ fn setup(
             slot.big = [0; 3];
             slot.pickups = 0;
             if !slot.out {
-                spawn_player(&mut commands, i, slot.level, PLAYER_SPAWNS[i]);
+                // Already there when the banner lifts: no spawn twinkle to sit through, just the respawn shield.
+                let e = spawn_player(&mut commands, i, slot.level, PLAYER_SPAWNS[i]);
+                commands.entity(e).remove::<Spawning>().insert(Shield(rules::RESPAWN_SHIELD));
             }
         }
     }
     sfx.write(Sfx::StageStart);
 }
 
-pub fn spawn_player(commands: &mut Commands, slot: usize, level: u8, pos: Vec2) {
-    commands.spawn((
-        Tank::new(Team::Player(slot), Dir::Up, rules::PLAYER_SPEED),
-        Gun { stats: rules::player_gun(level), trigger: false, cooldown: 0.0 },
-        Spawning(rules::SPAWN_TIME),
-        Transform::from_translation(pos.extend(0.0)),
-        DespawnOnExit(Screen::Stage),
-    ));
+pub fn spawn_player(commands: &mut Commands, slot: usize, level: u8, pos: Vec2) -> Entity {
+    commands
+        .spawn((
+            Tank::new(Team::Player(slot), Dir::Up, rules::PLAYER_SPEED),
+            Gun { stats: rules::player_gun(level), trigger: false, cooldown: 0.0 },
+            Spawning(rules::SPAWN_TIME),
+            Transform::from_translation(pos.extend(0.0)),
+            DespawnOnExit(Screen::Stage),
+        ))
+        .id()
 }
 
 /// Where player `slot` re-enters: its start column at the bottom of the view, or the nearest open

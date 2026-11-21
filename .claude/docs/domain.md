@@ -16,7 +16,8 @@ All numbers live in `src/rules.rs` unless noted.
 - Movement is 4-way. Turning onto the other axis snaps the old axis to the 8-unit grid (only if that spot is
   free), so 16-wide tanks fit 16-wide gaps — the classic feel. Tanks stop flush against obstacles (bisection).
 - Tanks block each other, except pairs already overlapping (e.g. after a spawn) may drive apart.
-- Spawning takes 1 s (sparkle); spawning tanks block others but can't be hit or move.
+- Spawning takes 1 s (sparkle); spawning tanks block others but can't be hit or move. Players' tanks at a stage's
+  start skip it: they are there under the banner, with the 3 s respawn shield, and move the moment it lifts.
 
 ### Players
 - 2 spare tanks (3 total); +1 every 20 000 points; tank power-up +1.
@@ -70,7 +71,7 @@ open tiles and starts on the highest: left/right step through the stages in orde
 B goes back. Saved as `classic=N` in `city.txt` and the cloud copy (see City Run).
 
 ## Flow
-Title → join (A / Space / Enter) → CLASSIC → pick a stage tile → stage banner 2.2 s → play →
+Title → join (A / Space / Enter) → CLASSIC → pick a stage tile → stage banner 1.2 s (world frozen) → play →
 all 20 destroyed → 3 s → results tally → next stage. Base lost or every player out → 3 s → game over → title.
 30 stages, rosters ramping from mostly LIGHT (1) to mostly HEAVY (30). After stage 30 the maps loop; each lap converts
 4 weaker enemies into stronger ones.
@@ -110,8 +111,10 @@ all 20 destroyed → 3 s → results tally → next stage. Base lost or every pl
 **Map rule (tested):** from every enemy and player spawn, a 16×16 tank must be able to reach the base treating
 bricks as open and steel/water as walls (`levels::tests::every_spawn_can_reach_the_base`). Watch for: a water gap
 that exits straight into steel, and 1-cell (8-unit) open bands between obstacle rows — a tank needs 2 cells.
-**Centre lane (tested):** the 16-wide column under the centre spawn needs ≥ 4 brick rows (or steel) above the base
-ring, so an enemy can't shoot the base from its spawn (`levels::tests::centre_spawn_has_no_free_shot_at_the_base`).
+**Centre lane (tested):** every column over the base ring (map cols 11–14) has steel between the top spawns and the
+ring, usually a 4-cell bar a few rows above it, so no enemy can shoot the base straight down the centre; the base is
+open only from the sides (`levels::tests::centre_spawn_has_no_free_shot_at_the_base`). Leave 2 open cells between the
+bar and any steel/water row above it (tank height).
 
 ## Controls
 | | Controller | Keyboard P1 | Keyboard P2 |
@@ -282,6 +285,7 @@ same rules, each machine draws it and plays its own sound and rumble.
 | City map had a river nobody could cross | two stacked bridges not overlapping (tank needs a 2-cell column through both) | `city_map` reachability test |
 | Map markers doubled (two bosses) | half rows are mirrored | draw single markers centred on cols 11–14 or as full 26-char rows |
 | Enemy killed the base from the centre spawn in 3 shots (stage 1 + 13 more) | open centre column, ring only 2 rows thick | centre-lane cover test over all stages |
+| Base needed a full-time guard: most stages had only 2 brick cells between the centre lane and the ring (owner) | brick roof falls in a few shots | steel bar over the ring on every stage, tested |
 | A SCOUT rushed in as stage 1's first enemy | roster shuffle can put any kind first | opening wave = 3 weakest, tested |
 | Smoke runs blasted sound in the room | audio always on | audio plugin skips when `BT_SHOT` / `BT_MUTE` is set |
 | 10 fps on a TV-class GPU (Mali-G57), CPU idle | Bevy's default 4x MSAA + bloom passes at 1080p, each ~halving fps | `Msaa::Off` everywhere (sprites are pre-anti-aliased); bloom is `Platform::bloom`, off on such hosts: 56 fps |
