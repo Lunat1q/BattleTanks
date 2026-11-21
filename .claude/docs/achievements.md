@@ -6,7 +6,7 @@ Counters show progress (`steps`); the rest unlock once. Hidden ones show as `???
 
 Common rules:
 - Only the players on this device count: on a couch both joined slots (one signed-in account), over LAN only this
-  machine's slot (`net.me()`). Assisted runs (KEEP POWER, FRIENDLY FIRE off) count like any other.
+  machine's slot (`net.me()`). EASY MODE runs earn nothing (0.8.0); FRIENDLY FIRE off counts like any other run.
 - "Kill" = an ordinary enemy tank destroyed by your shell (grenade kills only count for the grenade achievements).
   Turrets, mini-bosses and bosses have their own counters.
 - "Without losing a tank" = none of your tanks destroyed in that stage / district (a stun is not a loss).

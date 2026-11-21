@@ -71,11 +71,12 @@ pub fn take(world: &mut World) -> Vec<u8> {
                 world.get::<Shield>(e).map(|s| s.0),
                 world.get::<Paralyzed>(e).map(|s| s.0),
                 world.get::<HitFlash>(e).map(|s| s.0),
+                world.get::<Armour>(e).map(|s| s.0),
             ] {
                 put_opt(&mut w, v);
             }
         } else if let Some(b) = world.get::<Bullet>(e) {
-            w.u8(1).u32(slot(b.owner)).u8(team(b.team)).u8(index(&Dir::ALL, &b.dir)).f32(b.speed).bool(b.power);
+            w.u8(1).u32(slot(b.owner)).u8(team(b.team)).u8(index(&Dir::ALL, &b.dir)).f32(b.speed).bool(b.power).bool(b.trees);
         } else if let Some(p) = world.get::<PowerUp>(e) {
             w.u8(2).u8(index(&PowerKind::ALL, &p.0)).bool(world.get::<Stash>(e).is_some());
         } else {
@@ -110,7 +111,7 @@ pub fn apply(world: &mut World, bytes: &[u8]) -> Option<()> {
         let mut ec = world.entity_mut(e);
         ec.insert((Transform::from_translation(thing.pos.extend(0.0)), DespawnOnExit(Screen::Stage)));
         match thing.kind {
-            Kind::Tank { tank, gun, enemy, timers: [spawning, shield, para, flash] } => {
+            Kind::Tank { tank, gun, enemy, timers: [spawning, shield, para, flash, armour] } => {
                 ec.insert((tank, gun));
                 if let Some(en) = enemy {
                     ec.insert(en);
@@ -127,8 +128,13 @@ pub fn apply(world: &mut World, bytes: &[u8]) -> Option<()> {
                 if let Some(v) = flash {
                     ec.insert(HitFlash(v));
                 }
+                if let Some(v) = armour {
+                    ec.insert(Armour(v));
+                }
             }
-            Kind::Bullet { owner, team, dir, speed, power } => _ = ec.insert(Bullet { owner: ent(owner), team, dir, speed, power }),
+            Kind::Bullet { owner, team, dir, speed, power, trees } => {
+                _ = ec.insert(Bullet { owner: ent(owner), team, dir, speed, power, trees })
+            }
             Kind::Power { kind, stash: true } => _ = ec.insert((PowerUp(kind), Stash)),
             Kind::Power { kind, stash: false } => _ = ec.insert(PowerUp(kind)),
             Kind::Base => _ = ec.insert(Base),
@@ -350,8 +356,8 @@ fn put_tank(w: &mut W, t: &Tank, g: &Gun, e: Option<&Enemy>) {
 }
 
 enum Kind {
-    Tank { tank: Tank, gun: Gun, enemy: Option<Enemy>, timers: [Option<f32>; 4] },
-    Bullet { owner: u32, team: Team, dir: Dir, speed: f32, power: bool },
+    Tank { tank: Tank, gun: Gun, enemy: Option<Enemy>, timers: [Option<f32>; 5] },
+    Bullet { owner: u32, team: Team, dir: Dir, speed: f32, power: bool, trees: bool },
     Power { kind: PowerKind, stash: bool },
     Base,
 }
@@ -377,9 +383,16 @@ fn get_thing(r: &mut R) -> Option<Thing> {
             } else {
                 None
             };
-            Kind::Tank { tank, gun, enemy, timers: [get_opt(r)?, get_opt(r)?, get_opt(r)?, get_opt(r)?] }
+            Kind::Tank { tank, gun, enemy, timers: [get_opt(r)?, get_opt(r)?, get_opt(r)?, get_opt(r)?, get_opt(r)?] }
         }
-        1 => Kind::Bullet { owner: r.u32()?, team: get_team(r)?, dir: r.pick(&Dir::ALL)?, speed: r.f32()?, power: r.bool()? },
+        1 => Kind::Bullet {
+            owner: r.u32()?,
+            team: get_team(r)?,
+            dir: r.pick(&Dir::ALL)?,
+            speed: r.f32()?,
+            power: r.bool()?,
+            trees: r.bool()?,
+        },
         2 => Kind::Power { kind: r.pick(&PowerKind::ALL)?, stash: r.bool()? },
         3 => Kind::Base,
         _ => return None,

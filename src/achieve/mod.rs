@@ -158,6 +158,7 @@ fn track(
     mut rec: ResMut<Record>,
     run: Option<Res<crate::game::StageRun>>,
     net: Res<crate::net::Net>,
+    settings: Res<crate::settings::Settings>,
 ) {
     let clock = run.map_or(0.0, |r| r.clock);
     seat.0.seat(net.me().map(usize::from));
@@ -167,7 +168,10 @@ fn track(
         {
             rec.news.clear();
         }
-        seat.0.feat(f, clock, &mut rec);
+        // EASY MODE runs earn nothing.
+        if !settings.easy_mode {
+            seat.0.feat(f, clock, &mut rec);
+        }
     }
 }
 

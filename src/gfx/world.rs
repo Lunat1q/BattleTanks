@@ -129,11 +129,21 @@ fn tank_looks(
     gfx: Res<Gfx>,
     session: Res<Session>,
     run: Res<StageRun>,
-    mut tanks: Query<(&Tank, Option<&Enemy>, &mut Sprite, &mut Transform, &mut Visibility, Has<Spawning>, Has<Paralyzed>, Has<HitFlash>)>,
+    mut tanks: Query<(
+        &Tank,
+        Option<&Enemy>,
+        &mut Sprite,
+        &mut Transform,
+        &mut Visibility,
+        Has<Spawning>,
+        Has<Paralyzed>,
+        Has<HitFlash>,
+        Has<Armour>,
+    )>,
 ) {
     let t = time.elapsed_secs();
     let blink = ((t * 8.0) as u32).is_multiple_of(2);
-    for (tank, enemy, mut sprite, mut tf, mut vis, spawning, paralyzed, flash) in &mut tanks {
+    for (tank, enemy, mut sprite, mut tf, mut vis, spawning, paralyzed, flash, armour) in &mut tanks {
         vis.set_if_neq(if spawning { Visibility::Hidden } else { Visibility::Inherited });
         tf.translation.z = z::TANK;
         tf.rotation = Quat::from_rotation_z(tank.dir.angle());
@@ -141,7 +151,7 @@ fn tank_looks(
         let (image, mut color) = match (tank.team, enemy) {
             (Team::Player(i), _) => {
                 let level = session.slots[i].as_ref().map_or(0, |s| s.level) as usize;
-                (gfx.players[level.min(3)][frame].clone(), player_color(i))
+                (gfx.players[level.min(gfx.players.len() - 1)][frame].clone(), player_color(i))
             }
             (Team::Enemy, Some(e)) => {
                 let mut c = rank_color(e.rank, e.kind, e.hp, e.max_hp);
@@ -163,6 +173,9 @@ fn tank_looks(
         };
         if flash {
             color = Color::srgb(2.5, 2.5, 2.5);
+        }
+        if armour && blink {
+            color = Color::srgb(2.0, 2.0, 2.0);
         }
         if paralyzed && blink {
             color = color.with_alpha(0.35);

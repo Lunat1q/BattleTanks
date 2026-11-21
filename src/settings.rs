@@ -1,5 +1,5 @@
 //! Player settings, saved to `%APPDATA%\BattleTanks\settings.txt`: video (FPS limit, VSync, fullscreen),
-//! sound and music volume, screen shake, FPS counter, friendly fire, controller vibration, keep power on death. Also owns the frame limiter, the F11 toggle and the FPS overlay.
+//! sound and music volume, screen shake, FPS counter, friendly fire, controller vibration, easy mode. Also owns the frame limiter, the F11 toggle and the FPS overlay.
 
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
@@ -25,8 +25,9 @@ pub struct Settings {
     /// Players' bullets paralyze each other (classic). Off: they pass through.
     pub friendly_fire: bool,
     pub vibration: bool,
-    /// Keep the star level when a tank is lost (classic: off, back to level 0).
-    pub keep_power: bool,
+    /// Losing a tank costs one star instead of all of them (classic: off, back to level 0). Such runs skip the world
+    /// board and achievements.
+    pub easy_mode: bool,
 }
 
 impl Default for Settings {
@@ -41,14 +42,14 @@ impl Default for Settings {
             show_fps: false,
             friendly_fire: true,
             vibration: true,
-            keep_power: false,
+            easy_mode: false,
         }
     }
 }
 
 /// Menu rows, in order. The settings screen adds BACK after these.
 pub const ITEMS: [&str; 10] =
-    ["FPS LIMIT", "VSYNC", "FULLSCREEN", "SOUND FX", "MUSIC", "SCREEN SHAKE", "SHOW FPS", "FRIENDLY FIRE", "VIBRATION", "KEEP POWER"];
+    ["FPS LIMIT", "VSYNC", "FULLSCREEN", "SOUND FX", "MUSIC", "SCREEN SHAKE", "SHOW FPS", "FRIENDLY FIRE", "VIBRATION", "EASY MODE"];
 
 /// Rows of `ITEMS` the settings screen shows. When the host owns the window and the swap chain, FULLSCREEN and
 /// VSYNC would do nothing.
@@ -87,7 +88,8 @@ impl Settings {
                 "show_fps" => s.show_fps = flag(v, s.show_fps),
                 "friendly_fire" => s.friendly_fire = flag(v, s.friendly_fire),
                 "vibration" => s.vibration = flag(v, s.vibration),
-                "keep_power" => s.keep_power = flag(v, s.keep_power),
+                // `keep_power`: the setting's name before 0.8.0.
+                "easy_mode" | "keep_power" => s.easy_mode = flag(v, s.easy_mode),
                 _ => {}
             }
         }
@@ -96,7 +98,7 @@ impl Settings {
 
     pub fn serialize(&self) -> String {
         format!(
-            "fps_limit={}\nvsync={}\nfullscreen={}\nvolume={}\nmusic={}\nshake={}\nshow_fps={}\nfriendly_fire={}\nvibration={}\nkeep_power={}\n",
+            "fps_limit={}\nvsync={}\nfullscreen={}\nvolume={}\nmusic={}\nshake={}\nshow_fps={}\nfriendly_fire={}\nvibration={}\neasy_mode={}\n",
             self.fps_limit,
             self.vsync,
             self.fullscreen,
@@ -106,7 +108,7 @@ impl Settings {
             self.show_fps,
             self.friendly_fire,
             self.vibration,
-            self.keep_power
+            self.easy_mode
         )
     }
 
@@ -126,7 +128,7 @@ impl Settings {
             6 => self.show_fps = !self.show_fps,
             7 => self.friendly_fire = !self.friendly_fire,
             8 => self.vibration = !self.vibration,
-            9 => self.keep_power = !self.keep_power,
+            9 => self.easy_mode = !self.easy_mode,
             _ => {}
         }
     }
@@ -144,7 +146,7 @@ impl Settings {
             6 => on_off(self.show_fps).into(),
             7 => on_off(self.friendly_fire).into(),
             8 => on_off(self.vibration).into(),
-            9 => on_off(self.keep_power).into(),
+            9 => if self.easy_mode { "ON - NOT RANKED" } else { "OFF" }.into(),
             _ => String::new(),
         }
     }
@@ -278,7 +280,7 @@ mod tests {
             show_fps: true,
             friendly_fire: false,
             vibration: false,
-            keep_power: true,
+            easy_mode: true,
         };
         assert_eq!(Settings::parse(&s.serialize()), s);
         assert_eq!(Settings::parse("fps_limit=77\nvsync=maybe\nvolume=loud\nnoise"), Settings::default());
@@ -292,7 +294,7 @@ mod tests {
     fn host_window_hides_the_window_rows() {
         assert_eq!(shown_items(false).len(), ITEMS.len());
         let hosted: Vec<&str> = shown_items(true).into_iter().map(|i| ITEMS[i]).collect();
-        assert_eq!(hosted, ["FPS LIMIT", "SOUND FX", "MUSIC", "SCREEN SHAKE", "SHOW FPS", "FRIENDLY FIRE", "VIBRATION", "KEEP POWER"]);
+        assert_eq!(hosted, ["FPS LIMIT", "SOUND FX", "MUSIC", "SCREEN SHAKE", "SHOW FPS", "FRIENDLY FIRE", "VIBRATION", "EASY MODE"]);
     }
 
     #[test]

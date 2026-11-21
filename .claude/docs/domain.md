@@ -7,7 +7,9 @@ All numbers live in `src/rules.rs` unless noted.
 - 13×13 tiles of 16 units (208×208). Terrain resolves to 4×4 sub-cells; maps are written in 8×8 cells.
 - **Brick** blocks tanks and bullets; a bullet removes a 16-wide × 4-deep strip (8 deep at star level 3).
 - **Steel** blocks everything; only star-level-3 bullets break it.
-- **Water** blocks tanks, bullets fly over. **Trees** hide tanks (drawn above them), block nothing.
+- **Water** blocks tanks (except a star-level-4 player), bullets fly over. **Trees** hide tanks (drawn above them),
+  block nothing. A star-level-3+ shell cuts one map cell of trees (16 wide, 8 deep) where it first flies into them,
+  then flies on through any further trees untouched.
   **Ice**: releasing the stick keeps a tank sliding for 0.35 s.
 - **Base** (bottom centre) inside a brick ring. Any bullet on it — including a player's — loses the game.
 
@@ -23,8 +25,14 @@ All numbers live in `src/rules.rs` unless noted.
 - 2 spare tanks (3 total); +1 every 20 000 points; tank power-up +1.
 - **Borrowing** (both modes): a player who is out presses A (fire/confirm) to take one of the partner's spare
   tanks and respawn at once. The HUD shows `A: BORROW A TANK` while that is possible.
-- Star levels: 0 slow bullet · 1 fast bullet · 2 two bullets · 3 breaks steel / digs deeper. Dying resets to 0
-  (unless KEEP POWER is on in Settings).
+- Star levels: 0 slow bullet · 1 fast bullet · 2 two bullets · 3 breaks steel / digs deeper / cuts the first trees ·
+  4 same gun, drives over water, and is armour. Losing a tank resets to 0 (in EASY MODE: one star less).
+- **Armour (level 4)**: an enemy hit doesn't destroy the tank. It blinks for 3 s, untouchable (also by the partner's
+  shells), then loses its stars as if the tank were lost (to 0, or to 3 in EASY MODE). Still on water when the
+  blinking ends (level 3 can't swim): it sinks and counts as a lost tank.
+- The tank's look grows with the level: level 0 has a short barrel, level 1 a long one, 2 twin barrels, 3 a heavy hull
+  with side plates, 4 adds floats on the treads; from level 1 bright dots on the hull's back count the stars. Picking up
+  a star flashes the tank white for 0.25 s.
 - Respawn shield 3 s; helmet 10 s. Hit by the other player → paralyzed 3 s (no move/fire), no damage — only with FRIENDLY FIRE on.
 - Fire on press, auto-repeat every 0.25 s while held, capped by bullets in flight.
 
@@ -143,7 +151,7 @@ Title → SETTINGS (any controller or keyboard; left/right or A changes, B back)
 | SCREEN SHAKE | ON/OFF | ON | comfort on a big TV |
 | SHOW FPS | ON/OFF | OFF | smoothed FPS, top-right, every screen |
 | FRIENDLY FIRE | ON/OFF | ON | ON = classic (players paralyze each other); OFF = player bullets pass through the other player |
-| KEEP POWER | ON/OFF | OFF | ON = losing a tank keeps your star level (City Run districts still start at 0) |
+| EASY MODE | ON/OFF | OFF | ON = losing a tank (or spending level-4 armour) costs one star, not all of them (City Run districts still start at 0). Such runs skip the world board and earn no achievements (the local hi score counts); the row shows `ON - NOT RANKED`. Turning it on opens a popup that explains this: A turns it on, B keeps it off. Saved as `easy_mode` (older files' `keep_power` is read as it) |
 | VIBRATION | ON/OFF | ON | rumble on the slot's own pad: own tank destroyed (a sad, falling three-pulse), enemy hit (short), kill (medium), mini-boss / boss kill (strong), paralyzed (medium), base lost (everyone, long), power-up (tick) |
 
 A host that owns the window (`Platform::host_window`) hides VSYNC and FULLSCREEN.
@@ -245,7 +253,7 @@ Title → LAN CO-OP (hosts whose `Platform::lan` is set). One player picks HOST 
 with A on their own device and is shown by machine name. Then it is the normal game for two: classic or City Run,
 same rules, each machine draws it and plays its own sound and rumble.
 - Linked title: CLASSIC, CITY RUN, LEAVE LAN (no HI SCORES / SETTINGS / EXIT). Pause menu: EXIT GAME becomes
-  LEAVE LAN. Leaving ends it for both. The host's FRIENDLY FIRE, KEEP POWER, open stages and districts apply; the
+  LEAVE LAN. Leaving ends it for both. The host's FRIENDLY FIRE, EASY MODE, open stages and districts apply; the
   joiner's own come back afterwards.
 - Unlocks over LAN (ADR 0018): the host's move as always. A stage or district cleared together also counts for the
   joiner, but only from their own frontier: own open stage 3, clear 5 with the host → nothing opens for them (3 and 4

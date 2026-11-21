@@ -46,11 +46,12 @@ pub fn plugin(app: &mut App) {
 }
 
 /// Where the game goes after a run ends: this screen if the run unlocked something, else the world board / onward.
-pub fn after_play(rec: &Record, platform: &crate::Platform, session: &Session, linked: bool) -> Screen {
+/// An `easy` run unlocks nothing and skips the board.
+pub fn after_play(rec: &Record, platform: &crate::Platform, session: &Session, linked: bool, easy: bool) -> Screen {
     if platform.achieve.is_some() && !linked && !rec.news.is_empty() {
         Screen::Unlocks
     } else {
-        super::board::after_run(session, platform, linked)
+        super::board::after_run(session, platform, linked || easy)
     }
 }
 
@@ -120,6 +121,7 @@ fn input(
     devices: Res<DeviceIntents>,
     platform: Res<crate::Platform>,
     net: Res<crate::net::Net>,
+    settings: Res<crate::settings::Settings>,
     mut next: ResMut<NextState<Screen>>,
     mut sfx: MessageWriter<Sfx>,
 ) {
@@ -132,7 +134,7 @@ fn input(
             reveal.t = all_in; // show the rest at once
         } else if reveal.t > all_in + 0.4 {
             sfx.write(Sfx::MenuPick);
-            next.set(super::board::after_run(&session, &platform, net.linked()));
+            next.set(super::board::after_run(&session, &platform, net.linked() || settings.easy_mode));
         }
     }
     // A chime for each row as it lands; the list follows the newest one, then up/down browses it.

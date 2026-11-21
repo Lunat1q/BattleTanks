@@ -18,17 +18,35 @@ struct Look {
     twin: bool,
     plates: bool,
     nose: bool,
+    /// Bright dots on the hull's back, one per star level, so the level reads at a glance on a TV.
+    pips: u8,
+    /// Floats on the treads (star level 4: drives over water).
+    floats: bool,
 }
 
-const BASE: Look =
-    Look { hull: Vec2::new(4.4, 6.0), tread_w: 3.2, turret: 3.1, barrel_len: 7.4, barrel_w: 0.85, twin: false, plates: false, nose: false };
+const BASE: Look = Look {
+    hull: Vec2::new(4.4, 6.0),
+    tread_w: 3.2,
+    turret: 3.1,
+    barrel_len: 7.4,
+    barrel_w: 0.85,
+    twin: false,
+    plates: false,
+    nose: false,
+    pips: 0,
+    floats: false,
+};
+
+/// Level 3 without its pips: the app icon's tank.
+const HEAVY: Look = Look { barrel_len: 8.0, barrel_w: 1.15, turret: 3.6, plates: true, hull: Vec2::new(4.7, 6.3), ..BASE };
 
 fn player_look(level: u8) -> Look {
     match level {
-        0 => BASE,
-        1 => Look { barrel_len: 8.0, barrel_w: 0.95, ..BASE },
-        2 => Look { barrel_len: 8.0, barrel_w: 0.7, twin: true, turret: 3.3, ..BASE },
-        _ => Look { barrel_len: 8.0, barrel_w: 1.15, turret: 3.6, plates: true, hull: Vec2::new(4.7, 6.3), ..BASE },
+        0 => Look { barrel_len: 6.0, barrel_w: 0.8, ..BASE },
+        1 => Look { barrel_len: 8.0, barrel_w: 1.05, pips: 1, ..BASE },
+        2 => Look { barrel_len: 8.0, barrel_w: 0.75, twin: true, turret: 3.3, pips: 2, ..BASE },
+        3 => Look { pips: 3, ..HEAVY },
+        _ => Look { pips: 4, floats: true, ..HEAVY },
     }
 }
 
@@ -67,6 +85,21 @@ fn paint(l: Look, frame: u32, ppu: f32, span: f32) -> Canvas {
             },
         );
     }
+    if l.floats {
+        // Capsule floats over the treads' outer halves, banded, shorter than the treads so their ends still show.
+        for side in [-1.0f32, 1.0] {
+            let fc = Vec2::new(side * 6.75, 0.0);
+            c.outlined(
+                |p| sd_seg(p, fc - Vec2::Y * 4.6, fc + Vec2::Y * 4.6, 1.1),
+                0.35,
+                |p| {
+                    let band = (p.y - fc.y + 0.5).rem_euclid(2.3) < 0.45;
+                    let round = 1.0 - ((p.x - fc.x) / 1.1).powi(2);
+                    gray(if band { 0.45 } else { 0.62 + 0.3 * round })
+                },
+            );
+        }
+    }
     // Hull.
     let hc = Vec2::new(0.0, -0.3);
     let hull = move |p: Vec2| {
@@ -83,10 +116,16 @@ fn paint(l: Look, frame: u32, ppu: f32, span: f32) -> Canvas {
         let bevel = (-hull(p) / 1.0).clamp(0.0, 1.0); // 0 at edge -> 1 inside
         gray(0.62 + 0.16 * t.y - 0.08 * t.x + 0.12 * (1.0 - bevel) * (t.y - t.x).signum())
     });
-    // Engine grille at the back.
-    for k in 0..3 {
-        let y = hc.y - l.hull.y + 1.0 + k as f32 * 0.8;
-        c.paint(|p| sd_box(p, Vec2::new(0.0, y), Vec2::new(l.hull.x * 0.55, 0.18)), |_| gray(0.3));
+    if l.pips == 0 {
+        // Engine grille at the back.
+        for k in 0..3 {
+            let y = hc.y - l.hull.y + 1.0 + k as f32 * 0.8;
+            c.paint(|p| sd_box(p, Vec2::new(0.0, y), Vec2::new(l.hull.x * 0.55, 0.18)), |_| gray(0.3));
+        }
+    }
+    for k in 0..l.pips {
+        let at = Vec2::new((k as f32 - (l.pips - 1) as f32 / 2.0) * 1.6, hc.y - l.hull.y + 1.05);
+        c.outlined(|p| sd_circle(p, at, 0.55), 0.28, |_| gray(1.0));
     }
     if l.plates {
         for side in [-1.0f32, 1.0] {
@@ -122,7 +161,7 @@ fn paint(l: Look, frame: u32, ppu: f32, span: f32) -> Canvas {
 
 /// `[level][frame]` player tank images.
 pub fn players() -> Vec<[Image; 2]> {
-    (0..4).map(|lv| [draw(player_look(lv), 0), draw(player_look(lv), 1)]).collect()
+    (0..=crate::rules::MAX_LEVEL).map(|lv| [draw(player_look(lv), 0), draw(player_look(lv), 1)]).collect()
 }
 
 /// `[kind][frame]` enemy tank images.
@@ -132,9 +171,18 @@ pub fn enemies() -> Vec<[Image; 2]> {
 
 /// City Run mini-boss and boss: heavier models, painted finer because they're drawn 24 and 32 units wide.
 const MINI: Look =
-    Look { hull: Vec2::new(5.0, 6.5), tread_w: 3.2, turret: 3.8, barrel_len: 8.0, barrel_w: 0.8, twin: true, plates: true, nose: false };
-const BOSS: Look =
-    Look { hull: Vec2::new(5.4, 6.8), tread_w: 2.6, turret: 4.3, barrel_len: 8.0, barrel_w: 0.9, twin: true, plates: true, nose: true };
+    Look { hull: Vec2::new(5.0, 6.5), tread_w: 3.2, turret: 3.8, barrel_len: 8.0, barrel_w: 0.8, twin: true, plates: true, ..BASE };
+const BOSS: Look = Look {
+    hull: Vec2::new(5.4, 6.8),
+    tread_w: 2.6,
+    turret: 4.3,
+    barrel_len: 8.0,
+    barrel_w: 0.9,
+    twin: true,
+    plates: true,
+    nose: true,
+    ..BASE
+};
 
 pub fn mini() -> [Image; 2] {
     [0, 1].map(|f| paint(MINI, f, 12.0, 16.0).into_image())
@@ -165,9 +213,9 @@ pub fn turret() -> Image {
     c.into_image()
 }
 
-/// Top player tank model (star level 3), grey, for the app icon.
+/// Heavy player tank model (star level 3 without pips), grey, for the app icon.
 pub fn hero(ppu: f32, span: f32) -> Canvas {
-    paint(player_look(3), 0, ppu, span)
+    paint(HEAVY, 0, ppu, span)
 }
 
 /// An enemy model, grey, facing up, for store art.

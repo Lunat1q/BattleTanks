@@ -63,12 +63,28 @@ impl EnemyKind {
     }
 }
 
-/// What a player's gun can do at a star level (0..=3).
+/// Highest star level. Level 4 keeps level 3's gun, drives over water and works as armour.
+pub const MAX_LEVEL: u8 = 4;
+pub const SWIM_LEVEL: u8 = 4;
+/// A hit on level-4 armour: this long blinking and untouchable, then the stars drop as if the tank were lost.
+pub const ARMOUR_TIME: f32 = 3.0;
+
+/// Does an enemy hit cost this player's stars instead of the tank?
+pub fn armour_holds(level: u8) -> bool {
+    level >= MAX_LEVEL
+}
+
+/// Star level after losing a tank (or spending level-4 armour): back to 0, or one star less in EASY MODE.
+pub fn level_after_loss(level: u8, easy_mode: bool) -> u8 {
+    if easy_mode { level.saturating_sub(1) } else { 0 }
+}
+
+/// What a player's gun can do at a star level (0..=MAX_LEVEL).
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct GunStats {
     pub bullet_speed: f32,
     pub max_bullets: usize,
-    /// Breaks steel and digs twice as deep into bricks.
+    /// Breaks steel, digs twice as deep into bricks, and cuts the first trees it flies into.
     pub power: bool,
 }
 
@@ -222,7 +238,15 @@ mod tests {
         assert_eq!(player_gun(0).max_bullets, 1);
         assert!(player_gun(1).bullet_speed > player_gun(0).bullet_speed);
         assert_eq!(player_gun(2).max_bullets, 2);
-        assert!(player_gun(3).power && player_gun(9).power);
+        assert!(player_gun(3).power && player_gun(MAX_LEVEL).power && player_gun(9).power);
+    }
+
+    #[test]
+    fn losing_a_tank_costs_stars() {
+        assert!(armour_holds(MAX_LEVEL) && !armour_holds(3));
+        assert_eq!(level_after_loss(MAX_LEVEL, false), 0);
+        assert_eq!(level_after_loss(MAX_LEVEL, true), 3, "EASY MODE costs one star");
+        assert_eq!(level_after_loss(0, true), 0);
     }
 
     #[test]

@@ -88,8 +88,10 @@ pub fn pickup(
             }
             rules::PowerKind::Star => {
                 if let Some(slot) = session.slots[p].as_mut() {
-                    slot.level = (slot.level + 1).min(3);
+                    slot.level = (slot.level + 1).min(rules::MAX_LEVEL);
                     gun.stats = rules::player_gun(slot.level);
+                    // The new look flashes in.
+                    commands.entity(te).insert(HitFlash(0.25));
                     feats.write(Feat::Star { slot: p, level: slot.level });
                 }
             }

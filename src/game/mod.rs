@@ -54,7 +54,7 @@ pub struct Slot {
     /// Spare tanks.
     pub lives: u32,
     pub score: u32,
-    /// Star level 0..=3, lost on death.
+    /// Star level 0..=`rules::MAX_LEVEL`, lost on death.
     pub level: u8,
     /// No lives left this game.
     pub out: bool,
@@ -259,6 +259,9 @@ pub struct Enemy {
 pub struct Shield(pub f32);
 #[derive(Component)]
 pub struct Paralyzed(pub f32);
+/// Level-4 armour took a hit: untouchable and blinking for the time left, then stars drop (sunk if on water).
+#[derive(Component)]
+pub struct Armour(pub f32);
 #[derive(Component)]
 pub struct Spawning(pub f32);
 /// Short white flash after taking a non-lethal hit.
@@ -273,6 +276,8 @@ pub struct Bullet {
     pub dir: Dir,
     pub speed: f32,
     pub power: bool,
+    /// A power shell that hasn't cut into trees yet (it cuts only the first ones it meets).
+    pub trees: bool,
 }
 
 #[derive(Component)]
@@ -299,6 +304,7 @@ pub enum FxKind {
     Muzzle(Dir),
     BulletPop,
     Bricks,
+    Leaves,
     Sparks,
     TankBoom,
     BaseBoom,
@@ -408,6 +414,7 @@ pub fn plugin(app: &mut App) {
                 tank::fire,
                 combat::fly_bullets,
                 combat::resolve_hits,
+                combat::armour_wears_off,
                 powerup::pickup,
                 stage::check_end,
             )

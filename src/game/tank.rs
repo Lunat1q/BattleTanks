@@ -38,6 +38,7 @@ pub fn advance(pos: Vec2, dir: Dir, dist: f32, blocked: impl Fn(Vec2) -> bool) -
 
 pub fn drive(
     time: Res<Time>,
+    session: Res<Session>,
     terrain: Res<Terrain>,
     view: Res<View>,
     base: Query<(), With<Base>>,
@@ -55,6 +56,7 @@ pub fn drive(
         }
         let mut pos = tf.translation.xy();
         let size = tank.size;
+        let swimmer = matches!(tank.team, Team::Player(p) if session.slots[p].as_ref().is_some_and(|s| s.level >= rules::SWIM_LEVEL));
         let others: Vec<Rect> = rects
             .iter()
             .filter(|(o, r)| *o != e && !overlaps(*r, rect_at(pos, size))) // already overlapping: let them separate
@@ -63,7 +65,7 @@ pub fn drive(
             .collect();
         let blocked = |p: Vec2| {
             let r = rect_at(p, size);
-            terrain.blocks_tank(r) || r.min.y < view.bottom || r.max.y > view.top() || others.iter().any(|o| overlaps(*o, r))
+            terrain.blocks(r, swimmer) || r.min.y < view.bottom || r.max.y > view.top() || others.iter().any(|o| overlaps(*o, r))
         };
 
         let on_ice = terrain.at(pos.x, pos.y) == Tile::Ice;
@@ -117,7 +119,14 @@ pub fn fire(
         }
         let pos = tf.translation.xy() + tank.dir.vec() * (tank.size / 2.0 - 2.0);
         commands.spawn((
-            Bullet { owner: e, team: tank.team, dir: tank.dir, speed: gun.stats.bullet_speed, power: gun.stats.power },
+            Bullet {
+                owner: e,
+                team: tank.team,
+                dir: tank.dir,
+                speed: gun.stats.bullet_speed,
+                power: gun.stats.power,
+                trees: gun.stats.power,
+            },
             Transform::from_translation(pos.extend(0.0)),
             DespawnOnExit(Screen::Stage),
         ));

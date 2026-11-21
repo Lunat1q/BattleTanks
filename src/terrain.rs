@@ -112,11 +112,16 @@ impl Terrain {
     }
 
     pub fn blocks_tank(&self, r: Rect) -> bool {
+        self.blocks(r, false)
+    }
+
+    /// `blocks_tank`, except that a `swimmer` (star level 4) drives over water.
+    pub fn blocks(&self, r: Rect, swimmer: bool) -> bool {
         if self.outside(r) {
             return true;
         }
         let (x0, x1, y0, y1) = self.span(r);
-        (y0..y1).any(|y| (x0..x1).any(|x| self.get(x, y).blocks_tank()))
+        (y0..y1).any(|y| (x0..x1).any(|x| self.get(x, y).blocks_tank() && !(swimmer && self.get(x, y) == Tile::Water)))
     }
 
     /// Bullet rectangle `r` travelling `dir`. On contact, destroys a 16-wide strip (4 deep, 8 with
@@ -125,18 +130,55 @@ impl Terrain {
         if self.outside(r) {
             return Some(Impact::Edge);
         }
+        let row = self.first_row(r, dir, Tile::blocks_bullet)?;
+        let across = self.across(r, dir);
+        let steel_hit = across.clone().any(|c| self.lane_tile(dir, row, c) == Tile::Steel);
+        let hard_hit = across.clone().any(|c| self.lane_tile(dir, row, c).unbreakable());
+        self.clear_strip(r, dir, row, if power { 2 } else { 1 }, |t| match t {
+            Tile::Brick => true,
+            Tile::Steel => power,
+            Tile::Secret => player,
+            _ => false,
+        });
+        Some(if hard_hit || (steel_hit && !power) { Impact::Steel } else { Impact::Brick })
+    }
+
+    /// A star-level-3 shell `r` travelling `dir` through trees: clears a 16-wide, 8-deep strip of them (one map cell)
+    /// from the first tree row it touches. True if it found trees. The shell flies on, and the caller lets it cut once.
+    pub fn cut_trees(&mut self, r: Rect, dir: Dir) -> bool {
+        if self.outside(r) {
+            return false;
+        }
+        let Some(row) = self.first_row(r, dir, |t| t == Tile::Trees) else { return false };
+        self.clear_strip(r, dir, row, 2, |t| t == Tile::Trees);
+        true
+    }
+
+    /// Tile at `along` (row for vertical travel, column for horizontal) and `cross` (the other axis).
+    fn lane_tile(&self, dir: Dir, along: usize, cross: usize) -> Tile {
+        if dir.is_vertical() { self.get(cross, along) } else { self.get(along, cross) }
+    }
+
+    /// Sub-cells `r` covers across its travel.
+    fn across(&self, r: Rect, dir: Dir) -> std::ops::Range<usize> {
         let (x0, x1, y0, y1) = self.span(r);
-        // Rows (along travel) ordered from the bullet's back to its front.
+        if dir.is_vertical() { x0..x1 } else { y0..y1 }
+    }
+
+    /// The row (along travel) nearest `r`'s back where it covers a tile matching `hit`.
+    fn first_row(&self, r: Rect, dir: Dir, hit: impl Fn(Tile) -> bool) -> Option<usize> {
+        let (x0, x1, y0, y1) = self.span(r);
         let along: Vec<usize> = match dir {
             Dir::Up => (y0..y1).collect(),
             Dir::Down => (y0..y1).rev().collect(),
             Dir::Right => (x0..x1).collect(),
             Dir::Left => (x0..x1).rev().collect(),
         };
-        let tile_at = |a: usize, c: usize| if dir.is_vertical() { self.get(c, a) } else { self.get(a, c) };
-        let (c0, c1) = if dir.is_vertical() { (x0, x1) } else { (y0, y1) };
-        let hit_row = *along.iter().find(|&&a| (c0..c1).any(|c| tile_at(a, c).blocks_bullet()))?;
+        along.into_iter().find(|&a| self.across(r, dir).any(|c| hit(self.lane_tile(dir, a, c))))
+    }
 
+    /// Empties the tiles `clear` picks in the 16-wide strip centred on `r`, `depth` rows from `row` along `dir`.
+    fn clear_strip(&mut self, r: Rect, dir: Dir, row: usize, depth: isize, clear: impl Fn(Tile) -> bool) {
         let center = if dir.is_vertical() { r.center().x } else { r.center().y };
         let (s0, s1) = if dir.is_vertical() {
             let (a, b, _, _) = self.span(Rect::new(center - 8.0, 0.0, center + 8.0, 1.0));
@@ -145,27 +187,20 @@ impl Terrain {
             let (_, _, a, b) = self.span(Rect::new(0.0, center - 8.0, 1.0, center + 8.0));
             (a, b)
         };
-        let steel_hit = (c0..c1).any(|c| tile_at(hit_row, c) == Tile::Steel);
-        let hard_hit = (c0..c1).any(|c| tile_at(hit_row, c).unbreakable());
-
         let step: isize = if matches!(dir, Dir::Up | Dir::Right) { 1 } else { -1 };
-        for d in 0..if power { 2 } else { 1 } {
-            let a = hit_row as isize + step * d;
-            let along_len = if dir.is_vertical() { self.rows } else { SUBS };
+        let along_len = if dir.is_vertical() { self.rows } else { SUBS };
+        for d in 0..depth {
+            let a = row as isize + step * d;
             if !(0..along_len as isize).contains(&a) {
                 continue;
             }
             for c in s0..s1 {
                 let (x, y) = if dir.is_vertical() { (c, a as usize) } else { (a as usize, c) };
-                match self.get(x, y) {
-                    Tile::Brick => self.set(x, y, Tile::Empty),
-                    Tile::Steel if power => self.set(x, y, Tile::Empty),
-                    Tile::Secret if player => self.set(x, y, Tile::Empty),
-                    _ => {}
+                if clear(self.get(x, y)) {
+                    self.set(x, y, Tile::Empty);
                 }
             }
         }
-        Some(if hard_hit || (steel_hit && !power) { Impact::Steel } else { Impact::Brick })
     }
 
     /// Sub-cells of the wall ring around the base (base sits at x 96..112, y 0..16).
@@ -237,6 +272,32 @@ mod tests {
         let mut ter = wall(Tile::Water, 10..12);
         assert!(ter.blocks_tank(rect_at(Vec2::new(72.0, 36.0), 16.0)));
         assert_eq!(ter.bullet_hit(rect_at(Vec2::new(72.0, 42.0), 4.0), Dir::Up, false, true), None);
+    }
+
+    #[test]
+    fn swimmers_cross_water_only() {
+        let mut ter = wall(Tile::Water, 10..12);
+        let r = rect_at(Vec2::new(72.0, 44.0), 16.0);
+        assert!(ter.blocks(r, false));
+        assert!(!ter.blocks(r, true));
+        ter.set(17, 10, Tile::Brick);
+        assert!(ter.blocks(r, true), "bricks still stop a swimmer");
+    }
+
+    #[test]
+    fn a_power_shell_cuts_one_cell_of_trees() {
+        let mut ter = wall(Tile::Trees, 10..16);
+        let r = rect_at(Vec2::new(72.0, 37.0), 4.0);
+        assert!(!ter.cut_trees(r, Dir::Up), "not in the trees yet");
+        let r = rect_at(Vec2::new(72.0, 41.0), 4.0);
+        assert!(ter.cut_trees(r, Dir::Up));
+        for x in 16..20 {
+            assert_eq!(ter.get(x, 10), Tile::Empty, "column {x}");
+            assert_eq!(ter.get(x, 11), Tile::Empty);
+            assert_eq!(ter.get(x, 12), Tile::Trees, "only the first cell goes");
+        }
+        assert_eq!(ter.get(15, 10), Tile::Trees);
+        assert_eq!(ter.bullet_hit(r, Dir::Up, true, true), None, "trees never stop a shell");
     }
 
     #[test]

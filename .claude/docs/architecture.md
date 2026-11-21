@@ -63,7 +63,7 @@ src/
   gfx/
     mod.rs            # Gfx handles (built at plugin time), colours, z layers, camera (FixedVertical 224) + bloom
     canvas.rs         # SDF painter -> Image; sd_box/rbox/circle/seg/poly, star, tileable noise   [pure]
-    art_tanks.rs      # 4 player + 4 enemy tank models x 2 tread frames, mini-boss, boss, turret; grey (tinted by Sprite.color)
+    art_tanks.rs      # 5 player (star levels 0-4: pips, floats) + 4 enemy tank models x 2 tread frames, mini-boss, boss, turret; grey (tinted by Sprite.color)
     art_world.rs      # brick, steel, water x3, trees, ice, ground, base (alive/destroyed)
     art_icons.rs      # bullet, particle dot, spawn sparkle, shield ring, flag, 6 power-up icons
     world.rs          # terrain sub-cell sprites from the dirty list, water anim, attach/update tank/bullet/base/power-up sprites

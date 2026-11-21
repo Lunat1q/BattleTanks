@@ -42,7 +42,7 @@ pub fn fly_bullets(
     mut run: ResMut<StageRun>,
     view: Res<View>,
     base: Query<(), With<Base>>,
-    mut bullets: Query<(Entity, &Bullet, &mut Transform)>,
+    mut bullets: Query<(Entity, &mut Bullet, &mut Transform)>,
     tanks: Query<(Entity, &Tank, &Transform), (Without<Bullet>, Without<Spawning>)>,
     mut hits: MessageWriter<Hit>,
     mut fx: MessageWriter<Fx>,
@@ -62,7 +62,7 @@ pub fn fly_bullets(
     let base = (!base.is_empty()).then(|| rect_at(BASE_POS, TILE));
     let mut swept: Vec<(Entity, Team, Rect)> = Vec::new();
 
-    for (e, b, mut tf) in bullets.iter_mut().sort_by_key::<Entity, _>(|e| order(&ids, *e)) {
+    for (e, mut b, mut tf) in bullets.iter_mut().sort_by_key::<Entity, _>(|e| order(&ids, *e)) {
         let start = tf.translation.xy();
         let total = b.speed * dt;
         let steps = (total / BULLET_STEP).ceil().max(1.0) as usize;
@@ -112,6 +112,11 @@ pub fn fly_bullets(
                 gone = true;
                 break;
             }
+            if b.trees && terrain.cut_trees(r, b.dir) {
+                b.trees = false;
+                fx.write(Fx { kind: FxKind::Leaves, pos });
+                sfx.write(Sfx::Brick);
+            }
         }
         if gone {
             commands.entity(e).try_despawn();
@@ -146,7 +151,7 @@ pub fn resolve_hits(
     mut rng: ResMut<Rng>,
     view: Res<View>,
     terrain: Res<Terrain>,
-    mut tanks: Query<(&Tank, &Transform, Option<&mut Enemy>, Has<Shield>, Has<Paralyzed>)>,
+    mut tanks: Query<(&Tank, &Transform, Option<&mut Enemy>, Has<Shield>, Has<Paralyzed>, Has<Armour>)>,
     powerups: Query<Entity, (With<PowerUp>, Without<Stash>)>,
     mut fx: MessageWriter<Fx>,
     mut sfx: MessageWriter<Sfx>,
@@ -162,7 +167,8 @@ pub fn resolve_hits(
         if dead.contains(&hit.target) {
             continue;
         }
-        let Ok((tank, tf, enemy, shielded, stunned)) = tanks.get_mut(hit.target) else { continue };
+        let Ok((tank, tf, enemy, shield, stunned, armour)) = tanks.get_mut(hit.target) else { continue };
+        let shielded = shield || armour;
         let pos = tf.translation.xy();
         match (tank.team, hit.by, enemy) {
             (Team::Enemy, Team::Player(p), Some(mut enemy)) => {
@@ -209,6 +215,12 @@ pub fn resolve_hits(
                 rumble.write(Rumble::stunned(target));
                 sfx.write(Sfx::ArmorHit);
             }
+            (Team::Player(p), Team::Enemy, _) if !shielded && rules::armour_holds(session.slots[p].as_ref().map_or(0, |s| s.level)) => {
+                commands.entity(hit.target).insert(Armour(rules::ARMOUR_TIME));
+                fx.write(Fx { kind: FxKind::Sparks, pos });
+                sfx.write(Sfx::ArmorHit);
+                rumble.write(Rumble::stunned(p));
+            }
             (Team::Player(p), Team::Enemy, _) if !shielded => {
                 dead.push(hit.target);
                 commands.entity(hit.target).try_despawn();
@@ -218,7 +230,7 @@ pub fn resolve_hits(
                 feats.write(Feat::Lost { slot: p, stunned });
                 deaths.push((p, hit.shooter));
                 let at = respawn_point(p, view.bottom, &terrain);
-                player_lost_tank(&mut commands, &mut session, p, at, settings.keep_power);
+                player_lost_tank(&mut commands, &mut session, p, at, settings.easy_mode);
             }
             _ => {}
         }
@@ -228,12 +240,49 @@ pub fn resolve_hits(
     }
 }
 
-/// A player's tank is gone: lose stars (unless KEEP POWER), use a spare tank or drop out.
-pub fn player_lost_tank(commands: &mut Commands, session: &mut Session, p: usize, respawn_at: Vec2, keep_power: bool) {
-    let Some(slot) = session.slots[p].as_mut() else { return };
-    if !keep_power {
-        slot.level = 0;
+/// Spent level-4 armour runs out: the stars drop as for a lost tank, and a tank still on water sinks.
+pub fn armour_wears_off(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut session: ResMut<Session>,
+    view: Res<View>,
+    terrain: Res<Terrain>,
+    settings: Res<crate::settings::Settings>,
+    mut tanks: Query<(Entity, &Tank, &Transform, &mut Gun, &mut Armour)>,
+    mut fx: MessageWriter<Fx>,
+    mut sfx: MessageWriter<Sfx>,
+    mut rumble: MessageWriter<Rumble>,
+    mut feats: MessageWriter<Feat>,
+    ids: Ids,
+) {
+    // Spawn order: two tanks sinking on one tick take spare tanks and respawn alike on every machine.
+    for (e, tank, tf, mut gun, mut armour) in tanks.iter_mut().sort_by_key::<Entity, _>(|e| order(&ids, *e)) {
+        armour.0 -= time.delta_secs();
+        let Team::Player(p) = tank.team else { continue };
+        if armour.0 > 0.0 {
+            continue;
+        }
+        commands.entity(e).remove::<Armour>();
+        let Some(slot) = session.slots[p].as_mut() else { continue };
+        slot.level = rules::level_after_loss(slot.level, settings.easy_mode);
+        gun.stats = rules::player_gun(slot.level);
+        let pos = tf.translation.xy();
+        if terrain.blocks_tank(rect_at(pos, tank.size)) {
+            commands.entity(e).try_despawn();
+            fx.write(Fx { kind: FxKind::TankBoom, pos });
+            sfx.write(Sfx::PlayerBoom);
+            rumble.write_batch(Rumble::death(p));
+            feats.write(Feat::Lost { slot: p, stunned: false });
+            let at = respawn_point(p, view.bottom, &terrain);
+            player_lost_tank(&mut commands, &mut session, p, at, settings.easy_mode);
+        }
     }
+}
+
+/// A player's tank is gone: lose stars (one in EASY MODE, else all), use a spare tank or drop out.
+pub fn player_lost_tank(commands: &mut Commands, session: &mut Session, p: usize, respawn_at: Vec2, easy_mode: bool) {
+    let Some(slot) = session.slots[p].as_mut() else { return };
+    slot.level = rules::level_after_loss(slot.level, easy_mode);
     if slot.lives > 0 {
         slot.lives -= 1;
         spawn_player(commands, p, slot.level, respawn_at);
