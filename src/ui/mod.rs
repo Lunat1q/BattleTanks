@@ -1,5 +1,7 @@
 //! Screens and HUD (Bevy UI). Sizes use viewport-height units so text reads well on a TV.
 
+mod achievements;
+mod badge_rows;
 mod board;
 mod city_map;
 mod hiscores;
@@ -9,6 +11,7 @@ mod screens;
 mod settings;
 mod tally;
 pub mod title;
+mod unlocks;
 
 use bevy::prelude::*;
 use bevy::text::FontSize;
@@ -29,6 +32,8 @@ pub fn plugin(app: &mut App) {
         board::plugin,
         hiscores::plugin,
         lan::plugin,
+        achievements::plugin,
+        unlocks::plugin,
     ));
 }
 

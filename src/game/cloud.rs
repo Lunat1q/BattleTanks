@@ -1,62 +1,88 @@
-//! City Run progress follows a player across their devices when the host has a cloud copy
-//! (`Platform::cloud_load` / `cloud_save`, e.g. Play Games saved games on Android): synced once at start and after
-//! every new unlock. Unlocks only grow, so merging is `max` and there is no conflict to resolve.
+//! City Run progress and achievements follow a player across their devices when the host has a cloud copy
+//! (`Platform::cloud_load` / `cloud_save`, e.g. Play Games saved games on Android): synced once at start, after
+//! every new City Run unlock and after new achievements. Both only grow, so merging is `max` / union and there is no
+//! conflict to resolve. The copy is `city.txt`'s text followed by `achievements.txt`'s.
 
 use super::city::Progress;
+use crate::achieve::Record;
 use bevy::prelude::*;
 use std::sync::{Arc, Mutex};
 
-/// A sync on its worker thread; its answer is the merged unlocks.
-#[derive(Resource, Default)]
-pub struct Pull(Option<Arc<Mutex<Option<usize>>>>);
+type Answer = Arc<Mutex<Option<(usize, Record)>>>;
 
-impl Pull {
-    /// Reads the cloud copy, merges `local` into it, writes it back if the cloud was behind.
-    pub fn start(&mut self, platform: &crate::Platform, local: Progress) {
-        let (Some(load), Some(save)) = (platform.cloud_load, platform.cloud_save) else { return };
-        let slot = Arc::new(Mutex::new(None));
-        let out = slot.clone();
-        std::thread::spawn(move || {
-            let merged = sync(load, save, local);
-            if let Ok(mut o) = out.lock() {
-                *o = merged;
-            }
-        });
-        self.0 = Some(slot);
+/// One sync at a time on a worker thread; its answer is the merged copy. Set `want` to ask for one.
+#[derive(Resource)]
+pub struct Pull {
+    busy: Option<Answer>,
+    pub want: bool,
+}
+
+impl Default for Pull {
+    fn default() -> Self {
+        Pull { busy: None, want: true }
     }
 }
 
 /// `None` when the cloud can't be read (offline, not signed in): then nothing is written, so a copy we never saw
 /// is never overwritten.
-fn sync(load: fn() -> Result<String, String>, save: fn(&str) -> Result<String, String>, local: Progress) -> Option<usize> {
+fn sync(
+    load: fn() -> Result<String, String>,
+    save: fn(&str) -> Result<String, String>,
+    local: Progress,
+    rec: &Record,
+) -> Option<(usize, Record)> {
     let cloud = load().map_err(|e| info!("cloud save not read: {e}")).ok()?;
     let mut merged = Progress::parse(&cloud);
-    if local.unlocked > merged.unlocked {
-        merged.unlocked = local.unlocked;
-        if let Err(e) = save(&merged.text()) {
-            info!("cloud save not written: {e}");
-        }
+    let mut won = Record::parse(&cloud);
+    let behind = local.unlocked > merged.unlocked;
+    merged.unlocked = merged.unlocked.max(local.unlocked);
+    if (won.merge(rec) || behind)
+        && let Err(e) = save(&(merged.text() + &won.text()))
+    {
+        info!("cloud save not written: {e}");
     }
-    Some(merged.unlocked)
+    Some((merged.unlocked, won))
 }
 
 pub fn plugin(app: &mut App) {
-    app.init_resource::<Pull>()
-        .add_systems(Startup, |platform: Res<crate::Platform>, progress: Res<Progress>, mut pull: ResMut<Pull>| {
-            pull.start(&platform, *progress)
-        })
-        .add_systems(Update, apply);
+    // The achievements plugin replaces it with the saved record; headless tests run without one.
+    app.init_resource::<Record>().init_resource::<Pull>().add_systems(Update, (kick, apply).chain());
+}
+
+fn kick(mut pull: ResMut<Pull>, platform: Res<crate::Platform>, progress: Res<Progress>, rec: Res<Record>) {
+    if !pull.want || pull.busy.is_some() {
+        return;
+    }
+    pull.want = false;
+    let (Some(load), Some(save)) = (platform.cloud_load, platform.cloud_save) else { return };
+    let slot: Answer = Arc::new(Mutex::new(None));
+    let out = slot.clone();
+    let (local, rec) = (*progress, rec.clone());
+    std::thread::spawn(move || {
+        let merged = sync(load, save, local, &rec);
+        if let Ok(mut o) = out.lock() {
+            *o = merged;
+        }
+    });
+    pull.busy = Some(slot);
 }
 
 /// Unlocks from another device land here. A LAN joiner's `Progress` holds the host's for the session, so it waits.
 // ponytail: a pull answering mid-session on a joiner is dropped; the next start or clear syncs again.
-fn apply(mut pull: ResMut<Pull>, mut progress: ResMut<Progress>, net: Res<crate::net::Net>) {
-    let Some(merged) = pull.0.as_ref().and_then(|p| p.lock().ok()?.take()) else { return };
-    pull.0 = None;
-    if merged > progress.unlocked && net.me() != Some(1) {
-        progress.unlocked = merged;
+fn apply(mut pull: ResMut<Pull>, mut progress: ResMut<Progress>, mut rec: ResMut<Record>, net: Res<crate::net::Net>) {
+    let Some(busy) = &pull.busy else { return };
+    if Arc::strong_count(busy) > 1 {
+        return; // still running
+    }
+    let answer = busy.lock().ok().and_then(|mut o| o.take());
+    pull.busy = None;
+    let Some((unlocked, won)) = answer else { return };
+    if unlocked > progress.unlocked && net.me() != Some(1) {
+        progress.unlocked = unlocked;
         progress.save_local();
     }
+    // Saved and told to the host by `achieve::mirror`.
+    rec.merge(&won);
 }
 
 #[cfg(test)]
@@ -79,13 +105,23 @@ mod tests {
     #[test]
     fn sync_merges_upward_and_never_writes_blind() {
         let at = |n| Progress { unlocked: n };
+        let none = Record::default();
         *CLOUD.lock().unwrap() = Some(String::new());
-        assert_eq!(sync(load, save, at(3)), Some(3), "empty cloud takes the local unlocks");
+        assert_eq!(sync(load, save, at(3), &none).map(|m| m.0), Some(3), "empty cloud takes the local unlocks");
         assert_eq!(cloud().as_deref(), Some("unlocked=3\n"));
-        assert_eq!(sync(load, save, at(1)), Some(3), "a fresh device gets them back");
+        assert_eq!(sync(load, save, at(1), &none).map(|m| m.0), Some(3), "a fresh device gets them back");
         assert_eq!(cloud().as_deref(), Some("unlocked=3\n"), "and doesn't push its lower count");
+        let mut rec = Record::default();
+        rec.unlock("digger");
+        rec.add("kills_100", 7);
+        let (_, merged) = sync(load, save, at(1), &rec).unwrap();
+        assert_eq!(cloud().as_deref(), Some("unlocked=3\ndone=digger\nkills_100=7\n"), "achievements ride along");
+        assert!(merged.done.contains("digger"));
+        *CLOUD.lock().unwrap() = Some("unlocked=2\n".into());
+        let (n, merged) = sync(load, save, at(1), &none).unwrap();
+        assert_eq!((n, merged.done.len()), (2, 0), "an older build's copy (no achievement lines) reads fine");
         *CLOUD.lock().unwrap() = None;
-        assert_eq!(sync(load, save, at(5)), None);
+        assert!(sync(load, save, at(5), &rec).is_none());
         assert_eq!(cloud(), None, "unreadable cloud is left alone");
     }
 }

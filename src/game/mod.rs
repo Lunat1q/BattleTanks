@@ -2,13 +2,14 @@
 //! Logic entities carry no sprites; `gfx` attaches visuals when they appear.
 
 pub mod city;
-mod cloud;
+pub mod cloud;
 pub mod combat;
 pub mod enemy;
 pub mod powerup;
 pub mod stage;
 pub mod tank;
 
+pub use crate::achieve::Feat;
 use crate::geom::Dir;
 use crate::input::{Device, DeviceIntents, Intent};
 use crate::rules::{self, EnemyKind, GunStats, PowerKind, Rank};
@@ -30,6 +31,10 @@ pub enum Screen {
     HiScores,
     /// LAN CO-OP from the title: host a game or join one on the same Wi-Fi.
     Lan,
+    /// ACHIEVEMENTS from the title (hosts with `Platform::achieve`).
+    Achievements,
+    /// NEW ACHIEVEMENTS after a run that unlocked some, before the world board.
+    Unlocks,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -386,6 +391,7 @@ pub fn plugin(app: &mut App) {
         .add_message::<Sfx>()
         .add_message::<combat::Hit>()
         .add_message::<Rumble>()
+        .add_message::<Feat>()
         .configure_sets(Update, Sim.run_if(sim_running))
         .add_systems(
             Update,

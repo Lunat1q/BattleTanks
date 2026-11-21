@@ -28,18 +28,25 @@ enum Item {
     City,
     Lan,
     HiScores,
+    Achievements,
     Settings,
     Exit,
     Leave,
 }
 
 /// The menu. Linked, only what both machines can do together: no online boards, and no settings (the host's apply).
-fn items(linked: bool, lan: bool) -> Vec<Item> {
+fn items(linked: bool, platform: &crate::Platform) -> Vec<Item> {
     use Item::*;
     if linked {
         return vec![Start, Stage, City, Leave];
     }
-    [Start, Stage, City].into_iter().chain(lan.then_some(Lan)).chain([HiScores, Settings, Exit]).collect()
+    [Start, Stage, City]
+        .into_iter()
+        .chain(platform.lan.is_some().then_some(Lan))
+        .chain([HiScores])
+        .chain(platform.achieve.is_some().then_some(Achievements))
+        .chain([Settings, Exit])
+        .collect()
 }
 
 pub fn plugin(app: &mut App) {
@@ -63,6 +70,9 @@ fn spawn(mut commands: Commands, session: Res<Session>, gfx: Res<Gfx>, net: Res<
         Node { position_type: PositionType::Absolute, bottom: vh(1.5), right: vh(2), ..default() },
         DespawnOnExit(Screen::Title),
     ));
+    let n = items(net.linked(), &platform).len();
+    // Seven items fill the screen; a longer menu (LAN + ACHIEVEMENTS) packs tighter so the bottom lines stay on it.
+    let (item_vh, gap) = if n > 7 { (4.2, vh(1.5)) } else { (5.0, vh(4)) };
     commands.spawn((screen_root(), DespawnOnExit(Screen::Title))).with_children(|root| {
         root.spawn(Node { align_items: AlignItems::Center, column_gap: vh(4), ..default() }).with_children(|row| {
             let tank = |slot: usize, color| {
@@ -77,17 +87,17 @@ fn spawn(mut commands: Commands, session: Res<Session>, gfx: Res<Gfx>, net: Res<
             row.spawn(tank(1, GREEN));
         });
         root.spawn(text("two-player tank defence", 3.2, DIM));
-        root.spawn(Node { height: vh(4), ..default() });
-        for i in 0..items(net.linked(), platform.lan.is_some()).len() {
-            root.spawn((text("", 5.0, INK), MenuLine(i)));
+        root.spawn(Node { height: gap, ..default() });
+        for i in 0..n {
+            root.spawn((text("", item_vh, INK), MenuLine(i)));
         }
-        root.spawn(Node { height: vh(4), ..default() });
+        root.spawn(Node { height: gap, ..default() });
         root.spawn(Node { column_gap: vw(8), ..default() }).with_children(|row| {
             for i in 0..2 {
                 row.spawn((text("", 3.6, if i == 0 { GOLD } else { GREEN }), SlotLine(i)));
             }
         });
-        root.spawn(Node { height: vh(4), ..default() });
+        root.spawn(Node { height: gap, ..default() });
         root.spawn(text(format!("HI SCORE  {}", session.hi_score), 3.0, DIM));
         if net.linked() {
             root.spawn((text("", 2.6, DIM), PingLine));
@@ -118,7 +128,7 @@ fn input(
     platform: Res<crate::Platform>,
     mut net: ResMut<Net>,
 ) {
-    let items = items(net.linked(), platform.lan.is_some());
+    let items = items(net.linked(), &platform);
     let n = items.len();
     menu.sel = menu.sel.min(n - 1);
     let joined: Vec<Device> = session.slots.iter().flatten().map(|s| s.device).collect();
@@ -182,6 +192,10 @@ fn input(
                 sfx.write(Sfx::MenuPick);
                 next.set(Screen::HiScores);
             }
+            Item::Achievements => {
+                sfx.write(Sfx::MenuPick);
+                next.set(Screen::Achievements);
+            }
             Item::Settings => next.set(Screen::Settings),
             Item::Exit => {
                 exit.write(AppExit::Success);
@@ -202,7 +216,7 @@ fn refresh(
     platform: Res<crate::Platform>,
     mut lines: Query<(&mut Text, Option<&MenuLine>, Option<&SlotLine>, Has<PingLine>)>,
 ) {
-    let items = items(net.linked(), platform.lan.is_some());
+    let items = items(net.linked(), &platform);
     for (mut t, line, slot, ping) in &mut lines {
         if ping {
             let s = match net.ping {
@@ -219,6 +233,7 @@ fn refresh(
                 Some(Item::City) => "CITY RUN".to_string(),
                 Some(Item::Lan) => "LAN CO-OP".to_string(),
                 Some(Item::HiScores) => "HI SCORES".to_string(),
+                Some(Item::Achievements) => "ACHIEVEMENTS".to_string(),
                 Some(Item::Settings) => "SETTINGS".to_string(),
                 Some(Item::Exit) => "EXIT".to_string(),
                 Some(Item::Leave) => "LEAVE LAN".to_string(),

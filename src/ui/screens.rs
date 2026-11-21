@@ -2,6 +2,7 @@
 
 use super::tally::{RESULTS_WAIT, Tally, kill_maxes, table, tally_len, tally_view};
 use super::*;
+use crate::achieve::Record;
 use crate::game::{Mode, Paused, Phase, Screen, Session, Sfx, StageRun};
 use crate::geom::Dir;
 use crate::input::{DeviceIntents, Intent};
@@ -187,6 +188,7 @@ fn results_input(
     devices: Res<DeviceIntents>,
     platform: Res<crate::Platform>,
     net: Res<crate::net::Net>,
+    rec: Res<Record>,
     mut next: ResMut<NextState<Screen>>,
 ) {
     // After the count-up (or the press that skipped it): a 1 s guard against a held button, then A or the wait moves on.
@@ -197,10 +199,8 @@ fn results_input(
     });
     if (done > 1.0 && pressed) || done > RESULTS_WAIT {
         if session.mode == Mode::City {
-            // The clear's world board, then the district map (pick the next district or replay one).
-            // LAN runs skip the world board: name entry waits on a network answer, which the two machines
-            // would get at different ticks.
-            next.set(if super::board::wants_board(&session, &platform) && !net.linked() { Screen::Board } else { Screen::CityMap });
+            // The district's new achievements and world board, then the map (pick the next district or replay one).
+            next.set(super::unlocks::after_play(&rec, &platform, &session, net.linked()));
         } else {
             session.stage += 1;
             next.set(Screen::Stage);
@@ -215,14 +215,11 @@ fn game_over_input(
     devices: Res<DeviceIntents>,
     platform: Res<crate::Platform>,
     net: Res<crate::net::Net>,
+    rec: Res<Record>,
     mut next: ResMut<NextState<Screen>>,
 ) {
     if advance_pressed(&mut time, t.delta_secs(), &session, &devices) {
-        // The run's world board, then the title; City Run: back to the district map to retry.
-        next.set(if super::board::wants_board(&session, &platform) && !net.linked() {
-            Screen::Board
-        } else {
-            super::board::onward(&session)
-        });
+        // The run's new achievements and world board, then the title; City Run: back to the district map to retry.
+        next.set(super::unlocks::after_play(&rec, &platform, &session, net.linked()));
     }
 }

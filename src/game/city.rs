@@ -222,6 +222,7 @@ fn reveal(
     mut terrain: ResMut<Terrain>,
     mut fx: MessageWriter<Fx>,
     mut sfx: MessageWriter<Sfx>,
+    mut feats: MessageWriter<Feat>,
 ) {
     city.secrets.retain(|&(pos, kind)| {
         let core: Vec<(usize, usize)> = city_map::footprint(pos, 16.0).collect();
@@ -236,6 +237,7 @@ fn reveal(
         commands.spawn((PowerUp(kind), Stash, Transform::from_translation(pos.extend(0.0)), DespawnOnExit(Screen::Stage)));
         fx.write(Fx { kind: FxKind::Bricks, pos });
         sfx.write(Sfx::PowerAppear);
+        feats.write(Feat::Secret);
         false
     });
 }
@@ -251,16 +253,10 @@ fn cull(mut commands: Commands, view: Res<View>, things: Query<(Entity, &Transfo
 }
 
 /// A LAN joiner plays on the host's unlocks: it moves them along (both maps must match) but doesn't save them.
-fn save_clear(
-    session: Res<Session>,
-    mut progress: ResMut<Progress>,
-    net: Res<crate::net::Net>,
-    platform: Res<crate::Platform>,
-    mut pull: ResMut<super::cloud::Pull>,
-) {
+fn save_clear(session: Res<Session>, mut progress: ResMut<Progress>, net: Res<crate::net::Net>, mut pull: ResMut<super::cloud::Pull>) {
     if progress.clear(session.stage) && net.me() != Some(1) {
         progress.save_local();
-        pull.start(&platform, *progress);
+        pull.want = true;
     }
 }
 

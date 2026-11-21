@@ -27,6 +27,10 @@ pub fn plugin(app: &mut App) {
     let city = num("BT_CITY", 0.0) as usize;
     let stage = if city > 0 { 0 } else { num("BT_STAGE", 1.0) as usize };
     let view = std::env::var("BT_VIEW").ok().and_then(|v| v.parse().ok());
+    // `BT_ACHIEVE=1`: achievements on, the host calls only logged, to look at the menu and the run summary.
+    if std::env::var("BT_ACHIEVE").is_ok() {
+        app.world_mut().resource_mut::<crate::Platform>().achieve = Some(|k, n| info!("achieve: {k} {n}"));
+    }
     app.insert_resource(Shot { path, stage, city, view, at: num("BT_SHOT_AT", 7.0), t: 0.0, taken: false, frames: 0 })
         .add_systems(Update, run);
 }
@@ -40,6 +44,7 @@ fn run(
     mut next: ResMut<NextState<Screen>>,
     mut exit: MessageWriter<AppExit>,
     mut view: ResMut<View>,
+    mut rec: ResMut<crate::achieve::Record>,
 ) {
     shot.t += time.delta_secs();
     shot.frames += 1;
@@ -62,6 +67,20 @@ fn run(
         match std::env::var("BT_SCREEN").as_deref() {
             Ok("settings") => next.set(Screen::Settings),
             Ok("hiscores") => next.set(Screen::HiScores),
+            Ok("unlocks") if session.players() == 0 => {
+                // A made-up run's unlocks, shown only (not saved).
+                session.slots = keys();
+                let news = ["first_blood", "stage_1", "flawless", "city_3", "kills_100", "own_goal", "treasure_hunter"];
+                rec.done.extend(news);
+                rec.news = news.to_vec();
+                next.set(Screen::Unlocks);
+            }
+            Ok("achievements") => {
+                // Shown only, not saved: nothing is marked for the host.
+                rec.done.extend(["first_blood", "stage_1", "flawless", "own_goal", "city_1", "digger", "kills_100", "streak_10"]);
+                rec.steps.extend([("kills_100", 64), ("kills_1000", 64), ("kills_5000", 64), ("wallbreaker", 12)]);
+                next.set(Screen::Achievements);
+            }
             Ok("city") if session.players() == 0 => {
                 session.slots = keys();
                 next.set(Screen::CityMap);

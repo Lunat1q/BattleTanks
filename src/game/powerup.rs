@@ -56,6 +56,7 @@ pub fn pickup(
     mut sfx: MessageWriter<Sfx>,
     mut rumble: MessageWriter<Rumble>,
     ids: Ids,
+    mut feats: MessageWriter<Feat>,
 ) {
     for (pe, power, ptf) in powerups.iter().sort_by_key::<Entity, _>(|e| order(&ids, *e)) {
         let prect = rect_at(ptf.translation.xy(), TILE);
@@ -89,14 +90,18 @@ pub fn pickup(
                 if let Some(slot) = session.slots[p].as_mut() {
                     slot.level = (slot.level + 1).min(3);
                     gun.stats = rules::player_gun(slot.level);
+                    feats.write(Feat::Star { slot: p, level: slot.level });
                 }
             }
             rules::PowerKind::Grenade => {
                 // No points for grenade kills, like the classic. Turrets and bosses shrug it off.
+                let mut count = 0;
                 for (e, tf, _) in enemies.iter().filter(|(_, _, en)| en.rank == rules::Rank::Normal) {
                     commands.entity(e).try_despawn();
                     fx.write(Fx { kind: FxKind::TankBoom, pos: tf.translation.xy() });
+                    count += 1;
                 }
+                feats.write(Feat::Grenade { slot: p, count });
                 sfx.write(Sfx::EnemyBoom);
             }
             rules::PowerKind::Tank => {

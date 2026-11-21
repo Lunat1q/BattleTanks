@@ -14,7 +14,12 @@ levels/city/NN.txt    # 10 City Run districts, 15-24 screens tall (format in cit
 src/
   main.rs             # Windows exe: calls battle_tanks::run()
   lib.rs              # run() / run_with(Platform, extra plugins): loads Settings first so the window opens in the saved mode;
-                      # plugin list. Public API for wrapper crates: Platform (incl. post_score, fetch_board, cloud_load / cloud_save), TvRemote, canvas, paint_icon, paint_banner
+                      # plugin list. Public API for wrapper crates: Platform (incl. post_score, fetch_board, cloud_load / cloud_save, achieve), TvRemote, canvas, paint_icon, paint_banner
+  achieve/            # achievements (ADR 0017), only with Platform::achieve
+    mod.rs            # Record (done keys + counters) <-> achievements.txt, merge; track (Feat -> Tracker) after Sim;
+                      # mirror off the stage: save, Platform::achieve on a worker thread, cloud sync after an unlock
+    list.rs           # the 55 entries: key, group, name, description, hidden, steps, points; TABS          [pure]
+    tracker.rs        # Feat messages (written by the sim) + Tracker: per-run / per-stage counters, local slots only [pure]
   geom.rs             # units (SUB 4, CELL 8, TILE 16, FIELD 208), Dir, rect overlap, grid snap  [pure]
   rng.rs              # xorshift64* Resource: below/range/chance/pick/shuffle                     [pure]
   scores.rs           # Best (hi score + last initials) <-> scores.txt; world board: payload (stage log JSON), city_payload
@@ -46,7 +51,8 @@ src/
     mod.rs            # Screen state, Mode, Session/Slot, StageRun, View, components, Fx/Sfx messages, Sim schedule
     stage.rs          # OnEnter build (classic or city), spawn_enemy, respawn point, timers, borrow a tank, win/lose, pause (+ app in background), pad loss
     city.rs           # City Run: scroll the View, wake placed enemies, reinforcements, turret->gate, reveal secrets, cull, Progress save
-    cloud.rs          # Progress <-> the host's cloud copy (Platform::cloud_load / cloud_save): sync at start and per new unlock, max merge
+    cloud.rs          # Progress + achievements Record <-> the host's cloud copy (Platform::cloud_load / cloud_save): one sync at a
+                      # time (Pull.want), at start, per City Run unlock and after new achievements; max / union merge
     tank.rs           # player_control (intent -> want/trigger), drive (collisions, snap, ice), fire
     enemy.rs          # think: choose_dir (pure) + random fire, freeze; turrets aim at the nearest player
     combat.rs         # fly_bullets (sub-steps: tanks, base, terrain; bullet-vs-bullet) -> Hit; resolve_hits
@@ -59,6 +65,11 @@ src/
     art_icons.rs      # bullet, particle dot, spawn sparkle, shield ring, flag, 6 power-up icons
     world.rs          # terrain sub-cell sprites from the dirty list, water anim, attach/update tank/bullet/base/power-up sprites
     icon.rs           # app icon painter; runtime window/taskbar icon (winit); ICO writer (test-only)
+    art_badges.rs     # achievement badges, 32x32 pixel art: plate per group + gold rim, crisp outlined emblem, number tag;
+                      # locked (grey) copies, hidden "?", points gem; badge_sheet test writes a contact sheet
+    badge_art.rs      # emblems per achievement (flags, shields, tanks drawn for badge size, flames, coins, pranks...)
+    badge_city.rs     # City Run emblems: one per district (scarecrow, stall, bridge, church, ironworks, snowflake, anchor,
+                      # locomotive, gatehouse, burning citadel) + the City Run extras
     art_promo.rs      # title banner (pub: paint_banner, used by the Android wrapper); Steam capsules/hero/logo (test-only writer)
     fx.rs             # Fx messages -> particles, score pop-ups (Text2d), camera shake
   ui/
@@ -73,6 +84,9 @@ src/
     board.rs          # Screen::Board after game over (classic) / district results (City): 7-letter name entry per player
                       # (prefilled), A send / B skip, world rank + top 3 + 2 above / 1 below
     lan.rs            # Screen::Lan from the title: HOST GAME / JOIN <name> / BACK
+    badge_rows.rs     # achievement rows (badge, name, description + progress bar, points + gem): spawn per slot, Rows::show
+    achievements.rs   # Screen::Achievements from the title: points earned, a tab per group (n/m), 7 rows + scrollbar
+    unlocks.rs        # Screen::Unlocks: the run's new achievements, rows sliding in one by one, then the board
     hiscores.rs       # Screen::HiScores from the title: MODE / PLAYERS / DISTRICT selectors (Pick -> board id), top 10 per
                       # board fetched once per visit on a worker thread (Platform::fetch_board), colour-coded rows
 ```
@@ -92,7 +106,7 @@ Update          ├─ title / pause / results / game-over menus read DeviceInte
                 │
                 └─ Sim (only: Screen::Stage, !Paused, phase != Intro), chained:
                    spawn_enemies ─▶ tick_timers ─▶ [city: scroll ─▶ wake ─▶ reinforce ─▶ watch ─▶ cull] ─▶ borrow_life ─▶ player_control ─▶ enemy::think ─▶ drive ─▶ fire
-                   ─▶ fly_bullets ──Hit──▶ resolve_hits ─▶ powerup::pickup ─▶ check_end
+                   ─▶ fly_bullets ──Hit──▶ resolve_hits ─▶ powerup::pickup ─▶ check_end      (all write Feat ──▶ achieve::track)
                          │  │                    │
                          │  └── Terrain.dirty ───┼──────────────▶ gfx::world::sync_terrain (spawn/despawn chips)
                          └──── Fx / Sfx / Rumble ┘──────────────▶ gfx::fx (particles, shake)   audio::play, music::switch/mix, input::rumble (PostUpdate)
@@ -100,12 +114,16 @@ Update          ├─ title / pause / results / game-over menus read DeviceInte
 
 Leaving Stage (classic): scores::log_stage ──▶ Session.log (StageLog per stage: time, kills, power-ups per player)
 Board: ui::board name entry ──▶ scores::Online::send (worker thread: Platform::post_score = curl) ──▶ scores::poll ──▶ ui::board::show
+Achievements: Feat ──▶ achieve::track (Tracker -> Record) ; off the stage: achieve::mirror ──▶ achievements.txt, Platform::achieve
+              (worker thread), cloud::Pull.want after an unlock
 HiScores: Pick (selectors) ──▶ ui::hiscores::fetch (worker thread: Platform::fetch_board = curl GET ?format=text) ──▶ parse_board ──▶ refresh
 ```
 
 ## State machine
 
 ```
+Achievements ◀──ACHIEVEMENTS / B──▶ Title (hosts with Platform::achieve)
+GameOver / district Results ──A──▶ [Unlocks (new achievements, not in LAN)] ──A──▶ [Board] ──▶ Title / CityMap
 HiScores ◀──HI SCORES / B──▶ Title ◀──B / linked──▶ Lan (LAN CO-OP)
 Settings ◀──SETTINGS / B──▶ Title ──START──▶ Stage ──all 20 killed──▶ Results ──tally, then A / 10 s──▶ Stage (n+1)
                              ▲                │

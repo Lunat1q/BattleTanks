@@ -191,6 +191,30 @@ track, so consecutive stages start differently. In City Run a live mini-boss swi
 pair, the boss to the `bossfight` pair, and back when it dies. the pause menu pauses the music. Jingles (stage start, game over)
 play over it.
 
+## Achievements (`achieve/`, `ui/achievements.rs`, ADR 0017; list and rules in `achievements.md`)
+Only on hosts with `Platform::achieve` (Android: Play Games); the exe has none (no tracking, no menu).
+- 55 entries in six groups. Counters (kills, HEAVY kills, bosses, turrets, cancelled shells) show `n / target`;
+  hidden ones show `???` until unlocked. Only this device's players count: on a couch both slots, over LAN only
+  this machine's. A streak (kills since the last lost tank) and "in one run" counts end with the run: a classic run
+  from the title, or one district try. "Without losing a tank" needs the player still in at the clear.
+  Secret stashes count for the device whoever broke in.
+- Kept in `achievements.txt` (`done=<keys>`, `<counter>=<steps>`) and in the cloud copy after `unlocked=N` (union
+  of unlocks, max of counters). Saved and told to the host off the stage (results, game over, title), so a stage's
+  unlocks show up there, not mid-fight; the host also hears everything once at start.
+- **Badges**: every entry has its own 32x32 pixel badge (painted at startup, no files): a plate in its group's
+  colour (classic olive, duo teal, City Run slate, City Run extras violet, combat crimson, fun amber) with a gold rim,
+  an emblem that tells the story (stage flags, a scarecrow for the Outskirts, the burning Citadel, popcorn for the
+  Backseat Driver...) and a number tag where it has one (10, 1K, 100K). Locked badges are grey; hidden ones a "?".
+- Title → ACHIEVEMENTS: points earned (of 940) and `N / 55`; a tab per group with its count (CLASSIC, DUO, CITY,
+  CITY+, COMBAT, FUN); 7 rows per page, each with the badge, name, description and points (gold gem). Unlocked rows
+  are gold with a gold edge; counters still running show `n / target` and a progress bar; hidden ones `???`.
+  Left/right tab, up/down scroll (scrollbar on the right), B back.
+- **NEW ACHIEVEMENTS** (its own screen, before the world board): after a classic game over, or a City Run district's
+  results or game over, when that run unlocked something. The rows arrive one by one (slide in, gold flash, badge
+  pop, chime), the points total counts up under a twinkling title; A shows all at once, then moves on. Not shown in
+  LAN sessions (both machines must change screens on the same tick); the list has them.
+- With LAN CO-OP and ACHIEVEMENTS both on, the title menu packs tighter (8 items).
+
 ## LAN co-op (`net/`, `ui/lan.rs`, ADR 0014)
 Title → LAN CO-OP (hosts whose `Platform::lan` is set). One player picks HOST GAME (the screen says "HOSTING AS
 <name>"), the other sees that name in the list (JOIN <NAME>) and picks it. Both machines must run the same version
@@ -240,4 +264,5 @@ same rules, each machine draws it and plays its own sound and rumble.
 | 10 fps on a TV-class GPU (Mali-G57), CPU idle | Bevy's default 4x MSAA + bloom passes at 1080p, each ~halving fps | `Msaa::Off` everywhere (sprites are pre-anti-aliased); bloom is `Platform::bloom`, off on such hosts: 56 fps |
 | Looping music would hold ~55 MB per song | rodio `repeat_infinite` buffers every decoded sample | play once (DESPAWN), respawn when it ends |
 | New track failed `every_track_decodes` (`UnrecognizedFormat`) | MP3 cover art became a Theora video stream in the .ogg | encode with `ffmpeg -i x.mp3 -map 0:a -vn -map_metadata -1 -af volume=<-16 − measured LUFS>dB -ar 44100 -c:a libvorbis -q:a 1 x.ogg` (measure with `-af loudnorm=print_format=json -f null -`) |
+| Title's bottom lines (slots, hi score, controls) off screen with 8 menu items | spacers sized for 7 | `title::spawn` packs items and spacers when the menu is longer |
 | `adb pull /sdcard/...` "no such file" from Git Bash | MSYS rewrites the remote path to `C:/Program Files/Git/sdcard/...` | prefix `MSYS_NO_PATHCONV=1` |

@@ -1,6 +1,6 @@
 # 0017 — Achievements: tracked by the game, mirrored to the host
 
-Status: proposed (2026-11-20)
+Status: accepted (2026-11-21, built in 0.6.0)
 
 ## Context
 The owner wants achievements (list: `../achievements.md`, 55 entries) on the Android build through Google Play Games,

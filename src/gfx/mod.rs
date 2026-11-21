@@ -1,10 +1,13 @@
 //! Rendering: procedural textures, camera, and visuals attached to logic entities.
 
+pub mod art_badges;
 mod art_icons;
 mod art_map;
 pub mod art_promo;
 mod art_tanks;
 mod art_world;
+mod badge_art;
+mod badge_city;
 pub mod canvas;
 mod fx;
 pub mod icon;
@@ -53,6 +56,10 @@ pub struct Gfx {
     pub ring: Handle<Image>,
     pub flag: Handle<Image>,
     pub powerups: Vec<Handle<Image>>,
+    /// Achievement badges in `achieve::LIST` order, unlocked and locked, the hidden one and the points gem.
+    pub badges: Vec<[Handle<Image>; 2]>,
+    pub badge_hidden: Handle<Image>,
+    pub gem: Handle<Image>,
 }
 
 impl Gfx {
@@ -127,6 +134,9 @@ fn build_textures(images: &mut Assets<Image>) -> Gfx {
         ring: add(art_icons::ring()),
         flag: add(art_icons::flag()),
         powerups: PowerKind::ALL.iter().map(|&k| add(art_icons::powerup(k))).collect(),
+        badges: (0..crate::achieve::LIST.len()).map(|i| [add(art_badges::badge(i, false)), add(art_badges::badge(i, true))]).collect(),
+        badge_hidden: add(art_badges::hidden()),
+        gem: add(art_badges::gem()),
     }
 }
 

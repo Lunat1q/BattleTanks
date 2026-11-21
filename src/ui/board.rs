@@ -43,6 +43,12 @@ pub fn wants_board(session: &Session, platform: &crate::Platform) -> bool {
         }
 }
 
+/// After a run (and its NEW ACHIEVEMENTS): the world board if it is on for this run, else onward. LAN runs skip
+/// the board: name entry waits on a network answer, which the two machines would get at different ticks.
+pub fn after_run(session: &Session, platform: &crate::Platform, linked: bool) -> Screen {
+    if wants_board(session, platform) && !linked { Screen::Board } else { onward(session) }
+}
+
 /// Where the game goes after the board (or instead of it): the district map, or the title.
 pub fn onward(session: &Session) -> Screen {
     if session.mode == Mode::City { Screen::CityMap } else { Screen::Title }

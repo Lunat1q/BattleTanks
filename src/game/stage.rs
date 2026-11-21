@@ -49,8 +49,18 @@ fn pause_when_away(
     }
 }
 
-fn setup(mut commands: Commands, mut session: ResMut<Session>, mut view: ResMut<View>, mut sfx: MessageWriter<Sfx>) {
+fn setup(
+    mut commands: Commands,
+    mut session: ResMut<Session>,
+    mut view: ResMut<View>,
+    mut sfx: MessageWriter<Sfx>,
+    mut feats: MessageWriter<Feat>,
+) {
     view.bottom = 0.0;
+    // A classic run's stages are logged as they end, so an empty log = its first stage; every district is a run.
+    let fresh = session.mode == Mode::City || session.log.is_empty();
+    let joined = [0, 1].map(|i| session.slots[i].is_some());
+    feats.write(Feat::Start { mode: session.mode, stage: session.stage, joined, fresh });
     let (mut terrain, roster) = if session.mode == Mode::City {
         (super::city::setup(&mut commands, &mut session), Vec::new())
     } else {
@@ -217,10 +227,13 @@ pub fn borrow_life(
     view: Res<View>,
     terrain: Res<Terrain>,
     mut sfx: MessageWriter<Sfx>,
+    mut feats: MessageWriter<Feat>,
 ) {
     for p in 0..2 {
         if run.phase == Phase::Play && session.intent(p, &devices).confirm && session.borrow(p) {
             let level = session.slots[p].as_ref().map_or(0, |s| s.level);
+            let partner_left = session.slots[1 - p].as_ref().map_or(0, |s| s.lives);
+            feats.write(Feat::Borrow { slot: p, partner_left });
             spawn_player(&mut commands, p, level, respawn_point(p, view.bottom, &terrain));
             sfx.write(Sfx::ExtraLife);
         }
@@ -232,7 +245,9 @@ pub fn check_end(
     mut session: ResMut<Session>,
     city: Option<Res<super::city::CityRun>>,
     enemies: Query<(), With<Enemy>>,
+    terrain: Res<Terrain>,
     mut sfx: MessageWriter<Sfx>,
+    mut feats: MessageWriter<Feat>,
 ) {
     if run.phase != Phase::Play {
         return;
@@ -250,6 +265,16 @@ pub fn check_end(
             session.bonus = bonus;
             if (0..2).map(|p| session.add_score(p, bonus)).sum::<u32>() > 0 {
                 sfx.write(Sfx::ExtraLife);
+            }
+        }
+        let out = [0, 1].map(|i| session.slots[i].as_ref().is_some_and(|s| s.out));
+        let ring_gone = session.mode == Mode::Classic && Terrain::base_ring().all(|(x, y)| terrain.get(x, y) == Tile::Empty);
+        feats.write(Feat::Won { out, ring_gone });
+    }
+    if run.phase != Phase::Play && session.mode == Mode::Classic {
+        for (slot, s) in session.slots.iter().enumerate() {
+            if let Some(s) = s {
+                feats.write(Feat::Score { slot, score: s.score });
             }
         }
     }
@@ -277,12 +302,18 @@ fn toggle_pause(
     run: Res<StageRun>,
     mut paused: ResMut<Paused>,
     mut sfx: MessageWriter<Sfx>,
+    mut feats: MessageWriter<Feat>,
 ) {
     let start = (0..2).any(|i| session.intent(i, &devices).start || session.intent(i, &devices).pause);
     let lost = session.slots.iter().flatten().any(|s| !devices.connected(s.device));
     if start && !lost && matches!(run.phase, Phase::Play | Phase::Won) {
         paused.0 = !paused.0;
         sfx.write(Sfx::Pause);
+        if let Some(slot) = (0..2).find(|&i| session.intent(i, &devices).start || session.intent(i, &devices).pause)
+            && paused.0
+        {
+            feats.write(Feat::Pause { slot });
+        }
     }
 }
 

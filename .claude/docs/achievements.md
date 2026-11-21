@@ -1,4 +1,4 @@
-# Achievements (planned, ADR 0017)
+# Achievements (ADR 0017, `src/achieve/`)
 
 55 achievements, 940 points (Play Games caps a game at 1000; points are multiples of 5). `key` is stable: it names
 the host's id (on Android `R.string.achievement_<key>`) and the line in `achievements.txt`, so never rename one.

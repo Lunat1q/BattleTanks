@@ -14,7 +14,7 @@ use crate::rules::{EnemyKind, GunStats, PowerKind, Rank};
 use crate::terrain::{Terrain, Tile};
 use bevy::prelude::*;
 
-const SCREENS: [Screen; 9] = [
+const SCREENS: [Screen; 11] = [
     Screen::Title,
     Screen::Stage,
     Screen::Results,
@@ -24,6 +24,8 @@ const SCREENS: [Screen; 9] = [
     Screen::Board,
     Screen::HiScores,
     Screen::Lan,
+    Screen::Achievements,
+    Screen::Unlocks,
 ];
 const RANKS: [Rank; 4] = [Rank::Normal, Rank::Turret, Rank::Mini, Rank::Boss];
 const PHASES: [Phase; 4] = [Phase::Intro, Phase::Play, Phase::Won, Phase::Lost];

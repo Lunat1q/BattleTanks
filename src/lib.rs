@@ -4,6 +4,7 @@
 // Bevy systems naturally take many params with long query types.
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
+mod achieve;
 mod audio;
 #[cfg(test)]
 mod city_brushes;
@@ -62,6 +63,10 @@ pub struct Platform {
     /// The game merges (unlocks only grow). `None` = this device only (default).
     pub cloud_load: Option<fn() -> Result<String, String>>,
     pub cloud_save: Option<fn(&str) -> Result<String, String>>,
+    /// Achievements (`.claude/docs/achievements.md`), e.g. Play Games: `achieve(key, 0)` unlocks, `achieve(key, n)`
+    /// sets a counter to `n` steps; on a worker thread, after each change and for everything once at start (both
+    /// idempotent). `None` = no achievements at all: no tracking, no menu, no run summary (default).
+    pub achieve: Option<fn(&str, u32)>,
 }
 
 /// The desktop's name for LAN CO-OP.
@@ -82,6 +87,7 @@ impl Default for Platform {
             lan: Some(computer_name),
             cloud_load: None,
             cloud_save: None,
+            achieve: None,
         }
     }
 }
@@ -122,6 +128,7 @@ pub fn run_with(platform: Platform, extra: impl FnOnce(&mut App)) {
         music::plugin,
         input::plugin,
         game::plugin,
+        achieve::plugin,
         scores::plugin,
         ui::plugin,
         dev::plugin,

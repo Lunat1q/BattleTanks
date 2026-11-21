@@ -16,6 +16,8 @@ const BULLET_STEP: f32 = 2.0;
 pub struct Hit {
     pub target: Entity,
     pub by: Team,
+    /// The tank that fired (for achievements: who destroyed whom).
+    pub shooter: Entity,
 }
 
 /// Can a bullet from `shooter` hit a tank of `target` (owner excluded elsewhere)?
@@ -48,6 +50,7 @@ pub fn fly_bullets(
     mut rumble: MessageWriter<Rumble>,
     settings: Res<Settings>,
     ids: Ids,
+    mut feats: MessageWriter<Feat>,
 ) {
     let dt = time.delta_secs().min(0.05);
     // Spawn order throughout: the first tank a shell touches takes the hit, and earlier shells chip bricks first.
@@ -71,11 +74,14 @@ pub fn fly_bullets(
             if let Some(&(t, _, _)) =
                 targets.iter().find(|(t, team, tr)| *t != b.owner && can_hit(b.team, *team, settings.friendly_fire) && overlaps(r, *tr))
             {
-                hits.write(Hit { target: t, by: b.team });
+                hits.write(Hit { target: t, by: b.team, shooter: b.owner });
                 gone = true;
                 break;
             }
             if base.is_some_and(|b| overlaps(r, b)) {
+                if let (true, Team::Player(p)) = (run.base_alive, b.team) {
+                    feats.write(Feat::OwnBase { slot: p });
+                }
                 if run.base_alive {
                     run.base_alive = false;
                     fx.write(Fx { kind: FxKind::BaseBoom, pos: BASE_POS });
@@ -122,6 +128,9 @@ pub fn fly_bullets(
     for (i, a) in swept.iter().enumerate() {
         for b in &swept[i + 1..] {
             if opposing(a.1, b.1) && overlaps(a.2, b.2) {
+                if let Team::Player(p) = if a.1 == Team::Enemy { b.1 } else { a.1 } {
+                    feats.write(Feat::Cancel { slot: p });
+                }
                 commands.entity(a.0).try_despawn();
                 commands.entity(b.0).try_despawn();
                 fx.write(Fx { kind: FxKind::BulletPop, pos: a.2.center() });
@@ -137,20 +146,23 @@ pub fn resolve_hits(
     mut rng: ResMut<Rng>,
     view: Res<View>,
     terrain: Res<Terrain>,
-    mut tanks: Query<(&Tank, &Transform, Option<&mut Enemy>, Has<Shield>)>,
+    mut tanks: Query<(&Tank, &Transform, Option<&mut Enemy>, Has<Shield>, Has<Paralyzed>)>,
     powerups: Query<Entity, (With<PowerUp>, Without<Stash>)>,
     mut fx: MessageWriter<Fx>,
     mut sfx: MessageWriter<Sfx>,
     mut rumble: MessageWriter<Rumble>,
     settings: Res<crate::settings::Settings>,
+    mut feats: MessageWriter<Feat>,
 ) {
     let mut dead: Vec<Entity> = Vec::new();
+    // This frame's (player, enemy) kills and deaths, for Mutual Destruction.
+    let (mut kills, mut deaths) = (Vec::new(), Vec::new());
     let city = session.mode == Mode::City;
     for hit in hits.read() {
         if dead.contains(&hit.target) {
             continue;
         }
-        let Ok((tank, tf, enemy, shielded)) = tanks.get_mut(hit.target) else { continue };
+        let Ok((tank, tf, enemy, shielded, stunned)) = tanks.get_mut(hit.target) else { continue };
         let pos = tf.translation.xy();
         match (tank.team, hit.by, enemy) {
             (Team::Enemy, Team::Player(p), Some(mut enemy)) => {
@@ -170,6 +182,8 @@ pub fn resolve_hits(
                 }
                 dead.push(hit.target);
                 commands.entity(hit.target).try_despawn();
+                kills.push((p, hit.target));
+                feats.write(Feat::Kill { slot: p, kind: enemy.kind, rank: enemy.rank });
                 let points = enemy.rank.points(enemy.kind);
                 if enemy.rank == Rank::Mini {
                     drop_power(&mut commands, &mut rng, &mut sfx);
@@ -189,7 +203,8 @@ pub fn resolve_hits(
                 sfx.write(if enemy.rank == Rank::Boss { Sfx::BossBoom } else { Sfx::EnemyBoom });
                 rumble.write(if big { Rumble::big_kill(p) } else { Rumble::kill(p) });
             }
-            (Team::Player(target), Team::Player(_), _) if !shielded => {
+            (Team::Player(target), Team::Player(by), _) if !shielded => {
+                feats.write(Feat::Stun { by });
                 commands.entity(hit.target).insert(Paralyzed(rules::PARALYZE_TIME));
                 rumble.write(Rumble::stunned(target));
                 sfx.write(Sfx::ArmorHit);
@@ -200,11 +215,16 @@ pub fn resolve_hits(
                 fx.write(Fx { kind: FxKind::TankBoom, pos });
                 sfx.write(Sfx::PlayerBoom);
                 rumble.write_batch(Rumble::death(p));
+                feats.write(Feat::Lost { slot: p, stunned });
+                deaths.push((p, hit.shooter));
                 let at = respawn_point(p, view.bottom, &terrain);
                 player_lost_tank(&mut commands, &mut session, p, at, settings.keep_power);
             }
             _ => {}
         }
+    }
+    for d in deaths.into_iter().filter(|d| kills.contains(d)) {
+        feats.write(Feat::Mutual { slot: d.0 });
     }
 }
 

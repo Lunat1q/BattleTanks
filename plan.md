@@ -94,20 +94,21 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [ ] Owner: feel of the adaptive delay on the phones
 - [x] Merged to `main`, released as 0.5.0 (2026-11-19)
 
-### M9 — Achievements ⏳ (planned, ADR 0017; list in `.claude/docs/achievements.md`)
+### M9 — Achievements ✅ (v0.6.0, ADR 0017; list in `.claude/docs/achievements.md`)
 55 achievements (940 pts), on hosts with `Platform::achieve` (Android: Play Games); the exe gets none for now.
-- [ ] `Platform::achieve: Option<fn(&str, u32)>` (`None` in `Platform::default()`); with `None` nothing below runs
-- [ ] `achieve.rs`: the list (key, steps, hidden, name, description) + pure `Tracker` (streaks, losses per stage,
-  flawless in a row, borrows, stuns, pauses, stars per slot); tests for each rule kind and local slots only
-- [ ] `Feat` messages written in the sim: kill (kind/rank, slot), tank lost (stunned?), stun (shooter, target),
-  borrow (partner's spares left), pickup (kind, slot), grenade (count), shell cancel, base hit (by a player), secret
-  opened, pause; stage won / district cleared (+ base ring all gone), run over (scores). Read-only: LAN hashes unchanged
-- [ ] `achievements.txt` (done keys + counters); cloud copy carries it next to `unlocked=N` (union / max merge, `cloud.rs`)
-- [ ] Host hook on a worker thread: each change, plus everything once at start
-- [ ] Run summary: new unlocks on the game over screen (classic) and district results / game over (City Run)
-- [ ] Title → ACHIEVEMENTS: `N / 55`, rows grouped as in the list; done = name + description, pending = progress,
-  hidden pending = `???`; up/down scroll, B back; smoke screenshot (`BT_SCREEN=achievements`)
-- [ ] Docs: architecture tree, domain (rules + menu), version 0.6.0
+- [x] `Platform::achieve: Option<fn(&str, u32)>` (`None` in `Platform::default()`); with `None` nothing below runs
+- [x] `achieve/`: the list + pure `Tracker` (streaks, losses per stage, flawless in a row, borrows, stuns, pauses,
+  stars per slot); tests per rule kind and for LAN's local slot
+- [x] `Feat` messages from the sim (kill, lost, mutual, stun, borrow, star, grenade, cancel, own base, secret, pause,
+  score, won with the base ring check); read-only, `net::tests` green
+- [x] `achievements.txt`; the cloud copy carries it after `unlocked=N` (union / max, one sync at a time)
+- [x] Host hook on a worker thread, off the stage, for each change, plus everything once at start
+- [x] Pixel badges for all 55 (+ locked, hidden), group plates, district-themed City Run emblems (`badge_sheet` preview)
+- [x] NEW ACHIEVEMENTS screen before the world board (classic game over, City Run results / game over): animated rows
+- [x] Title → ACHIEVEMENTS: tabs per group, badge rows with points and progress bars, scrollbar (smoke
+  `BT_SCREEN=achievements` / `unlocks` with `BT_ACHIEVE=1`); title packs tighter with 8 items
+- [x] Docs, version 0.6.0
+- [ ] Owner: play a few stages on the phone once Play Console has the achievements (Android plan, section M)
 
 ## Current state
 

@@ -18,6 +18,7 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 | Format | `cargo fmt` (`rustfmt.toml`: width 140) |
 | Release exe | `cargo build --release` → `target/release/battle_tanks.exe` (single file, no assets) |
 | Redraw City Run districts | `cargo test write_city_districts -- --ignored` → `levels/city/*.txt` (commit; overwrites hand edits) |
+| Achievement badge sheet (look at it) | `BT_BADGE_SHEET=<scratch>/badges.png cargo test badge_sheet -- --ignored` |
 | Regenerate app icon | `cargo test write_icon_file -- --ignored` → `assets/icon.ico` + `icon.png` (commit both) |
 | Smoke run + screenshot | `BT_SHOT=<scratch>/shot.png BT_STAGE=2 BT_SHOT_AT=8 ./target/debug/battle_tanks.exe --windowed` |
 | LAN smoke (two copies) | run twice at once: `BT_LAN=host` / `BT_LAN=join`, both with `BT_LAN_BOT=1 BT_LAN_SECS=60 BT_MUTE=1 ... --windowed`; compare their `lan: tick <t> hash <h>` log lines (`BT_DESYNC=<tick>` on the joiner tests the resync) |
@@ -27,7 +28,7 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 - **Agents build and test; they don't play.** The only allowed run is the smoke hook above (auto-joins two
   keyboard players, screenshots, exits by itself; sound is muted while `BT_SHOT` is set, `BT_MUTE=1` mutes
   any run). Use it after visual or startup changes and *look at the PNG*.
-  `BT_STAGE=0` screenshots the title (`BT_SCREEN=settings` the settings screen, `results` / `gameover` / `cityresults` a made-up run). It logs `smoke: N fps average` on exit. Write screenshots to the scratchpad, never the repo.
+  `BT_STAGE=0` screenshots the title (`BT_SCREEN=settings` the settings screen, `achievements` the list, `unlocks` the NEW ACHIEVEMENTS screen, `results` / `gameover` / `cityresults` a made-up run; `BT_ACHIEVE=1` turns achievements on with logged host calls). It logs `smoke: N fps average` on exit. Write screenshots to the scratchpad, never the repo.
 
 ## Tech stack
 
