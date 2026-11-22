@@ -333,4 +333,5 @@ same rules, each machine draws it and plays its own sound and rumble.
 | City Run reinforcement stuck in a bastion wall, spinning | dropped into a turret's notch (open ground until the turret wakes), then the turret woke on top of it | drop spots skip pending spawns |
 | Turrets easy in co-op: one player beside the turret, the other shooting it from below | turret aimed along the longer axis at the nearest player, i.e. sideways into its own wall | `enemy::turret_dir`: up or down only |
 | Screen jumped when a City Run boss died | the camera lock let go and the view snapped to its target in one frame | `rules::VIEW_CATCH_UP` caps how fast the view rises |
+| HUD jumped sideways when a player went out and "A: BORROW A TANK" showed (owner) | side panels grew from their content width (`flex_basis: auto`), so the longer line widened one side | panels `flex_basis: 0`: equal split whatever the text |
 | `adb pull /sdcard/...` "no such file" from Git Bash | MSYS rewrites the remote path to `C:/Program Files/Git/sdcard/...` | prefix `MSYS_NO_PATHCONV=1` |

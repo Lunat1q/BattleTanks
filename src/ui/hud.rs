@@ -57,7 +57,10 @@ fn player_block(p: &mut ChildSpawnerCommands, i: usize, gfx: &Gfx, session: &Ses
 
 fn spawn(mut commands: Commands, gfx: Res<Gfx>, session: Res<Session>) {
     let panel = |justify| Node {
+        // Basis 0: both panels split the room equally whatever their text, so a long line (A: BORROW A TANK)
+        // can't widen one side and shift the field gap.
         flex_grow: 1.0,
+        flex_basis: px(0),
         height: percent(100),
         flex_direction: FlexDirection::Column,
         align_items: AlignItems::Center,
