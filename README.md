@@ -14,6 +14,11 @@ Made for playing on a TV with two controllers; two people can also share a keybo
 
 Grab `BattleTanks.exe` from the [latest release](https://github.com/Lunat1q/BattleTanks/releases/latest) — it's the whole game.
 
+**Android (phones and Android TV)**: the game is in a closed test on Google Play. Join the
+[Battle Tanks testers group](https://groups.google.com/g/battletanks-testers/), opt in on the
+[testing page](https://play.google.com/apps/testing/com.lunatiq.battletanks), then install it from
+[Google Play](https://play.google.com/store/apps/details?id=com.lunatiq.battletanks).
+
 ## Build
 
 Requires Rust (stable). From the repo root:
