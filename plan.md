@@ -49,6 +49,8 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Map validator (owner's reports: an unkillable turret behind steel, a co-op pocket that pinned the view):
   `city_gen::sound` in the generator and over the committed districts; districts 2-5 and 7-10 redrawn; view keeps
   16 units below the trailing tank
+- [x] Owner's reports (0.7.5): enemies spinning half below the view, reinforcements stuck in a turret's notch, turrets
+  swinging sideways into their wall (co-op exploit), screen jump after a boss; regression tests for each
 - [ ] Couch-test difficulty and length; boss HP bar if bosses feel like sponges
 
 ### M4 — Ship to the TV ⏳

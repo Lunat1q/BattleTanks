@@ -36,6 +36,12 @@ pub fn advance(pos: Vec2, dir: Dir, dist: f32, blocked: impl Fn(Vec2) -> bool) -
     at(lo)
 }
 
+/// The view's edges stop a tank leaving it, but one the scrolling view left half outside may still move along or
+/// back in; blocking it outright froze it in place, spinning on every blocked turn until culled.
+pub fn leaves_view(r: Rect, now: Rect, bottom: f32, top: f32) -> bool {
+    r.min.y < bottom.min(now.min.y) || r.max.y > top.max(now.max.y)
+}
+
 pub fn drive(
     time: Res<Time>,
     session: Res<Session>,
@@ -63,9 +69,10 @@ pub fn drive(
             .map(|(_, r)| *r)
             .chain(base)
             .collect();
+        let now = rect_at(pos, size);
         let blocked = |p: Vec2| {
             let r = rect_at(p, size);
-            terrain.blocks(r, swimmer) || r.min.y < view.bottom || r.max.y > view.top() || others.iter().any(|o| overlaps(*o, r))
+            terrain.blocks(r, swimmer) || leaves_view(r, now, view.bottom, view.top()) || others.iter().any(|o| overlaps(*o, r))
         };
 
         let on_ice = terrain.at(pos.x, pos.y) == Tile::Ice;
@@ -141,6 +148,16 @@ pub fn fire(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_tank_half_below_the_view_can_still_move_along_or_up() {
+        let now = rect_at(Vec2::new(50.0, 102.0), 16.0); // bottom at 94, view from 100
+        assert!(!leaves_view(rect_at(Vec2::new(52.0, 102.0), 16.0), now, 100.0, 308.0), "sideways");
+        assert!(!leaves_view(rect_at(Vec2::new(50.0, 104.0), 16.0), now, 100.0, 308.0), "up");
+        assert!(leaves_view(rect_at(Vec2::new(50.0, 100.0), 16.0), now, 100.0, 308.0), "further out");
+        let inside = rect_at(Vec2::new(50.0, 120.0), 16.0);
+        assert!(leaves_view(rect_at(Vec2::new(50.0, 107.0), 16.0), inside, 100.0, 308.0), "edge still holds");
+    }
 
     #[test]
     fn advance_stops_flush() {

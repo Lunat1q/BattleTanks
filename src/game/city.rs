@@ -76,21 +76,23 @@ pub fn setup(commands: &mut Commands, session: &mut Session) -> Terrain {
 pub const TRAIL_ROOM: f32 = 16.0;
 
 /// New view bottom: the lead player sits a bit above the middle, the trailing one stays on screen with
-/// `TRAIL_ROOM` below it, and the view never moves back down or past the map top. `locked` (a boss is up) holds it still.
-pub fn scroll_to(bottom: f32, players_y: &[f32], limit: f32, locked: bool) -> f32 {
+/// `TRAIL_ROOM` below it, and the view never moves back down or past the map top. `locked` (a boss is up) holds it still;
+/// it rises at most `max_rise` per frame, so the view glides up after a boss instead of jumping.
+pub fn scroll_to(bottom: f32, players_y: &[f32], limit: f32, locked: bool, max_rise: f32) -> f32 {
     let (Some(lead), Some(trail)) = (players_y.iter().copied().reduce(f32::max), players_y.iter().copied().reduce(f32::min)) else {
         return bottom;
     };
     if locked {
         return bottom;
     }
-    (lead - FIELD * 0.55).min(trail - 8.0 - TRAIL_ROOM).min(limit).max(bottom)
+    (lead - FIELD * 0.55).min(trail - 8.0 - TRAIL_ROOM).min(limit).clamp(bottom, bottom + max_rise)
 }
 
-fn scroll(mut view: ResMut<View>, terrain: Res<Terrain>, tanks: Query<(&Tank, &Transform)>, enemies: Query<&Enemy>) {
+fn scroll(mut view: ResMut<View>, time: Res<Time>, terrain: Res<Terrain>, tanks: Query<(&Tank, &Transform)>, enemies: Query<&Enemy>) {
     let ys: Vec<f32> = tanks.iter().filter(|(t, _)| matches!(t.team, Team::Player(_))).map(|(_, tf)| tf.translation.y).collect();
     let locked = enemies.iter().any(|e| matches!(e.rank, Rank::Mini | Rank::Boss));
-    view.bottom = scroll_to(view.bottom, &ys, terrain.height() - FIELD, locked);
+    let max_rise = rules::VIEW_CATCH_UP * time.delta_secs();
+    view.bottom = scroll_to(view.bottom, &ys, terrain.height() - FIELD, locked, max_rise);
 }
 
 fn wake(mut commands: Commands, mut city: ResMut<CityRun>, view: Res<View>, session: Res<Session>, mut rng: ResMut<Rng>) {
@@ -130,7 +132,11 @@ fn reinforce(
     let start = rng.below(5) as usize;
     let free = (0..5).map(|i| [104.0, 8.0, 200.0, 56.0, 152.0][(start + i) % 5]).map(|x| Vec2::new(x, y)).find(|&p| {
         let spot = rect_at(p, 16.0);
-        !terrain.blocks_tank(spot) && !tanks.iter().any(|(t, tf)| overlaps(spot, rect_at(tf.translation.xy(), t.size)))
+        // Pending spawns too: a turret's notch in the wall is open ground until it wakes, and a tank dropped
+        // there got the turret on top of it, stuck for good.
+        !terrain.blocks_tank(spot)
+            && !tanks.iter().any(|(t, tf)| overlaps(spot, rect_at(tf.translation.xy(), t.size)))
+            && !city.pending.iter().any(|s| overlaps(spot, rect_at(s.pos, s.rank.size())))
     });
     if let Some(p) = free {
         let kind = city_map::weighted(&city.mix, &mut rng);
@@ -220,11 +226,12 @@ mod tests {
 
     #[test]
     fn view_follows_the_lead_but_never_drops_the_trailing_tank() {
-        assert_eq!(scroll_to(0.0, &[150.0], 1000.0, false), 150.0 - FIELD * 0.55);
-        assert_eq!(scroll_to(0.0, &[190.0, 40.0], 1000.0, false), 16.0, "trailing tank pins the bottom, with room");
-        assert_eq!(scroll_to(50.0, &[60.0], 1000.0, false), 50.0, "never scrolls back");
-        assert_eq!(scroll_to(0.0, &[5000.0], 400.0, false), 400.0, "stops at the map top");
-        assert_eq!(scroll_to(10.0, &[300.0], 1000.0, true), 10.0, "boss holds the camera");
-        assert_eq!(scroll_to(10.0, &[], 1000.0, false), 10.0);
+        assert_eq!(scroll_to(0.0, &[150.0], 1000.0, false, 1000.0), 150.0 - FIELD * 0.55);
+        assert_eq!(scroll_to(0.0, &[190.0, 40.0], 1000.0, false, 1000.0), 16.0, "trailing tank pins the bottom, with room");
+        assert_eq!(scroll_to(50.0, &[60.0], 1000.0, false, 1000.0), 50.0, "never scrolls back");
+        assert_eq!(scroll_to(0.0, &[5000.0], 400.0, false, 1000.0), 400.0, "stops at the map top");
+        assert_eq!(scroll_to(10.0, &[300.0], 1000.0, true, 1000.0), 10.0, "boss holds the camera");
+        assert_eq!(scroll_to(10.0, &[], 1000.0, false, 1000.0), 10.0);
+        assert_eq!(scroll_to(10.0, &[300.0], 1000.0, false, 2.0), 12.0, "after a boss the view glides, no jump");
     }
 }

@@ -179,7 +179,9 @@ can't be read is never written.
 
 - A district is 15 screens tall (district 1) up to ~24 (district 10). Only one field-sized slice is visible: the
   `View`. It follows the lead player (kept at 55 % height) but keeps the trailing tank in view with 16 units (one
-  tank) of room below it, so a tank in a notch can still back out, and never scrolls back down. Tanks can't leave the view; bullets pop at its edges.
+  tank) of room below it, so a tank in a notch can still back out, and never scrolls back down. Tanks can't leave the view
+  (one the view left half outside may still move along or back in); bullets pop at its edges. The view rises at most
+  96 units/s (`VIEW_CATCH_UP`, twice a tank), so after a mini-boss or boss lets go it glides up instead of jumping.
 - **District track** (HUD right panel, in place of the enemy reserve): a bar from the start to the boss icon on top,
   gold up to the top of the view (how much of the district you've seen), a 1P dot left of it and a 2P dot right of it
   at each tank's height.
@@ -198,9 +200,11 @@ can't be read is never written.
 - No base. Enemies hunt the nearest player. Placed enemies wake (sparkle) once fully in view; every 5th placed
   enemy carries a power-up. Reinforcements drop in at the top every 7 s − 0.35·district − 1 s in 2P (≥ 2.5 s),
   capped like classic (4 / 6 on screen), until the boss appears.
+  A drop spot must be free of tanks and of placed enemies not yet awake.
 - **Bastions**: a full-width fortress wall (`=`, unbreakable even at star 3) with turrets and an orange gate (`G`).
   When every turret of a bastion is destroyed the gate opens; a dead turret's spot becomes wall.
-- **Turrets** never move, aim at the nearest player, HP 2 + d/3, 500 pts. **Mini-bosses** 24×24, HP 8 + d, 2 bullets,
+- **Turrets** never move, aim up or down at the nearest player (never sideways into their own wall),
+  HP 2 + d/3, 500 pts. **Mini-bosses** 24×24, HP 8 + d, 2 bullets,
   1000 pts, drop a power-up; **boss** 32×32 at the map top, HP 20 + 3d, 3 bullets, 5000 pts. While a mini-boss or
   the boss is alive the camera holds still. Killing the boss clears the district.
 - Power-ups: no shovel; grenade only destroys ordinary tanks. Drops land on open ground in view.
@@ -311,4 +315,8 @@ same rules, each machine draws it and plays its own sound and rumble.
 | 10 fps on a TV-class GPU (Mali-G57), CPU idle | Bevy's default 4x MSAA + bloom passes at 1080p, each ~halving fps | `Msaa::Off` everywhere (sprites are pre-anti-aliased); bloom is `Platform::bloom`, off on such hosts: 56 fps |
 | Looping music would hold ~55 MB per song | rodio `repeat_infinite` buffers every decoded sample | play once (DESPAWN), respawn when it ends |
 | New track failed `every_track_decodes` (`UnrecognizedFormat`) | MP3 cover art became a Theora video stream in the .ogg | encode with `ffmpeg -i x.mp3 -map 0:a -vn -map_metadata -1 -af volume=<-16 − measured LUFS>dB -ar 44100 -c:a libvorbis -q:a 1 x.ogg` (measure with `-af loudnorm=print_format=json -f null -`) |
+| City Run enemy spun in place at the bottom of the view until culled | the scrolling view left it half outside, and the edge test blocked every move | the edges only stop a move further out (`tank::leaves_view`) |
+| City Run reinforcement stuck in a bastion wall, spinning | dropped into a turret's notch (open ground until the turret wakes), then the turret woke on top of it | drop spots skip pending spawns |
+| Turrets easy in co-op: one player beside the turret, the other shooting it from below | turret aimed along the longer axis at the nearest player, i.e. sideways into its own wall | `enemy::turret_dir`: up or down only |
+| Screen jumped when a City Run boss died | the camera lock let go and the view snapped to its target in one frame | `rules::VIEW_CATCH_UP` caps how fast the view rises |
 | `adb pull /sdcard/...` "no such file" from Git Bash | MSYS rewrites the remote path to `C:/Program Files/Git/sdcard/...` | prefix `MSYS_NO_PATHCONV=1` |

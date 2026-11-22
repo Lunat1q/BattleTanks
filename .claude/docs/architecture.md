@@ -57,7 +57,7 @@ src/
     cloud.rs          # Progress + achievements Record <-> the host's cloud copy (Platform::cloud_load / cloud_save): one sync at a
                       # time (Pull.want), at start, per City Run unlock and after new achievements; max / union merge
     tank.rs           # player_control (intent -> want/trigger), drive (collisions, snap, ice), fire
-    enemy.rs          # think: choose_dir (pure) + random fire, freeze; turrets aim at the nearest player
+    enemy.rs          # think: choose_dir (pure) + random fire, freeze; turret_dir (up/down at the nearest player)
     combat.rs         # fly_bullets (sub-steps: tanks, base, terrain; bullet-vs-bullet) -> Hit; resolve_hits
     powerup.rs        # drop on bonus hit, pickup effects
   gfx/

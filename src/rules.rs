@@ -1,6 +1,9 @@
 //! Gameplay numbers and pure rules. Tune here; everything is in field units (see `geom`) and seconds.
 
 pub const PLAYER_SPEED: f32 = 48.0;
+/// City Run: how fast the view may rise (units/s); twice a tank, so following never feels it, only the catch-up
+/// once a boss lets go of the camera.
+pub const VIEW_CATCH_UP: f32 = 2.0 * PLAYER_SPEED;
 pub const START_LIVES: u32 = 2; // spare tanks, so 3 tanks in total
 /// City Run districts start with one spare more: they are long and have no stage breaks.
 pub const CITY_START_LIVES: u32 = START_LIVES + 1;

@@ -5,6 +5,12 @@ use super::stage::BASE_POS;
 use super::*;
 use crate::rng::Rng;
 
+/// Turrets sit in a full-width wall: a sideways shot only hits the wall, so they aim up or down only. Swinging
+/// sideways at a player beside them let the other one shoot them from below unanswered.
+pub fn turret_dir(pos: Vec2, target: Vec2) -> Dir {
+    if target.y > pos.y { Dir::Up } else { Dir::Down }
+}
+
 /// Pick a heading. Pure so it can be tested; `roll` in [0, 1).
 pub fn choose_dir(pos: Vec2, target: Vec2, current: Dir, blocked: bool, roll: f32, roll2: f32) -> Dir {
     if roll < 0.45 {
@@ -60,7 +66,7 @@ pub fn think(
         if ai.rank == Rank::Turret {
             // Bolted to the wall: swing the gun towards the nearest player and keep shooting.
             if let Some(p) = nearest {
-                tank.dir = choose_dir(pos, p, tank.dir, false, 0.0, 0.0);
+                tank.dir = turret_dir(pos, p);
             }
             ai.fire_in -= dt;
             gun.trigger = nearest.is_some() && ai.fire_in <= 0.0;
@@ -102,6 +108,14 @@ mod tests {
         assert_eq!(d, Dir::Down);
         let d = choose_dir(Vec2::new(10.0, 20.0), BASE_POS, Dir::Down, false, 0.1, 0.0);
         assert_eq!(d, Dir::Right);
+    }
+
+    #[test]
+    fn turret_never_aims_into_its_wall() {
+        let t = Vec2::new(100.0, 300.0);
+        assert_eq!(turret_dir(t, Vec2::new(80.0, 296.0)), Dir::Down, "player beside it, a bit lower");
+        assert_eq!(turret_dir(t, Vec2::new(180.0, 300.0)), Dir::Down);
+        assert_eq!(turret_dir(t, Vec2::new(100.0, 340.0)), Dir::Up);
     }
 
     #[test]
