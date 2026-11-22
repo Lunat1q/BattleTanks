@@ -83,7 +83,7 @@ brick heading reads over bricks.
   quits a TV app from here). Any devices' presses count, in order; the A that finishes it neither joins nor picks a
   menu item. It opens the BUNKER (steel heading), three tabs, left/right to switch, B back:
   CHANGELOG (`CHANGELOG.md`, up/down scrolls), OST (all 24 tracks with a name and where they play; A plays one, then
-  the next down the list when it ends; leaving gives the screen its own music back; follows the MUSIC volume, at 0 it
+  the next down the list when it ends; A on the playing track pauses it (PAUSED), A again resumes from there; leaving gives the screen its own music back; follows the MUSIC volume, at 0 it
   says so) and SOUND TEST (every sound effect, A plays). Getting in unlocks Look Both Ways (FUN), whose description
   is the combo's riddle, so the achievement list is the hint.
 - Under the menu: the local hi score and the controls. The pad line is always shown; the keys line only with

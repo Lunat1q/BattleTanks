@@ -74,9 +74,16 @@ pub const NAMES: [(&str, &str); 24] = [
 ];
 
 /// The bunker's jukebox pick (`ALL` index): plays instead of the screen's pool while the bunker is open, then the
-/// next track of the OST when it ends.
+/// next track of the OST when it ends. The second field holds it where it is (A on the playing track again).
 #[derive(Resource, Default)]
-pub struct Jukebox(pub Option<usize>);
+pub struct Jukebox(pub Option<usize>, pub bool);
+
+impl Jukebox {
+    /// A on track `i`: the playing one pauses or resumes, any other starts playing.
+    pub fn press(&mut self, i: usize) {
+        *self = Jukebox(Some(i), self.0 == Some(i) && !self.1);
+    }
+}
 
 // Pools a screen rotates through: when a track ends the next one in its pool starts.
 const SLOW: &[Track] = &[Slow1, Slow2, Slow3, Slow4];
@@ -249,6 +256,7 @@ fn mix(
     screen: Res<State<Screen>>,
     mut sinks: Query<&mut AudioSink>,
     music: Res<Music>,
+    jukebox: Res<Jukebox>,
 ) {
     if let Some(b) = lifecycle.read().filter_map(|&e| crate::game::stage::backgrounded(e)).last() {
         *away = b;
@@ -259,7 +267,12 @@ fn mix(
     if sink.volume() != volume {
         sink.set_volume(volume);
     }
-    let hold = *away || (*screen.get() == Screen::Stage && paused.is_some_and(|p| p.0));
+    let hold = *away
+        || match *screen.get() {
+            Screen::Stage => paused.is_some_and(|p| p.0),
+            Screen::Bunker => jukebox.1,
+            _ => false,
+        };
     if hold != sink.is_paused() {
         if hold { sink.pause() } else { sink.play() }
     }
@@ -287,6 +300,20 @@ mod tests {
         );
         assert_eq!(pick(Screen::Stage, Mode::City, 2, Fight::Mini), HARD);
         assert_eq!(pick(Screen::Stage, Mode::City, 9, Fight::Boss), BOSS);
+    }
+
+    #[test]
+    fn a_second_press_pauses_the_jukebox() {
+        let mut j = Jukebox::default();
+        j.press(3);
+        assert_eq!((j.0, j.1), (Some(3), false));
+        j.press(3);
+        assert_eq!((j.0, j.1), (Some(3), true), "same track: pause");
+        j.press(3);
+        assert_eq!((j.0, j.1), (Some(3), false), "and again: resume");
+        j.press(3);
+        j.press(5);
+        assert_eq!((j.0, j.1), (Some(5), false), "another track plays, even from a pause");
     }
 
     #[test]

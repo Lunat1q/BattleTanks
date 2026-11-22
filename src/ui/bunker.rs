@@ -1,5 +1,5 @@
 //! The secret bunker (a combo on the title, `title::COMBO`): CHANGELOG (the game's CHANGELOG.md), OST (every music
-//! track: A plays it, then the jukebox runs on down the list) and SOUND TEST (every sound effect). Left/right tab,
+//! track: A plays it, A again pauses / resumes, then the jukebox runs on down the list) and SOUND TEST (every sound effect). Left/right tab,
 //! up/down move, B back. Getting in unlocks "Look Both Ways".
 
 use super::*;
@@ -34,7 +34,7 @@ pub fn plugin(app: &mut App) {
     let tab = std::env::var("BT_TAB").ok().and_then(|t| t.parse().ok()).filter(|&t| t < TABS.len()).unwrap_or(0);
     app.insert_resource(Browse { tab, ..default() })
         .add_systems(OnEnter(Screen::Bunker), spawn)
-        .add_systems(OnExit(Screen::Bunker), |mut j: ResMut<Jukebox>| j.0 = None)
+        .add_systems(OnExit(Screen::Bunker), |mut j: ResMut<Jukebox>| *j = Jukebox::default())
         .add_systems(Update, (input, refresh).chain().run_if(in_state(Screen::Bunker)));
 }
 
@@ -139,7 +139,7 @@ fn input(
     }
     if i.confirm {
         match t {
-            1 => jukebox.0 = Some(b.sel[1]),
+            1 => jukebox.press(b.sel[1]),
             2 => {
                 sfx.write(crate::audio::ALL[b.sel[2]]);
             }
@@ -172,7 +172,12 @@ fn refresh(
         } else {
             ""
         };
-        set_text(&mut s, format!("{mark}{line}{}", if playing { "   PLAYING" } else { "" }));
+        let state = match (playing, jukebox.1) {
+            (false, _) => "",
+            (true, false) => "   PLAYING",
+            (true, true) => "   PAUSED",
+        };
+        set_text(&mut s, format!("{mark}{line}{state}"));
         color.0 = match t {
             0 if CHANGES[i].0 => GOLD,
             0 => INK,
@@ -189,6 +194,7 @@ fn refresh(
         let hint = match t {
             0 => "up/down  scroll      left/right  tab      B  back",
             1 if settings.music == 0 => "MUSIC is off in SETTINGS - turn it up to listen",
+            1 => "A  play / pause      up/down  pick      left/right  tab      B  back",
             _ => "A  play      up/down  pick      left/right  tab      B  back",
         };
         set_text(&mut s, hint.into());

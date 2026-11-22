@@ -2,6 +2,10 @@
 
 Shown in the game too, so each line stays short and talks to players.
 
+## 0.7.10 (2026-11-22)
+- Jukebox: press A on the playing track to pause it, A again to play on
+- City Run: no more enemy tanks stuck in a walled-off corner of district 5
+
 ## 0.7.9 (2026-11-22)
 - Something new is hidden on the title screen. Look around before you cross.
 - New achievement: Look Both Ways

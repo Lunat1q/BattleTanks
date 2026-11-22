@@ -165,6 +165,7 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [x] Title combo left, right, left, up, up, A (D-pad + A: remotes and touch can do it) → BUNKER: CHANGELOG
   (`CHANGELOG.md`, versions 0.1.0-0.7.9), OST jukebox (24 named tracks, plays on down the list), SOUND TEST
 - [x] Achievement Look Both Ways (10 pts, 950 in all; its description is the riddle), road-crossing badge
+- [x] 0.7.10: A on the playing OST track pauses it, A again resumes (owner)
 - [ ] Owner: rename OST tracks if the names don't fit (`music::NAMES`); import the new achievement in Play Console
 
 ## Current state
