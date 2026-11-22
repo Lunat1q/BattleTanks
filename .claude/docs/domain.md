@@ -209,7 +209,8 @@ can't be read is never written.
 - No base. Enemies hunt the nearest player. Placed enemies wake (sparkle) once fully in view; every 5th placed
   enemy carries a power-up. Reinforcements drop in at the top every 7 s − 0.35·district − 1 s in 2P (≥ 2.5 s),
   capped like classic (4 / 6 on screen), until the boss appears.
-  A drop spot must be free of tanks and of placed enemies not yet awake.
+  A drop spot must be free of tanks and of placed enemies not yet awake, and one a tank can drive to from the start
+  (gates open; sealed pockets in the street art are skipped, tested).
 - **Bastions**: a full-width fortress wall (`=`, unbreakable even at star 3) with turrets and an orange gate (`G`).
   When every turret of a bastion is destroyed the gate opens; a dead turret's spot becomes wall.
 - **Turrets** never move, aim up or down at the nearest player (never sideways into their own wall),
@@ -334,6 +335,7 @@ same rules, each machine draws it and plays its own sound and rumble.
 | City Run enemy spun in place at the bottom of the view until culled | the scrolling view left it half outside, and the edge test blocked every move | the edges only stop a move further out (`tank::leaves_view`) |
 | City Run reinforcement stuck in a bastion wall, spinning | dropped into a turret's notch (open ground until the turret wakes), then the turret woke on top of it | drop spots skip pending spawns |
 | Turrets easy in co-op: one player beside the turret, the other shooting it from below | turret aimed along the longer axis at the nearest player, i.e. sideways into its own wall | `enemy::turret_dir`: up or down only |
+| City Run reinforcement stuck for good at district 5's left edge above a bastion (owner) | dropped into a pocket sealed by steel and the wall (open ground, so the drop check passed) | drops only on cells reachable from the start (`city::Reach`); placed enemies too (tested) |
 | Screen jumped when a City Run boss died | the camera lock let go and the view snapped to its target in one frame | `rules::VIEW_CATCH_UP` caps how fast the view rises |
 | HUD jumped sideways when a player went out and "A: BORROW A TANK" showed (owner) | side panels grew from their content width (`flex_basis: auto`), so the longer line widened one side | panels `flex_basis: 0`: equal split whatever the text |
 | `adb pull /sdcard/...` "no such file" from Git Bash | MSYS rewrites the remote path to `C:/Program Files/Git/sdcard/...` | prefix `MSYS_NO_PATHCONV=1` |

@@ -269,38 +269,39 @@ pub fn footprint(pos: Vec2, size: f32) -> impl Iterator<Item = (usize, usize)> {
     (y0..y0 + n).flat_map(move |y| (x0..(x0 + n).min(SUBS)).map(move |x| (x, y)))
 }
 
+/// Tank-sized flood fill over 8-unit cells from cell `from`; bricks open, steel/water/wall closed,
+/// gates open unless listed in `closed`; live turrets count as wall (they become it when they die). Index
+/// `y * CELLS + x`, true where a tank's bottom-left cell can get to.
+pub fn reachable(d: &District, from: (usize, usize), closed: &[usize]) -> Vec<bool> {
+    let mut ter = d.terrain.clone();
+    for s in d.spawns.iter().filter(|s| s.rank == Rank::Turret) {
+        footprint(s.pos, 16.0).for_each(|(x, y)| ter.set(x, y, Tile::Wall));
+    }
+    for (i, g) in d.gates.iter().enumerate() {
+        let t = if closed.contains(&i) { Tile::Wall } else { Tile::Empty };
+        g.iter().for_each(|&(x, y)| ter.set(x, y, t));
+    }
+    let h = ter.rows() / 2;
+    let open = |cx: usize, cy: usize| {
+        (0..2).all(|dx| (0..2).all(|dy| !matches!(ter.get(cx * 2 + dx, cy * 2 + dy), Tile::Steel | Tile::Water | Tile::Wall)))
+    };
+    let fits = |x: usize, y: usize| x < CELLS - 1 && y < h - 1 && (0..2).all(|dx| (0..2).all(|dy| open(x + dx, y + dy)));
+    let mut seen = vec![false; CELLS * h];
+    let mut todo = vec![from];
+    while let Some((x, y)) = todo.pop() {
+        if !fits(x, y) || std::mem::replace(&mut seen[y * CELLS + x], true) {
+            continue;
+        }
+        todo.extend([(x + 1, y), (x, y + 1)]);
+        todo.extend(x.checked_sub(1).map(|x| (x, y)));
+        todo.extend(y.checked_sub(1).map(|y| (x, y)));
+    }
+    seen
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// Tank-sized flood fill over 8-unit cells from cell `from`; bricks open, steel/water/wall closed,
-    /// gates open unless listed in `closed`.
-    fn reachable(d: &District, from: (usize, usize), closed: &[usize]) -> Vec<bool> {
-        let mut ter = d.terrain.clone();
-        for s in d.spawns.iter().filter(|s| s.rank == Rank::Turret) {
-            footprint(s.pos, 16.0).for_each(|(x, y)| ter.set(x, y, Tile::Wall));
-        }
-        for (i, g) in d.gates.iter().enumerate() {
-            let t = if closed.contains(&i) { Tile::Wall } else { Tile::Empty };
-            g.iter().for_each(|&(x, y)| ter.set(x, y, t));
-        }
-        let h = ter.rows() / 2;
-        let open = |cx: usize, cy: usize| {
-            (0..2).all(|dx| (0..2).all(|dy| !matches!(ter.get(cx * 2 + dx, cy * 2 + dy), Tile::Steel | Tile::Water | Tile::Wall)))
-        };
-        let fits = |x: usize, y: usize| x < CELLS - 1 && y < h - 1 && (0..2).all(|dx| (0..2).all(|dy| open(x + dx, y + dy)));
-        let mut seen = vec![false; CELLS * h];
-        let mut todo = vec![from];
-        while let Some((x, y)) = todo.pop() {
-            if !fits(x, y) || std::mem::replace(&mut seen[y * CELLS + x], true) {
-                continue;
-            }
-            todo.extend([(x + 1, y), (x, y + 1)]);
-            todo.extend(x.checked_sub(1).map(|x| (x, y)));
-            todo.extend(y.checked_sub(1).map(|y| (x, y)));
-        }
-        seen
-    }
 
     /// Bottom-left cell of a spawn's square.
     fn cell_of(s: &Spawn) -> (usize, usize) {
@@ -315,7 +316,7 @@ mod tests {
             assert!(!name(n).is_empty(), "district {n} has no name");
             let reach = reachable(&d, (8, 0), &[]);
             assert!(reach[16], "district {n}: player 2 start walled off");
-            for s in d.spawns.iter().filter(|s| matches!(s.rank, Rank::Mini | Rank::Boss)) {
+            for s in d.spawns.iter().filter(|s| s.rank != Rank::Turret) {
                 let (x, y) = cell_of(s);
                 assert!(reach[y * CELLS + x], "district {n}: {:?} at {} unreachable", s.rank, s.pos);
             }

@@ -51,6 +51,8 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
   16 units below the trailing tank
 - [x] Owner's reports (0.7.5): enemies spinning half below the view, reinforcements stuck in a turret's notch, turrets
   swinging sideways into their wall (co-op exploit), screen jump after a boss; regression tests for each
+- [x] Owner's report: a reinforcement dropped into a sealed pocket in district 5; drops and placed enemies only on
+  reachable cells (tested)
 - [ ] Couch-test difficulty and length; boss HP bar if bosses feel like sponges
 
 ### M4 — Ship to the TV ⏳

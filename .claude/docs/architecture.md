@@ -51,7 +51,7 @@ src/
   game/
     mod.rs            # Screen state, Mode, Session/Slot, StageRun, View, components, Fx/Sfx messages, Sim schedule
     stage.rs          # OnEnter build (classic or city), spawn_enemy, respawn point, timers, borrow a tank, win/lose, pause (+ app in background), pad loss
-    city.rs           # City Run: scroll the View, wake placed enemies, reinforcements, turret->gate, reveal secrets, cull
+    city.rs           # City Run: scroll the View, wake placed enemies, reinforcements (only on Reach cells), turret->gate, reveal secrets, cull
     progress.rs       # Progress (open district + classic stage) <-> city.txt; frontier rule; save on Results; OwnProgress
                       # (a LAN joiner's own copy while linked)   [ADR 0018]
     cloud.rs          # Progress + achievements Record <-> the host's cloud copy (Platform::cloud_load / cloud_save): one sync at a

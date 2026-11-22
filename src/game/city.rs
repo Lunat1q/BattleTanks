@@ -27,6 +27,20 @@ pub struct CityRun {
     pub(crate) secrets: Vec<(Vec2, PowerKind)>,
 }
 
+/// Cells a tank can drive to from the start (`city_map::reachable`, gates open). Reinforcements drop only there:
+/// district 5 had a pocket sealed by steel above a bastion, and a tank dropped into it could never get out.
+/// Fixed per district, so it stays out of `CityRun` (and the LAN snapshot).
+#[derive(Resource)]
+pub struct Reach(Vec<bool>);
+
+impl Reach {
+    /// A 16-unit drop centred on `p` lands on a reachable cell.
+    fn ok(&self, p: Vec2) -> bool {
+        let (x, y) = (((p.x - 8.0) / 8.0) as usize, ((p.y - 8.0) / 8.0) as usize);
+        self.0.get(y * crate::geom::CELLS + x) == Some(&true)
+    }
+}
+
 pub fn plugin(app: &mut App) {
     app.add_systems(
         Update,
@@ -43,6 +57,7 @@ pub fn plugin(app: &mut App) {
 /// returns its terrain.
 pub fn setup(commands: &mut Commands, session: &mut Session) -> Terrain {
     let d = city_map::load(session.stage);
+    commands.insert_resource(Reach(city_map::reachable(&d, (8, 0), &[])));
     let mut guards = vec![0; d.gates.len()];
     for b in d.spawns.iter().filter_map(|s| s.bastion) {
         guards[b] += 1;
@@ -116,6 +131,7 @@ fn reinforce(
     run: Res<StageRun>,
     session: Res<Session>,
     terrain: Res<Terrain>,
+    reach: Res<Reach>,
     tanks: Query<(&Tank, &Transform)>,
     enemies: Query<&Enemy>,
     mut rng: ResMut<Rng>,
@@ -134,7 +150,8 @@ fn reinforce(
         let spot = rect_at(p, 16.0);
         // Pending spawns too: a turret's notch in the wall is open ground until it wakes, and a tank dropped
         // there got the turret on top of it, stuck for good.
-        !terrain.blocks_tank(spot)
+        reach.ok(p)
+            && !terrain.blocks_tank(spot)
             && !tanks.iter().any(|(t, tf)| overlaps(spot, rect_at(tf.translation.xy(), t.size)))
             && !city.pending.iter().any(|s| overlaps(spot, rect_at(s.pos, s.rank.size())))
     });
@@ -233,5 +250,17 @@ mod tests {
         assert_eq!(scroll_to(10.0, &[300.0], 1000.0, true, 1000.0), 10.0, "boss holds the camera");
         assert_eq!(scroll_to(10.0, &[], 1000.0, false, 1000.0), 10.0);
         assert_eq!(scroll_to(10.0, &[300.0], 1000.0, false, 2.0), 12.0, "after a boss the view glides, no jump");
+    }
+
+    #[test]
+    fn no_drop_into_a_sealed_pocket() {
+        // Owner's report: district 5, left edge just above a bastion, steel all round; a reinforcement dropped
+        // there (x 8 is a drop column) and spun for good. Open ground, so only the reach check keeps it out.
+        let d = city_map::load(5);
+        let reach = Reach(city_map::reachable(&d, (8, 0), &[]));
+        let pocket = Vec2::new(8.0, 464.0);
+        assert!(!d.terrain.blocks_tank(rect_at(pocket, 16.0)));
+        assert!(!reach.ok(pocket));
+        assert!(reach.ok(Vec2::new(104.0, 8.0)), "the start is reachable");
     }
 }
