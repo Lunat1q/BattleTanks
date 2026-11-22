@@ -2,6 +2,9 @@
 
 Shown in the game too, so each line stays short and talks to players.
 
+## 0.7.11 (2026-11-22)
+- Look Both Ways now unlocks on Play Games, with a new riddle for a description
+
 ## 0.7.10 (2026-11-22)
 - Jukebox: press A on the playing track to pause it, A again to play on
 - City Run: no more enemy tanks stuck in a walled-off corner of district 5
