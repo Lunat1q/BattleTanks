@@ -155,6 +155,10 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [x] Tests for each rule over all 30 maps (`levels::tests`, `powerup::tests`)
 - [ ] Owner: feel of the changed stages in 1P
 
+### M14 — More music (v0.7.8) ✅
+- [x] Owner's new tracks: slow 3-4, medium 3-5, fast 5-6, loss 2 (normalised to -16 LUFS); loss rotates
+- [x] After a mini-boss or boss dies the stage music goes on with the next track, not its pool's opener (owner)
+
 ## Current state
 
 City Run added, released as v0.3.0 on GitHub: 10 districts, district map, smoke screenshots checked for the map, a district start, a

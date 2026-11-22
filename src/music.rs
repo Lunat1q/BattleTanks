@@ -16,34 +16,43 @@ pub enum Track {
     MenuAlt,
     Slow1,
     Slow2,
+    Slow3,
+    Slow4,
     Medium1,
     Medium2,
+    Medium3,
+    Medium4,
+    Medium5,
     Fast1,
     Fast2,
     Fast3,
     Fast4,
+    Fast5,
+    Fast6,
     HardFight1,
     HardFight2,
     BossFight1,
     BossFight2,
     Victory,
-    Loss,
+    Loss1,
+    Loss2,
 }
 
 use Track::*;
 
-const ALL: [Track; 16] = [
-    Menu, MenuAlt, Slow1, Slow2, Medium1, Medium2, Fast1, Fast2, Fast3, Fast4, HardFight1, HardFight2, BossFight1, BossFight2, Victory,
-    Loss,
+const ALL: [Track; 24] = [
+    Menu, MenuAlt, Slow1, Slow2, Slow3, Slow4, Medium1, Medium2, Medium3, Medium4, Medium5, Fast1, Fast2, Fast3, Fast4, Fast5, Fast6,
+    HardFight1, HardFight2, BossFight1, BossFight2, Victory, Loss1, Loss2,
 ];
 
 // Pools a screen rotates through: when a track ends the next one in its pool starts.
-const SLOW: &[Track] = &[Slow1, Slow2];
-const MEDIUM: &[Track] = &[Medium1, Medium2];
-const FAST: &[Track] = &[Fast1, Fast2, Fast3, Fast4];
+const SLOW: &[Track] = &[Slow1, Slow2, Slow3, Slow4];
+const MEDIUM: &[Track] = &[Medium1, Medium2, Medium3, Medium4, Medium5];
+const FAST: &[Track] = &[Fast1, Fast2, Fast3, Fast4, Fast5, Fast6];
 /// City districts are long, so their pools also reach one speed up.
-const CITY_SLOW: &[Track] = &[Slow1, Slow2, Medium1, Medium2];
-const CITY_MEDIUM: &[Track] = &[Medium1, Medium2, Fast1, Fast2];
+const CITY_SLOW: &[Track] = &[Slow1, Slow2, Slow3, Slow4, Medium1, Medium2];
+const CITY_MEDIUM: &[Track] = &[Medium1, Medium2, Medium3, Medium4, Medium5, Fast1, Fast2];
+const LOSS: &[Track] = &[Loss1, Loss2];
 const HARD: &[Track] = &[HardFight1, HardFight2];
 const BOSS: &[Track] = &[BossFight1, BossFight2];
 
@@ -53,18 +62,26 @@ fn bytes(t: Track) -> &'static [u8] {
         MenuAlt => include_bytes!("../assets/music/menu_music_alternative.ogg"),
         Slow1 => include_bytes!("../assets/music/battle_music_slow_1.ogg"),
         Slow2 => include_bytes!("../assets/music/battle_music_slow_2.ogg"),
+        Slow3 => include_bytes!("../assets/music/battle_music_slow_3.ogg"),
+        Slow4 => include_bytes!("../assets/music/battle_music_slow_4.ogg"),
         Medium1 => include_bytes!("../assets/music/battle_music_medium_1.ogg"),
         Medium2 => include_bytes!("../assets/music/battle_music_medium_2.ogg"),
+        Medium3 => include_bytes!("../assets/music/battle_music_medium_3.ogg"),
+        Medium4 => include_bytes!("../assets/music/battle_music_medium_4.ogg"),
+        Medium5 => include_bytes!("../assets/music/battle_music_medium_5.ogg"),
         Fast1 => include_bytes!("../assets/music/battle_music_fast_1.ogg"),
         Fast2 => include_bytes!("../assets/music/battle_music_fast_2.ogg"),
         Fast3 => include_bytes!("../assets/music/battle_music_fast_3.ogg"),
         Fast4 => include_bytes!("../assets/music/battle_music_fast_4.ogg"),
+        Fast5 => include_bytes!("../assets/music/battle_music_fast_5.ogg"),
+        Fast6 => include_bytes!("../assets/music/battle_music_fast_6.ogg"),
         HardFight1 => include_bytes!("../assets/music/battle_hardfight_music_fast_1.ogg"),
         HardFight2 => include_bytes!("../assets/music/battle_hardfight_music_fast_2.ogg"),
         BossFight1 => include_bytes!("../assets/music/battle_bossfight_music_fast_1.ogg"),
         BossFight2 => include_bytes!("../assets/music/battle_bossfight_music_fast_2.ogg"),
         Victory => include_bytes!("../assets/music/battle_music_victory_1.ogg"),
-        Loss => include_bytes!("../assets/music/battle_music_loss_1.ogg"),
+        Loss1 => include_bytes!("../assets/music/battle_music_loss_1.ogg"),
+        Loss2 => include_bytes!("../assets/music/battle_music_loss_2.ogg"),
     }
 }
 
@@ -84,10 +101,10 @@ pub fn pick(screen: Screen, mode: Mode, stage: usize, fight: Fight) -> &'static 
         Screen::Title | Screen::StageSelect | Screen::Settings | Screen::HiScores | Screen::Lan | Screen::Achievements => &[Menu],
         Screen::CityMap => &[MenuAlt],
         Screen::Results | Screen::Unlocks => &[Victory],
-        Screen::GameOver => &[Loss],
+        Screen::GameOver => LOSS,
         // Keeps the screen before it playing: a district clear's victory, or a classic run's game over.
         Screen::Board if mode == Mode::City => &[Victory],
-        Screen::Board => &[Loss],
+        Screen::Board => LOSS,
         Screen::Stage => match (fight, mode) {
             (Fight::Boss, _) => BOSS,
             (Fight::Mini, _) => HARD,
@@ -108,11 +125,20 @@ pub fn next(pool: &[Track], ended: Option<Track>, start: usize) -> Track {
     pool[i % pool.len()]
 }
 
+/// The track a new pick goes on from: the one that just ended (same pool), else the track the old pool itself
+/// cut in on, kept in `before`. So when a mini-boss or boss dies the stage music moves on to the track after the
+/// one the fight interrupted instead of restarting its pool.
+fn handover(same_pool: bool, old: Option<Track>, before: &mut Option<Track>) -> Option<Track> {
+    if same_pool { old } else { std::mem::replace(before, old) }
+}
+
 #[derive(Resource)]
 struct Music {
     handles: Vec<Handle<AudioSource>>,
     /// Pool, track, its player entity.
     playing: Option<(&'static [Track], Track, Entity)>,
+    /// Track the playing pool cut in on (`handover`); cleared off the stage, so each stage opens by its number.
+    before: Option<Track>,
 }
 
 pub fn plugin(app: &mut App) {
@@ -125,7 +151,7 @@ pub fn plugin(app: &mut App) {
 
 fn load(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {
     let handles = ALL.iter().map(|&t| sources.add(AudioSource { bytes: bytes(t).into() })).collect();
-    commands.insert_resource(Music { handles, playing: None });
+    commands.insert_resource(Music { handles, playing: None, before: None });
 }
 
 fn switch(
@@ -148,12 +174,16 @@ fn switch(
     if alive && same_pool {
         return;
     }
-    let ended = music.playing.take().and_then(|(_, t, e)| {
+    let old = music.playing.take().map(|(_, t, e)| {
         if let Ok(mut ec) = commands.get_entity(e) {
             ec.despawn();
         }
-        same_pool.then_some(t)
+        t
     });
+    let ended = handover(same_pool, old, &mut music.before);
+    if *screen.get() != Screen::Stage {
+        music.before = None;
+    }
     if let Some(pool) = want {
         let t = next(pool, ended, session.stage.max(1) - 1);
         let i = ALL.iter().position(|&a| a == t).unwrap_or(0);
@@ -199,14 +229,15 @@ mod tests {
         assert_eq!(pick(Screen::Settings, Mode::Classic, 1, Fight::None), [Menu]);
         assert_eq!(pick(Screen::CityMap, Mode::City, 1, Fight::None), [MenuAlt]);
         assert_eq!(pick(Screen::Results, Mode::City, 5, Fight::Boss), [Victory]);
-        assert_eq!(pick(Screen::GameOver, Mode::Classic, 5, Fight::None), [Loss]);
+        assert_eq!(pick(Screen::GameOver, Mode::Classic, 5, Fight::None), LOSS);
+        assert_eq!(pick(Screen::Board, Mode::Classic, 5, Fight::None), LOSS, "game over's track plays on");
         assert_eq!(
             [1, 2, 10, 11, 12, 20, 21, 30, 31].map(|n| first(Mode::Classic, n)),
-            [Slow1, Slow2, Slow2, Medium1, Medium2, Medium2, Fast1, Fast2, Slow1]
+            [Slow1, Slow2, Slow2, Medium1, Medium2, Medium5, Fast3, Fast6, Slow3]
         );
         assert_eq!(
             (1..=10).map(|d| first(Mode::City, d)).collect::<Vec<_>>(),
-            [Slow1, Slow2, Medium1, Fast2, Medium1, Medium2, Fast1, Fast4, Fast1, Fast2]
+            [Slow1, Slow2, Slow3, Medium4, Medium5, Fast1, Fast2, Fast2, Fast3, Fast4]
         );
         assert_eq!(pick(Screen::Stage, Mode::City, 2, Fight::Mini), HARD);
         assert_eq!(pick(Screen::Stage, Mode::City, 9, Fight::Boss), BOSS);
@@ -215,7 +246,7 @@ mod tests {
     #[test]
     fn an_ended_track_hands_over_to_the_next_in_its_pool() {
         assert_eq!(next(FAST, Some(Fast2), 0), Fast3);
-        assert_eq!(next(FAST, Some(Fast4), 0), Fast1, "wraps");
+        assert_eq!(next(FAST, Some(Fast6), 0), Fast1, "wraps");
         assert_eq!(next(BOSS, Some(Fast4), 1), BossFight2, "track from another pool: start fresh");
         assert_eq!(next(&[Menu], Some(Menu), 7), Menu, "single-track pool repeats");
         let mut t = Slow1;
@@ -224,6 +255,16 @@ mod tests {
             assert_ne!(n, t, "never the same track twice in a row");
             t = n;
         }
+    }
+
+    #[test]
+    fn a_fight_ending_moves_the_stage_music_on() {
+        // Slow2 plays, a mini-boss cuts in, it dies: the stage pool goes on with Slow3, not back to its opener.
+        let mut before = None;
+        assert_eq!(handover(false, Some(Slow2), &mut before), None, "fight pool opens fresh");
+        let after = handover(false, Some(HardFight1), &mut before);
+        assert_eq!(next(CITY_SLOW, after, 0), Slow3);
+        assert_eq!(handover(true, Some(Slow3), &mut before), Some(Slow3), "same pool: the ended track");
     }
 
     #[test]

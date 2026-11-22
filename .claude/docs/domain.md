@@ -237,12 +237,13 @@ can't be read is never written.
 ## Music (`music.rs`, ADR 0007)
 All tracks are normalised to −16 LUFS (linear gain from the MP3 master, see Operational lessons for the
 command). One track at a time, chosen by screen: title + settings `menu_music`, City Run map `menu_music_alternative`,
-results `victory`, game over `loss`. In a stage the screen picks a **pool** and the
+results `victory`, game over `loss` (2, rotating). In a stage the screen picks a **pool** and the
 music walks through it: when a track ends the next one in the pool starts (no track twice in a row unless the
-pool has one). Classic stages 1–10 slow (2 tracks), 11–20 medium (2), 21–30 fast (4), by map so laps restart
-slow; City Run districts 1–3 slow+medium, 4–7 medium+fast 1–2, 8–10 fast. The stage number picks the opening
+pool has one). Classic stages 1–10 slow (4 tracks), 11–20 medium (5), 21–30 fast (6), by map so laps restart
+slow; City Run districts 1–3 slow + medium 1–2, 4–7 medium + fast 1–2, 8–10 fast. The stage number picks the opening
 track, so consecutive stages start differently. In City Run a live mini-boss switches to the `hardfight`
-pair, the boss to the `bossfight` pair, and back when it dies. the pause menu pauses the music. Jingles (stage start, game over)
+pair, the boss to the `bossfight` pair, and when it dies the stage pool goes on with the track after the one the
+fight interrupted (not back to its opener). The pause menu pauses the music. Jingles (stage start, game over)
 play over it.
 
 ## Achievements (`achieve/`, `ui/achievements.rs`, ADR 0017; list and rules in `achievements.md`)
@@ -329,6 +330,7 @@ same rules, each machine draws it and plays its own sound and rumble.
 | 10 fps on a TV-class GPU (Mali-G57), CPU idle | Bevy's default 4x MSAA + bloom passes at 1080p, each ~halving fps | `Msaa::Off` everywhere (sprites are pre-anti-aliased); bloom is `Platform::bloom`, off on such hosts: 56 fps |
 | Looping music would hold ~55 MB per song | rodio `repeat_infinite` buffers every decoded sample | play once (DESPAWN), respawn when it ends |
 | New track failed `every_track_decodes` (`UnrecognizedFormat`) | MP3 cover art became a Theora video stream in the .ogg | encode with `ffmpeg -i x.mp3 -map 0:a -vn -map_metadata -1 -af volume=<-16 − measured LUFS>dB -ar 44100 -c:a libvorbis -q:a 1 x.ogg` (measure with `-af loudnorm=print_format=json -f null -`) |
+| Stage music restarted from its pool's opener after a mini-boss died (owner) | a pool change started fresh, forgetting the track the fight cut in on | `music::handover` keeps it in `Music.before`, the stage pool goes on after it |
 | City Run enemy spun in place at the bottom of the view until culled | the scrolling view left it half outside, and the edge test blocked every move | the edges only stop a move further out (`tank::leaves_view`) |
 | City Run reinforcement stuck in a bastion wall, spinning | dropped into a turret's notch (open ground until the turret wakes), then the turret woke on top of it | drop spots skip pending spawns |
 | Turrets easy in co-op: one player beside the turret, the other shooting it from below | turret aimed along the longer axis at the nearest player, i.e. sideways into its own wall | `enemy::turret_dir`: up or down only |
