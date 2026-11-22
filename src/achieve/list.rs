@@ -97,7 +97,15 @@ pub const LIST: [Ach; 56] = [
     a(F, "bathroom_break", "Bathroom Break", "Pause 10 times in one stage.", true, 0, 5),
     a(F, "bullet_ballet", "Bullet Ballet", "Cancel 100 enemy shells with your own.", false, 100, 10),
     // The hint to the title's secret combo (`ui::title::COMBO`), so it stays visible.
-    a(F, "look_both_ways", "Look Both Ways", "On the title: look left, right, left again. Cross twice, then honk.", false, 0, 10),
+    a(
+        F,
+        "look_both_ways",
+        "Look Both Ways",
+        "Crossed a two-lane road the way Mum taught you, then honked. On the very first screen.",
+        false,
+        0,
+        10,
+    ),
 ];
 
 /// The groups in list order with their short tab label.
