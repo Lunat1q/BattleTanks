@@ -146,6 +146,15 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [x] In-stage achievement star (owner): a pixel-art gold star flies in from the screen's side onto the margin beside
   the field, swells, and bursts into pixel cubes with a chime (smoke `BT_FLYOUT=<secs>`)
 
+### M13 — Owner's stage reports (v0.7.6) ✅
+- [x] Classic power-ups drop only on open ground a player can drive to (one landed in steel, one in water)
+- [x] STAGE CLEAR / GAME OVER banner on a dark plate with a steel rim
+- [x] Stage 6 side lanes no longer end in pockets between steel and water; stage 17 pickets no longer leave the gap
+  over the base as the only way down
+- [x] No quick brick-free run from a top spawn to the backline (11 stages got a brick row)
+- [x] Tests for each rule over all 30 maps (`levels::tests`, `powerup::tests`)
+- [ ] Owner: feel of the changed stages in 1P
+
 ## Current state
 
 City Run added, released as v0.3.0 on GitHub: 10 districts, district map, smoke screenshots checked for the map, a district start, a

@@ -55,14 +55,16 @@ All numbers live in `src/rules.rs` unless noted.
 - Player and enemy bullets cancel each other (swept rectangles). Two players' bullets don't.
 
 ## Power-ups (one on the field; a new drop replaces the old; +500 points)
-Helmet (shield 10 s) · Clock (enemies freeze 10 s, tinted icy) · Shovel (steel base ring 20 s, blinks back to
+Classic drops land on open ground (no brick, steel or water) that a tank can reach from player 1's spawn without
+crossing steel or water (tested). Helmet (shield 10 s) · Clock (enemies freeze 10 s, tinted icy) · Shovel (steel base ring 20 s, blinks back to
 brick in the last 3 s) · Star (+1 level) · Grenade (destroys all enemies on the field, no points) · Tank (+1 life).
 
 ## Screen headings (`gfx/art_title.rs` `block_text`, `ui::Headings`)
 Every screen heading is built from terrain blocks like the logo, one 5x7 glyph pixel per 8-unit cell: CLASSIC brick,
 CITY RUN and HI SCORES steel, LAN CO-OP and WORLD BOARD water, ACHIEVEMENTS and NEW ACHIEVEMENTS gold, SETTINGS
 forest, PAUSED ice, GAME OVER brick. The stage banner (STAGE n / STAGE CLEAR) and the results heading are brick in
-classic and steel in City Run (DISTRICT n with the district's name under it). Water and trees are lifted brighter
+classic and steel in City Run (DISTRICT n with the district's name under it); in a stage they (and GAME OVER) sit on a dark
+plate with a steel rim, so they read over a busy field. Water and trees are lifted brighter
 than on the field so they read on black; the banner darkens the field more (85 % at the start, 55 % at the end) so a
 brick heading reads over bricks.
 
@@ -132,6 +134,13 @@ that exits straight into steel, and 1-cell (8-unit) open bands between obstacle 
 ring, usually a 4-cell bar a few rows above it, so no enemy can shoot the base straight down the centre; the base is
 open only from the sides (`levels::tests::centre_spawn_has_no_free_shot_at_the_base`). Leave 2 open cells between the
 bar and any steel/water row above it (tank height).
+**Side lanes (tested):** without shooting a brick, every way from a top spawn down to the bottom rows (a tank at cell
+row 2 or lower) is at least 30 cells long, straight down being 22, so a scout can't race down an open side lane
+(`no_quick_run_from_a_top_spawn_to_the_backline`); most stages put a brick row across the lower half for this.
+**No sealed centre (tested):** with map cols 11–14 walled in the lower half, both corner spawns still get round to a
+player spawn, so a player parked over the base can't hold every enemy off (`a_tank_in_the_centre_lane_cannot_seal_the_field`).
+**No pockets (tested):** walking out of any dead end (bricks open, spawns exempt) reaches a junction within 4 cells,
+so enemies don't dither in a long blind lane (`no_dead_end_pockets`).
 
 ## Controls
 | | Controller | Keyboard P1 | Keyboard P2 |
@@ -311,6 +320,11 @@ same rules, each machine draws it and plays its own sound and rumble.
 | Enemy killed the base from the centre spawn in 3 shots (stage 1 + 13 more) | open centre column, ring only 2 rows thick | centre-lane cover test over all stages |
 | Base needed a full-time guard: most stages had only 2 brick cells between the centre lane and the ring (owner) | brick roof falls in a few shots | steel bar over the ring on every stage, tested |
 | A SCOUT rushed in as stage 1's first enemy | roster shuffle can put any kind first | opening wave = 3 weakest, tested |
+| A power-up dropped inside steel, another in water (owner) | the classic drop spot ignored terrain | `powerup::classic_spot`: open ground reachable from player 1's spawn, tested on every stage |
+| STAGE CLEAR / GAME OVER hard to read in a stage (owner) | brick block letters straight over a dimmed, busy field | banner on a dark plate with a steel rim |
+| Stage 6: enemies stuck in the side lanes (owner) | the lanes ran from the top spawns into a corner between steel and water, 17 cells deep | ponds moved inward; `no_dead_end_pockets` |
+| Stage 17: a player in the centre lane over the base held off every enemy (owner) | steel pickets with 1-cell gaps; the only way down was the 2-cell gap over the base | wider gaps; `a_tank_in_the_centre_lane_cannot_seal_the_field` |
+| 1P: scouts raced down open side lanes to the base (owner; stages 1, 4, 5, 7, 10, 12, 16, 20-22, 24) | straight or 2-4-sidestep brick-free ways from the top spawns to the bottom | brick rows across the lower half; `no_quick_run_from_a_top_spawn_to_the_backline` |
 | Smoke runs blasted sound in the room | audio always on | audio plugin skips when `BT_SHOT` / `BT_MUTE` is set |
 | 10 fps on a TV-class GPU (Mali-G57), CPU idle | Bevy's default 4x MSAA + bloom passes at 1080p, each ~halving fps | `Msaa::Off` everywhere (sprites are pre-anti-aliased); bloom is `Platform::bloom`, off on such hosts: 56 fps |
 | Looping music would hold ~55 MB per song | rodio `repeat_infinite` buffers every decoded sample | play once (DESPAWN), respawn when it ends |

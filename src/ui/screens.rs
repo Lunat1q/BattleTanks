@@ -10,6 +10,9 @@ use crate::input::{DeviceIntents, Intent};
 /// The stage banner's block heading; holds the text it shows.
 #[derive(Component, Default)]
 struct Banner(String);
+/// The banner's backing plate; shown with the banner.
+#[derive(Component)]
+struct BannerPlate;
 /// The district's name under its banner.
 #[derive(Component)]
 struct BannerSub;
@@ -58,6 +61,22 @@ fn banner_head(phase: Phase, session: &Session) -> (String, Block) {
     (s, if phase == Phase::Lost { Block::Brick } else { m })
 }
 
+/// Dark plate with a steel rim behind the stage banner: a brick heading alone got lost over a busy field (owner).
+fn banner_plate() -> impl Bundle {
+    (
+        Node {
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            padding: UiRect::axes(vh(4.0), vh(2.4)),
+            border: UiRect::all(vh(0.8)),
+            ..default()
+        },
+        BackgroundColor(Color::srgba(0.03, 0.03, 0.05, 0.92)),
+        BorderColor::all(Color::srgb(0.66, 0.70, 0.78)),
+        Outline::new(vh(0.4), Val::ZERO, Color::srgb(0.24, 0.26, 0.31)),
+    )
+}
+
 fn spawn_overlays(mut commands: Commands, mut sel: ResMut<PauseSel>, session: Res<Session>, mut heads: Headings) {
     sel.0 = 0;
     // Painted now, so the stage's end doesn't stall a frame to paint its banner.
@@ -66,8 +85,10 @@ fn spawn_overlays(mut commands: Commands, mut sel: ResMut<PauseSel>, session: Re
         heads.image(&s, m);
     }
     commands.spawn(overlay(0.0)).with_children(|b| {
-        b.spawn((ImageNode::default(), Node { height: vh(9.0), ..default() }, Visibility::Hidden, Banner::default()));
-        b.spawn((text("", 4.6, INK), BannerSub));
+        b.spawn((banner_plate(), Visibility::Hidden, BannerPlate)).with_children(|p| {
+            p.spawn((ImageNode::default(), Node { height: vh(9.0), ..default() }, Banner::default()));
+            p.spawn((text("", 4.6, INK), BannerSub));
+        });
     });
     commands.spawn((overlay(0.65), PauseOverlay, Visibility::Hidden)).with_children(|p| {
         p.spawn(heads.node("PAUSED", Block::Ice, 8.0));
@@ -82,12 +103,14 @@ fn banner(
     run: Option<Res<StageRun>>,
     session: Res<Session>,
     mut heads: Headings,
-    mut q: Query<(&mut Banner, &mut ImageNode, &mut Visibility, &ChildOf)>,
+    mut q: Query<(&mut Banner, &mut ImageNode)>,
+    mut plate: Query<(&mut Visibility, &ChildOf), With<BannerPlate>>,
     mut sub: Query<&mut Text, With<BannerSub>>,
     mut bg: Query<&mut BackgroundColor>,
 ) {
     let Some(run) = run else { return };
-    let Ok((mut shown, mut img, mut vis, parent)) = q.single_mut() else { return };
+    let Ok((mut shown, mut img)) = q.single_mut() else { return };
+    let Ok((mut vis, parent)) = plate.single_mut() else { return };
     let (s, m) = banner_head(run.phase, &session);
     if shown.0 != s {
         if !s.is_empty() {

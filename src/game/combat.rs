@@ -173,7 +173,7 @@ pub fn resolve_hits(
         match (tank.team, hit.by, enemy) {
             (Team::Enemy, Team::Player(p), Some(mut enemy)) => {
                 let drop_power = |commands: &mut Commands, rng: &mut Rng, sfx: &mut MessageWriter<Sfx>| {
-                    powerup::spawn_random(commands, rng, &powerups, sfx, view.bottom, city.then_some(&*terrain));
+                    powerup::spawn_random(commands, rng, &powerups, sfx, view.bottom, &terrain, city);
                 };
                 if enemy.bonus {
                     enemy.bonus = false;

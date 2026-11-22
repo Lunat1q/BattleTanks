@@ -1,7 +1,8 @@
 //! Power-ups: dropped by flashing enemies, picked up by players. Only one on the field at a time.
 
 use super::*;
-use crate::geom::{CELL, TILE, overlaps, rect_at};
+use crate::geom::{CELL, CELLS, TILE, overlaps, rect_at};
+use crate::levels;
 use crate::rng::Rng;
 use crate::terrain::{Terrain, Tile};
 
@@ -15,26 +16,39 @@ pub fn random_spot(rng: &mut Rng) -> Vec2 {
     }
 }
 
+/// A classic drop spot a player can drive onto: no brick, steel or water under it, and reachable from player 1's
+/// spawn without crossing steel or water. Regression (owner): drops landed inside steel and in water.
+pub fn classic_spot(rng: &mut Rng, ter: &Terrain) -> Vec2 {
+    let reach = levels::steps(ter, (8, 0), levels::hard_wall);
+    let ok = |p: Vec2| {
+        let (x, y) = ((p.x / CELL) as usize - 1, (p.y / CELL) as usize - 1);
+        !ter.blocks_tank(rect_at(p, TILE)) && reach[y * CELLS + x].is_some()
+    };
+    // ponytail: 100 tries, then player 1's spawn (always open); a field that is nearly all wall would want a scan.
+    (0..100).map(|_| random_spot(rng)).find(|&p| ok(p)).unwrap_or(Vec2::new(72.0, 8.0))
+}
+
 /// City Run has no base, so no shovel.
 const CITY_POWERS: [rules::PowerKind; 5] =
     [rules::PowerKind::Helmet, rules::PowerKind::Clock, rules::PowerKind::Star, rules::PowerKind::Grenade, rules::PowerKind::Tank];
 
-/// Drops a power-up in the view, replacing the last drop (stashes stay) (`bottom` up). `city`: City Run terrain, so the drop lands where a tank can drive.
+/// Drops a power-up in the view, replacing the last drop (stashes stay) (`bottom` up), where a tank can drive.
 pub fn spawn_random(
     commands: &mut Commands,
     rng: &mut Rng,
     existing: &Query<Entity, (With<PowerUp>, Without<Stash>)>,
     sfx: &mut MessageWriter<Sfx>,
     bottom: f32,
-    city: Option<&Terrain>,
+    ter: &Terrain,
+    city: bool,
 ) {
     for e in existing {
         commands.entity(e).try_despawn();
     }
     let lift = Vec2::new(0.0, (bottom / CELL).ceil() * CELL);
     let (kind, pos) = match city {
-        None => (rng.pick(&rules::PowerKind::ALL), random_spot(rng) + lift),
-        Some(ter) => {
+        false => (rng.pick(&rules::PowerKind::ALL), classic_spot(rng, ter)),
+        true => {
             // ponytail: 40 random tries, then the view centre; fine for maps that aren't mostly wall.
             let open = (0..40).map(|_| random_spot(rng) + lift).find(|&p| !ter.blocks_tank(rect_at(p, TILE)));
             (rng.pick(&CITY_POWERS), open.unwrap_or(lift + Vec2::splat(104.0)))
@@ -131,5 +145,25 @@ mod tests {
             assert!((16.0..=192.0).contains(&p.x) && (16.0..=192.0).contains(&p.y), "{p}");
             assert!(!(p.y < 40.0 && (72.0..136.0).contains(&p.x)), "{p}");
         }
+    }
+
+    #[test]
+    fn classic_drops_land_where_a_player_can_drive() {
+        let reach_of = |ter: &Terrain| levels::steps(ter, (8, 0), levels::hard_wall);
+        let fine = |ter: &Terrain, reach: &[Option<u32>], p: Vec2| {
+            !ter.blocks_tank(rect_at(p, TILE)) && reach[(p.y / CELL) as usize * CELLS - CELLS + (p.x / CELL) as usize - 1].is_some()
+        };
+        let mut rng = Rng::new(11);
+        let mut old_misses = 0;
+        for n in 1..=levels::stage_count() {
+            let ter = levels::load(n).terrain;
+            let reach = reach_of(&ter);
+            for _ in 0..300 {
+                let p = classic_spot(&mut rng, &ter);
+                assert!(fine(&ter, &reach, p), "stage {n}: drop at {p} is walled in or blocked");
+                old_misses += usize::from(!fine(&ter, &reach, random_spot(&mut rng)));
+            }
+        }
+        assert!(old_misses > 0, "the plain picker should hit steel/water somewhere, or this test proves nothing");
     }
 }

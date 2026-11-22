@@ -120,6 +120,42 @@ pub fn parse(src: &str) -> Result<(Terrain, [usize; 4]), String> {
     Ok((ter, counts.ok_or("missing `enemies` line")?))
 }
 
+/// Steel and water: what a tank can never get through (bricks can be shot away).
+pub fn hard_wall(_: usize, _: usize, t: Tile) -> bool {
+    matches!(t, Tile::Steel | Tile::Water)
+}
+
+/// A 16x16 tank fits with its bottom-left at 8-unit cell `(x, y)`; `wall(cx, cy, tile)` says which cells it can't enter.
+pub fn fits(ter: &Terrain, x: usize, y: usize, wall: &impl Fn(usize, usize, Tile) -> bool) -> bool {
+    let open = |cx: usize, cy: usize| (0..2).all(|dx| (0..2).all(|dy| !wall(cx, cy, ter.get(cx * 2 + dx, cy * 2 + dy))));
+    x < CELLS - 1 && y < CELLS - 1 && (0..2).all(|dx| (0..2).all(|dy| open(x + dx, y + dy)))
+}
+
+/// The four cells next to `(x, y)` (fewer at the field's low edges).
+pub fn neighbours(x: usize, y: usize) -> impl Iterator<Item = (usize, usize)> {
+    [(x + 1, y), (x, y + 1)].into_iter().chain(x.checked_sub(1).map(|x| (x, y))).chain(y.checked_sub(1).map(|y| (x, y)))
+}
+
+/// Tank-sized breadth-first fill over cells from `from`: steps to each cell (`y * CELLS + x`), `None` where it can't get.
+pub fn steps(ter: &Terrain, from: (usize, usize), wall: impl Fn(usize, usize, Tile) -> bool) -> Vec<Option<u32>> {
+    let mut dist = vec![None; CELLS * CELLS];
+    if !fits(ter, from.0, from.1, &wall) {
+        return dist;
+    }
+    dist[from.1 * CELLS + from.0] = Some(0);
+    let mut todo = std::collections::VecDeque::from([from]);
+    while let Some((x, y)) = todo.pop_front() {
+        let d = dist[y * CELLS + x].map(|d| d + 1);
+        for (nx, ny) in neighbours(x, y) {
+            if dist[ny * CELLS + nx].is_none() && fits(ter, nx, ny, &wall) {
+                dist[ny * CELLS + nx] = d;
+                todo.push_back((nx, ny));
+            }
+        }
+    }
+    dist
+}
+
 pub fn stage_count() -> usize {
     STAGES.len()
 }
@@ -154,25 +190,17 @@ mod tests {
     use super::*;
     use crate::geom::CELLS;
 
-    /// Tank-sized flood fill over 8-unit cells (position = bottom-left cell of a 2x2 tank).
-    /// Bricks count as open (they can be shot away); steel and water don't.
     fn reachable(ter: &Terrain, from: (usize, usize)) -> Vec<bool> {
-        let open = |cx: usize, cy: usize| {
-            (0..2).all(|dx| (0..2).all(|dy| !matches!(ter.get(cx * 2 + dx, cy * 2 + dy), Tile::Steel | Tile::Water)))
-        };
-        let fits = |x: usize, y: usize| x < CELLS - 1 && y < CELLS - 1 && (0..2).all(|dx| (0..2).all(|dy| open(x + dx, y + dy)));
-        let mut seen = vec![false; CELLS * CELLS];
-        let mut todo = vec![from];
-        while let Some((x, y)) = todo.pop() {
-            if !fits(x, y) || std::mem::replace(&mut seen[y * CELLS + x], true) {
-                continue;
-            }
-            todo.extend([(x + 1, y), (x, y + 1)]);
-            todo.extend(x.checked_sub(1).map(|x| (x, y)));
-            todo.extend(y.checked_sub(1).map(|y| (x, y)));
-        }
-        seen
+        steps(ter, from, hard_wall).iter().map(Option::is_some).collect()
     }
+
+    fn stages() -> impl Iterator<Item = (String, Terrain)> {
+        STAGES.iter().enumerate().map(|(i, src)| (format!("levels/{:02}.txt", i + 1), parse(src).unwrap().0))
+    }
+
+    /// Enemy spawn cells (top-left, centre, top-right) and player spawn cells.
+    const TOP: [(usize, usize); 3] = [(0, 24), (12, 24), (24, 24)];
+    const PLAYERS: [(usize, usize); 2] = [(8, 0), (16, 0)];
 
     #[test]
     fn every_spawn_can_reach_the_base() {
@@ -203,6 +231,62 @@ mod tests {
             .map(|(i, _)| format!("levels/{:02}.txt", i + 1))
             .collect();
         assert!(open.is_empty(), "no steel roof over the base ring: {open:?}");
+    }
+
+    #[test]
+    fn no_quick_run_from_a_top_spawn_to_the_backline() {
+        // Regression (owner): stages 5, 7, 21, 24 had open lanes down the sides, others a zigzag of 2-4 sidesteps,
+        // so in 1P a scout reached the base's row before the player could turn round. Without shooting a brick,
+        // the way from a top spawn to the bottom rows (tank at cell row 2 or lower) is at least MIN_RUN cells;
+        // straight down is 22.
+        const MIN_RUN: u32 = 30;
+        let no_bricks = |cx, cy, t| hard_wall(cx, cy, t) || t == Tile::Brick;
+        for (name, ter) in stages() {
+            for spawn in TOP {
+                let d = steps(&ter, spawn, no_bricks);
+                let run = d[..3 * CELLS].iter().flatten().min();
+                assert!(run.is_none_or(|&r| r >= MIN_RUN), "{name}: brick-free run of {run:?} cells from {spawn:?} to the backline");
+            }
+        }
+    }
+
+    #[test]
+    fn a_tank_in_the_centre_lane_cannot_seal_the_field() {
+        // Regression (owner): stage 17's steel pickets left one gap, over the base, so a player parked there
+        // shooting up held off every enemy. With map cols 11-14 walled in the lower half (cell rows 0-12), the
+        // corner spawns still get round to a player spawn.
+        let centre = |cx, cy, t| hard_wall(cx, cy, t) || ((11..=14).contains(&cx) && cy <= 12);
+        for (name, ter) in stages() {
+            for spawn in [TOP[0], TOP[2]] {
+                let d = steps(&ter, spawn, centre);
+                assert!(PLAYERS.iter().any(|&(x, y)| d[y * CELLS + x].is_some()), "{name}: centre lane seals {spawn:?} off");
+            }
+        }
+    }
+
+    #[test]
+    fn no_dead_end_pockets() {
+        // Regression (owner): stage 6's side lanes ran from the top spawns down into a corner between steel and
+        // water (17 cells, only way out back up), and enemies dithered there. Walking out of any dead end (a spot
+        // with one way out) reaches a junction within MAX_DEPTH cells. Bricks count as open; a spawn may sit in one.
+        const MAX_DEPTH: usize = 4;
+        for (name, ter) in stages() {
+            let fit = |x: usize, y: usize| fits(&ter, x, y, &hard_wall);
+            let ways = |(x, y): (usize, usize)| neighbours(x, y).filter(|&(x, y)| fit(x, y)).collect::<Vec<_>>();
+            for (x, y) in (0..CELLS).flat_map(|x| (0..CELLS).map(move |y| (x, y))) {
+                if !fit(x, y) || ways((x, y)).len() > 1 || TOP.contains(&(x, y)) {
+                    continue;
+                }
+                let (mut prev, mut cur, mut depth) = ((x, y), (x, y), 0);
+                while let [next] = ways(cur).into_iter().filter(|&c| c != prev).collect::<Vec<_>>()[..] {
+                    (prev, cur, depth) = (cur, next, depth + 1);
+                    if ways(cur).len() > 2 {
+                        break;
+                    }
+                }
+                assert!(depth <= MAX_DEPTH, "{name}: dead end at cell {:?} is {depth} cells deep", (x, y));
+            }
+        }
     }
 
     #[test]
