@@ -1,6 +1,6 @@
 # Achievements (ADR 0017, `src/achieve/`)
 
-55 achievements, 940 points (Play Games caps a game at 1000; points are multiples of 5). `key` is stable: it names
+56 achievements, 950 points (Play Games caps a game at 1000; points are multiples of 5). `key` is stable: it names
 the host's id (on Android `R.string.achievement_<key>`) and the line in `achievements.txt`, so never rename one.
 Counters show progress (`steps`); the rest unlock once. Hidden ones show as `???` until unlocked.
 
@@ -91,3 +91,4 @@ Common rules:
 | `ff_enthusiast` | Friendly Fire Enthusiast | Stun your partner 10 times in one stage. | | | 5 |
 | `bathroom_break` | Bathroom Break | Pause 10 times in one stage. | yes | | 5 |
 | `bullet_ballet` | Bullet Ballet | Cancel 100 enemy shells with your own. | | 100 | 10 |
+| `look_both_ways` | Look Both Ways | On the title: look left, right, left again. Cross twice, then honk. | | | 10 |

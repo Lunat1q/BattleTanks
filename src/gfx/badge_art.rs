@@ -402,6 +402,19 @@ fn fun(key: &str, c: &mut Canvas) -> &'static str {
             burst(c, v(0.0, 0.0), 7.0, WHITE, rgb(1.0, 0.92, 0.5));
             "100"
         }
+        "look_both_ways" => {
+            // A zebra crossing under a double-headed arrow.
+            c.paint(|p| sd_box(p, v(0.0, -5.0), v(10.5, 5.0)), flat(rgb(0.24, 0.24, 0.27)));
+            for x in [-7.5, -2.5, 2.5, 7.5] {
+                c.paint(|p| sd_box(p, v(x, -5.0), v(1.5, 4.0)), toon(WHITE, v(x, -5.0), 4.0));
+            }
+            let arrow = |p: Vec2| {
+                let heads = [-1.0, 1.0].map(|s| sd_poly(p, &[v(s * 10.5, 6.5), v(s * 5.0, 11.0), v(s * 5.0, 2.0)]));
+                sd_box(p, v(0.0, 6.5), v(6.0, 1.4)).min(heads[0]).min(heads[1])
+            };
+            c.paint(arrow, toon(GOLD, v(0.0, 6.5), 5.0));
+            ""
+        }
         _ => badge_city::draw(key, c),
     }
 }

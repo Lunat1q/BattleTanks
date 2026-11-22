@@ -161,6 +161,12 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [x] Owner's new tracks: slow 3-4, medium 3-5, fast 5-6, loss 2 (normalised to -16 LUFS); loss rotates
 - [x] After a mini-boss or boss dies the stage music goes on with the next track, not its pool's opener (owner)
 
+### M15 — Secret bunker (v0.7.9) ✅
+- [x] Title combo left, right, left, up, up, A (D-pad + A: remotes and touch can do it) → BUNKER: CHANGELOG
+  (`CHANGELOG.md`, versions 0.1.0-0.7.9), OST jukebox (24 named tracks, plays on down the list), SOUND TEST
+- [x] Achievement Look Both Ways (10 pts, 950 in all; its description is the riddle), road-crossing badge
+- [ ] Owner: rename OST tracks if the names don't fit (`music::NAMES`); import the new achievement in Play Console
+
 ## Current state
 
 City Run added, released as v0.3.0 on GitHub: 10 districts, district map, smoke screenshots checked for the map, a district start, a

@@ -40,10 +40,43 @@ pub enum Track {
 
 use Track::*;
 
-const ALL: [Track; 24] = [
+pub static ALL: [Track; 24] = [
     Menu, MenuAlt, Slow1, Slow2, Slow3, Slow4, Medium1, Medium2, Medium3, Medium4, Medium5, Fast1, Fast2, Fast3, Fast4, Fast5, Fast6,
     HardFight1, HardFight2, BossFight1, BossFight2, Victory, Loss1, Loss2,
 ];
+
+/// OST names for the bunker's jukebox, in `ALL` order: (name, where it plays). Ours to rename.
+pub const NAMES: [(&str, &str); 24] = [
+    ("ROLL CALL", "title"),
+    ("CITY LIGHTS", "district map"),
+    ("MORNING PATROL", "stages 1-10"),
+    ("BRICK BY BRICK", "stages 1-10"),
+    ("DUG IN", "stages 1-10"),
+    ("FOG OF WAR", "stages 1-10"),
+    ("ADVANCE", "stages 11-20"),
+    ("CROSSFIRE", "stages 11-20"),
+    ("STEEL RAIN", "stages 11-20"),
+    ("FLANK LEFT", "stages 11-20"),
+    ("HOLD THE LINE", "stages 11-20"),
+    ("FULL THROTTLE", "stages 21-30"),
+    ("OVERHEAT", "stages 21-30"),
+    ("BREAKTHROUGH", "stages 21-30"),
+    ("BLITZ", "stages 21-30"),
+    ("NO BRAKES", "stages 21-30"),
+    ("RED LINE", "stages 21-30"),
+    ("HEAVY METAL", "mini-boss"),
+    ("ARMOUR PIERCING", "mini-boss"),
+    ("THE BIG ONE", "district boss"),
+    ("LAST BASTION", "district boss"),
+    ("STAGE CLEAR", "results"),
+    ("BASE DOWN", "game over"),
+    ("SCRAP HEAP", "game over"),
+];
+
+/// The bunker's jukebox pick (`ALL` index): plays instead of the screen's pool while the bunker is open, then the
+/// next track of the OST when it ends.
+#[derive(Resource, Default)]
+pub struct Jukebox(pub Option<usize>);
 
 // Pools a screen rotates through: when a track ends the next one in its pool starts.
 const SLOW: &[Track] = &[Slow1, Slow2, Slow3, Slow4];
@@ -98,7 +131,9 @@ pub enum Fight {
 pub fn pick(screen: Screen, mode: Mode, stage: usize, fight: Fight) -> &'static [Track] {
     let n = stage.max(1) - 1;
     match screen {
-        Screen::Title | Screen::StageSelect | Screen::Settings | Screen::HiScores | Screen::Lan | Screen::Achievements => &[Menu],
+        Screen::Title | Screen::StageSelect | Screen::Settings | Screen::HiScores | Screen::Lan | Screen::Achievements | Screen::Bunker => {
+            &[Menu]
+        }
         Screen::CityMap => &[MenuAlt],
         Screen::Results | Screen::Unlocks => &[Victory],
         Screen::GameOver => LOSS,
@@ -142,7 +177,8 @@ struct Music {
 }
 
 pub fn plugin(app: &mut App) {
-    // Same mute rule as the sound effects (smoke runs, `BT_MUTE=1`).
+    // Same mute rule as the sound effects (smoke runs, `BT_MUTE=1`); the bunker still needs its pick.
+    app.init_resource::<Jukebox>();
     if std::env::var_os("BT_SHOT").is_some() || std::env::var_os("BT_MUTE").is_some() {
         return;
     }
@@ -161,15 +197,25 @@ fn switch(
     session: Res<Session>,
     settings: Res<Settings>,
     enemies: Query<&Enemy>,
+    mut jukebox: ResMut<Jukebox>,
 ) {
     let fight = enemies.iter().fold(Fight::None, |f, e| match e.rank {
         Rank::Boss => Fight::Boss,
         Rank::Mini if f == Fight::None => Fight::Mini,
         _ => f,
     });
-    let want = (settings.music > 0).then(|| pick(*screen.get(), session.mode, session.stage, fight));
     // A finished track despawns itself (DESPAWN, not LOOP: looping buffers the whole decoded song in RAM).
     let alive = music.playing.is_some_and(|(.., e)| commands.get_entity(e).is_ok());
+    if !alive
+        && let (Some(i), Some((_, t, _))) = (jukebox.0, music.playing)
+        && t == ALL[i]
+    {
+        jukebox.0 = Some((i + 1) % ALL.len());
+    }
+    let want = (settings.music > 0).then(|| match jukebox.0 {
+        Some(i) if *screen.get() == Screen::Bunker => std::slice::from_ref(&ALL[i]),
+        _ => pick(*screen.get(), session.mode, session.stage, fight),
+    });
     let same_pool = music.playing.map(|(p, ..)| p) == want;
     if alive && same_pool {
         return;

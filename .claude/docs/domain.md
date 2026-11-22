@@ -78,6 +78,14 @@ brick heading reads over bricks.
   - Empty card: a dim tank and a blinking "PRESS A TO JOIN" ("or Space / Enter" on hosts with a keyboard). When a pad
     is on but in no slot, the card says "CONTROLLER FOUND".
   - Joined card: the device ("CONTROLLER", "KEYS WASD", or the machine's name over LAN) and "READY   B leave".
+- **Secret bunker** (offline only): on the title press left, right, left, up, up, A ("look left, right, left again,
+  cross twice, honk": D-pad + A only, so a TV remote and the touch controls can do it; no B, which leaves a slot or
+  quits a TV app from here). Any devices' presses count, in order; the A that finishes it neither joins nor picks a
+  menu item. It opens the BUNKER (steel heading), three tabs, left/right to switch, B back:
+  CHANGELOG (`CHANGELOG.md`, up/down scrolls), OST (all 24 tracks with a name and where they play; A plays one, then
+  the next down the list when it ends; leaving gives the screen its own music back; follows the MUSIC volume, at 0 it
+  says so) and SOUND TEST (every sound effect, A plays). Getting in unlocks Look Both Ways (FUN), whose description
+  is the combo's riddle, so the achievement list is the hint.
 - Under the menu: the local hi score and the controls. The pad line is always shown; the keys line only with
   `Platform::keyboard`.
 
@@ -249,7 +257,7 @@ play over it.
 
 ## Achievements (`achieve/`, `ui/achievements.rs`, ADR 0017; list and rules in `achievements.md`)
 Only on hosts with `Platform::achieve` (Android: Play Games); the exe has none (no tracking, no menu).
-- 55 entries in six groups. Counters (kills, HEAVY kills, bosses, turrets, cancelled shells) show `n / target`;
+- 56 entries in six groups. Counters (kills, HEAVY kills, bosses, turrets, cancelled shells) show `n / target`;
   hidden ones show `???` until unlocked. Only this device's players count: on a couch both slots, over LAN only
   this machine's. A streak (kills since the last lost tank) and "in one run" counts end with the run: a classic run
   from the title, or one district try. "Without losing a tank" needs the player still in at the clear.
@@ -264,7 +272,7 @@ Only on hosts with `Platform::achieve` (Android: Play Games); the exe has none (
 - **In a stage**, each unlock sends a pixel-art gold star in from the screen's side onto the dark margin beside the
   field (right first, then left; more pairs a little lower, then higher); it swells, then bursts into gold pixel cubes
   with a chime. The run summary still comes after the stage.
-- Title → ACHIEVEMENTS: points earned (of 940) and `N / 55`; a tab per group with its count (CLASSIC, DUO, CITY,
+- Title → ACHIEVEMENTS: points earned (of 950) and `N / 56`; a tab per group with its count (CLASSIC, DUO, CITY,
   CITY+, COMBAT, FUN); 7 rows per page, each with the badge, name, description and points (gold gem). Unlocked rows
   are gold with a gold edge; counters still running show `n / target` and a progress bar; hidden ones `???`.
   Left/right tab, up/down scroll (scrollbar on the right), B back.

@@ -124,7 +124,7 @@ fn recipe(s: Sfx) -> Vec<(f32, Voice)> {
     }
 }
 
-const ALL: [Sfx; 17] = [
+pub(crate) const ALL: [Sfx; 17] = [
     Sfx::Shoot,
     Sfx::Brick,
     Sfx::Steel,

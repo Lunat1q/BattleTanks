@@ -1,6 +1,6 @@
 //! Title: players join by pressing A (or Space / Enter) on a card, player 1 left of the menu, player 2 right; B leaves
 //! a slot.
-//! CLASSIC goes to the stage tiles, CITY RUN to the district map.
+//! CLASSIC goes to the stage tiles, CITY RUN to the district map. `COMBO` opens the secret bunker.
 
 use super::*;
 use crate::game::{Mode, Screen, Session, Sfx, Slot};
@@ -12,6 +12,28 @@ use crate::net::Net;
 #[derive(Resource, Default)]
 pub(crate) struct TitleMenu {
     pub(crate) sel: usize,
+    /// The last presses, for `COMBO`.
+    combo: Vec<Key>,
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Key {
+    Go(Dir),
+    A,
+}
+
+/// Road safety for tanks: look left, right, left again, cross (up, up), honk (A). D-pad and A only, so a TV remote
+/// and the touch controls can do it too; no B, which leaves a slot or (TV) quits from here. The moves are harmless
+/// on the title (left/right do nothing, up moves the cursor) and the A that finishes it doesn't join or pick.
+const COMBO: [Key; 6] = [Key::Go(Dir::Left), Key::Go(Dir::Right), Key::Go(Dir::Left), Key::Go(Dir::Up), Key::Go(Dir::Up), Key::A];
+
+/// Remembers `k`; true when the last presses spell `COMBO`.
+fn combo(keys: &mut Vec<Key>, k: Key) -> bool {
+    keys.push(k);
+    if keys.len() > COMBO.len() {
+        keys.remove(0);
+    }
+    keys[..] == COMBO
 }
 
 /// Player card `n`: its frame and its two text lines.
@@ -190,6 +212,17 @@ fn input(
     let items = items(net.linked(), &platform);
     let n = items.len();
     menu.sel = menu.sel.min(n - 1);
+    // Offline only: a linked pair changes screens together.
+    if !net.linked() {
+        let presses = devices.0.iter().flat_map(|(_, i)| i.nav.map(Key::Go).into_iter().chain(i.confirm.then_some(Key::A)));
+        let presses: Vec<Key> = presses.collect();
+        if presses.into_iter().any(|k| combo(&mut menu.combo, k)) {
+            menu.combo.clear();
+            sfx.write(Sfx::ExtraLife);
+            next.set(Screen::Bunker);
+            return;
+        }
+    }
     let joined: Vec<Device> = session.slots.iter().flatten().map(|s| s.device).collect();
     let mut nav = Intent::default();
     for &(dev, intent) in &devices.0 {
@@ -384,6 +417,22 @@ mod tests {
         assert_eq!(items(false, &all).len(), 7, "the longest menu");
         assert_eq!(items(true, &all), vec![Item::Classic, Item::City, Item::Leave]);
         assert!(!items(false, &crate::Platform { lan: None, ..default() }).contains(&Item::Lan));
+    }
+
+    #[test]
+    fn the_combo_opens_on_its_last_press_only() {
+        use Key::*;
+        let mut keys = Vec::new();
+        let feed = |keys: &mut Vec<Key>, ks: &[Key]| ks.iter().map(|&k| combo(keys, k)).collect::<Vec<_>>();
+        assert_eq!(feed(&mut keys, &COMBO), [false, false, false, false, false, true]);
+        keys.clear();
+        // A false start that overlaps the real one: the last six still count.
+        let l = Go(Dir::Left);
+        let r = Go(Dir::Right);
+        let u = Go(Dir::Up);
+        assert!(*feed(&mut keys, &[l, r, l, r, l, u, u, A]).last().unwrap());
+        keys.clear();
+        assert!(!feed(&mut keys, &[l, r, l, u, Go(Dir::Down), u, A]).contains(&true));
     }
 
     #[test]

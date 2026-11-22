@@ -38,6 +38,8 @@ pub enum Screen {
     Achievements,
     /// NEW ACHIEVEMENTS after a run that unlocked some, before the world board.
     Unlocks,
+    /// The secret bunker (a button combo on the title): changelog, jukebox, sound test.
+    Bunker,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]

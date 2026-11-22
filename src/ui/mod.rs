@@ -3,6 +3,7 @@
 mod achievements;
 mod badge_rows;
 mod board;
+mod bunker;
 mod city_map;
 mod hiscores;
 mod hud;
@@ -39,6 +40,7 @@ pub fn plugin(app: &mut App) {
         achievements::plugin,
         unlocks::plugin,
         stages::plugin,
+        bunker::plugin,
     ));
 }
 

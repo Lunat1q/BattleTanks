@@ -1,4 +1,4 @@
-//! The 55 achievements (`.claude/docs/achievements.md`). `key` is permanent: it names the host's id and the line in
+//! The 56 achievements (`.claude/docs/achievements.md`). `key` is permanent: it names the host's id and the line in
 //! `achievements.txt`, and Play Games can't delete a published one.
 
 pub struct Ach {
@@ -9,7 +9,7 @@ pub struct Ach {
     pub hidden: bool,
     /// Counter target; 0 = unlocks once.
     pub steps: u32,
-    /// Play Games points (multiples of 5, 940 in all).
+    /// Play Games points (multiples of 5, 950 in all).
     pub pts: u32,
 }
 
@@ -24,7 +24,7 @@ const M: &str = "City Run: more";
 const K: &str = "Kills, streaks, score, power-ups";
 const F: &str = "Just for fun";
 
-pub const LIST: [Ach; 55] = [
+pub const LIST: [Ach; 56] = [
     a(C, "first_blood", "First Blood", "Destroy your first enemy tank.", false, 0, 5),
     a(C, "stage_1", "Rookie", "Clear stage 1.", false, 0, 5),
     a(C, "stage_10", "Veteran", "Clear stage 10.", false, 0, 10),
@@ -96,6 +96,8 @@ pub const LIST: [Ach; 55] = [
     a(F, "ff_enthusiast", "Friendly Fire Enthusiast", "Stun your partner 10 times in one stage.", false, 0, 5),
     a(F, "bathroom_break", "Bathroom Break", "Pause 10 times in one stage.", true, 0, 5),
     a(F, "bullet_ballet", "Bullet Ballet", "Cancel 100 enemy shells with your own.", false, 100, 10),
+    // The hint to the title's secret combo (`ui::title::COMBO`), so it stays visible.
+    a(F, "look_both_ways", "Look Both Ways", "On the title: look left, right, left again. Cross twice, then honk.", false, 0, 10),
 ];
 
 /// The groups in list order with their short tab label.
@@ -123,6 +125,6 @@ mod tests {
             assert!(x.pts > 0 && x.pts % 5 == 0, "{}", x.key);
             assert!(TABS.iter().any(|t| t.0 == x.group), "{}", x.key);
         }
-        assert_eq!(total_pts(), 940, "Play Games allows 1000 per game");
+        assert_eq!(total_pts(), 950, "Play Games allows 1000 per game");
     }
 }
