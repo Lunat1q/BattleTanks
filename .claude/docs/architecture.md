@@ -68,7 +68,8 @@ src/
                       # (rules::boss_kit): echo, brick ring (pure ring), rage, marked lines (pure marked)
     combat.rs         # fly_bullets (sub-steps: tanks, bases, terrain; bullet-vs-bullet) -> Hit; resolve_hits;
                       # can_hit / opposing / hurts_base by side in VERSUS (pure)
-    versus.rs         # VERSUS (ADR 0019): base + spawn spots per side, Match (round wins), outcome (pure), slot reset
+    versus.rs         # VERSUS (ADR 0019, 0020): base + spawn spots per side, Match (round wins), outcome (pure), slot reset,
+                      # lost_tank (growing wait) + respawn (in Sim after borrow_life)
     powerup.rs        # drop on a bonus carrier's kill (drops pile up), pickup effects
   gfx/
     mod.rs            # Gfx handles (built at plugin time), colours, z layers, camera (FixedVertical 224) + bloom
@@ -131,7 +132,7 @@ Update          ├─ title / pause / results / game-over menus read DeviceInte
                 ├─ stage: watch_controllers ─▶ pause_when_away ─▶ toggle_pause ─▶ advance_phase (Intro→Play, Won/Lost→next Screen)
                 │
                 └─ Sim (only: Screen::Stage, !Paused, phase != Intro), chained:
-                   spawn_enemies ─▶ tick_timers ─▶ [city: scroll ─▶ wake ─▶ reinforce ─▶ watch ─▶ cull] ─▶ borrow_life ─▶ player_control ─▶ enemy::think ─▶ boss::act ─▶ drive ─▶ fire
+                   spawn_enemies ─▶ tick_timers ─▶ [city: scroll ─▶ wake ─▶ reinforce ─▶ watch ─▶ cull] ─▶ borrow_life ─▶ versus::respawn ─▶ player_control ─▶ enemy::think ─▶ boss::act ─▶ drive ─▶ fire
                    ─▶ fly_bullets ──Hit──▶ resolve_hits ─▶ powerup::pickup ─▶ check_end      (all write Feat ──▶ achieve::track)
                          │  │                    │
                          │  └── Terrain.dirty ───┼──────────────▶ gfx::world::sync_terrain (spawn/despawn chips)

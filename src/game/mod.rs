@@ -78,6 +78,8 @@ pub struct Slot {
     pub big: [u32; 3],
     /// VERSUS: the other player's tanks destroyed this round.
     pub frags: u32,
+    /// VERSUS: own tanks lost this round; sets the respawn wait (`rules::versus_respawn`).
+    pub deaths: u32,
 }
 
 impl Slot {
@@ -93,6 +95,7 @@ impl Slot {
             pickups: 0,
             big: [0; 3],
             frags: 0,
+            deaths: 0,
         }
     }
 }
@@ -454,6 +457,7 @@ pub fn plugin(app: &mut App) {
                 stage::spawn_enemies,
                 stage::tick_timers,
                 stage::borrow_life,
+                versus::respawn,
                 tank::player_control,
                 enemy::think,
                 boss::act,

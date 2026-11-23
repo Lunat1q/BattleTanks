@@ -68,7 +68,7 @@ fn setup(
         (super::city::setup(&mut commands, &mut session), Vec::new())
     } else if session.mode == Mode::Versus {
         commands.remove_resource::<super::city::CityRun>();
-        super::versus::reset_slots(&mut session, settings.easy_mode);
+        super::versus::reset_slots(&mut session);
         for (side, at) in super::versus::BASES.into_iter().enumerate() {
             commands.spawn((Base(side), Transform::from_translation(at.extend(0.0)), DespawnOnExit(Screen::Stage)));
         }
@@ -307,8 +307,7 @@ pub fn check_end(
         return;
     }
     if session.mode == Mode::Versus {
-        let out = [0, 1].map(|i| session.slots[i].as_ref().is_none_or(|s| s.out));
-        if let Some(winner) = super::versus::outcome(run.base_alive, out) {
+        if let Some(winner) = super::versus::outcome(run.base_alive) {
             run.phase = Phase::Won;
             run.timer = rules::END_DELAY;
             duel.last = winner;

@@ -189,7 +189,9 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [x] V1 plain duel: `Mode::Versus`, two bases (top base = rotated bottom one), `Team::side`, side hit rules, round
   end, results; 3 hand-drawn point-symmetric maps; title VERSUS with two players joined (offline only until V5).
   Smoke: `BT_VERSUS=<map>`, `BT_SCREEN=versus`; rounds walk the maps in turn until V3's setup screen
-- [ ] Owner: a couch duel (map feel, 3 tanks enough?)
+- [x] Owner: no tank limit, a growing respawn wait instead (1, 3, 5, 7, 10, 15 s, +5 s up to 30 s); a round ends
+  only on a base (ADR 0020)
+- [ ] Owner: a couch duel (map feel, respawn waits)
 - [ ] V2 NPC armies: costs (LIGHT 1, SCOUT 2, GUNNER 3, HEAVY 5), budget 20 with an auto mix, spawn cadence, NPC targets
   (other base / nearest hostile tank), side tints, drops, VERSUS power-ups
 - [ ] V3 setup + draft: MAP / NPC ARMY / ROUNDS screen, per-player draft cards, rounds and rematch

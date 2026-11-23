@@ -301,9 +301,12 @@ pub fn armour_wears_off(
 /// A player's tank is gone: lose stars (one in EASY MODE, else all), use a spare tank or drop out.
 pub fn player_lost_tank(commands: &mut Commands, session: &mut Session, p: usize, respawn_at: Vec2, easy_mode: bool) {
     let facing = player_start(session.mode, p).1;
+    let versus = session.mode == Mode::Versus;
     let Some(slot) = session.slots[p].as_mut() else { return };
     slot.level = rules::level_after_loss(slot.level, easy_mode);
-    if slot.lives > 0 {
+    if versus {
+        super::versus::lost_tank(slot);
+    } else if slot.lives > 0 {
         slot.lives -= 1;
         spawn_player(commands, p, slot.level, respawn_at, facing);
     } else {
@@ -407,8 +410,9 @@ mod tests {
                 .map(|(_, tf)| tf.translation.xy())
                 .collect();
             if mode == Mode::Versus {
-                assert_eq!((frags, lives), (1, rules::START_LIVES - 1));
-                assert_eq!(respawned, [super::super::versus::SPAWNS[1].0], "back beside the top base");
+                let s = &world.resource::<Session>().slots[1].as_ref().unwrap();
+                assert_eq!((frags, lives, s.deaths, s.out), (1, rules::START_LIVES, 1, true), "no spare spent: waits to respawn");
+                assert!(respawned.is_empty(), "not back before the wait (versus::respawn)");
             } else {
                 assert_eq!((frags, lives), (0, rules::START_LIVES), "classic: paralyzed, not destroyed");
                 assert!(world.get::<Paralyzed>(p2).is_some());

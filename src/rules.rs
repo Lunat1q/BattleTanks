@@ -16,6 +16,14 @@ pub const ENEMIES_PER_STAGE: usize = 20;
 pub const BONUS_CARRIERS: [usize; 3] = [3, 10, 17];
 
 pub const SPAWN_TIME: f32 = 1.0; // spawn twinkle before a tank becomes real
+
+/// VERSUS (ADR 0020, owner): tanks are unlimited, but the `deaths`-th loss of a round (1-based) waits longer to
+/// come back: 1, 3, 5, 7, 10, 15 s, then 5 s more each time, at most 30 s. The spawn twinkle is part of it.
+pub fn versus_respawn(deaths: u32) -> f32 {
+    const FIRST: [f32; 6] = [1.0, 3.0, 5.0, 7.0, 10.0, 15.0];
+    let n = deaths.max(1) as usize;
+    FIRST.get(n - 1).copied().unwrap_or_else(|| 15.0 + 5.0 * (n - FIRST.len()) as f32).min(30.0)
+}
 pub const RESPAWN_SHIELD: f32 = 3.0;
 pub const HELMET_SHIELD: f32 = 10.0;
 pub const CLOCK_FREEZE: f32 = 10.0;

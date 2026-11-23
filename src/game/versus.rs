@@ -1,5 +1,6 @@
-//! VERSUS (ADR 0019): two players, two bases, one point-symmetric map. Player 1 defends the bottom base, player 2
-//! the top one. A round ends when a base falls or a player runs out of tanks; a match counts round wins.
+//! VERSUS (ADR 0019, 0020): two players, two bases, one point-symmetric map. Player 1 defends the bottom base,
+//! player 2 the top one. Tanks are unlimited, but each loss waits longer to come back; a round ends when a base
+//! falls. A match counts round wins.
 
 use super::*;
 use crate::geom::FIELD;
@@ -20,23 +21,41 @@ pub struct Match {
     pub last: Option<usize>,
 }
 
-/// The round is over once a side has lost its base or its last tank: `Some(winner)`, `Some(None)` for a draw
-/// (both on the same tick), `None` while it goes on.
-pub fn outcome(base_alive: [bool; 2], out: [bool; 2]) -> Option<Option<usize>> {
-    match [!base_alive[0] || out[0], !base_alive[1] || out[1]] {
-        [false, false] => None,
-        [true, true] => Some(None),
-        [lost0, _] => Some(Some(usize::from(lost0))),
+/// The round is over once a base has fallen: `Some(winner)`, `Some(None)` for a draw (both on the same tick),
+/// `None` while it goes on.
+pub fn outcome(base_alive: [bool; 2]) -> Option<Option<usize>> {
+    match base_alive {
+        [true, true] => None,
+        [false, false] => Some(None),
+        [alive0, _] => Some(Some(usize::from(!alive0))),
     }
 }
 
-/// A fresh round: everyone back to full tanks at star level 0.
-pub fn reset_slots(session: &mut Session, easy_mode: bool) {
+/// A fresh round: no losses yet, star level 0.
+pub fn reset_slots(session: &mut Session) {
     for s in session.slots.iter_mut().flatten() {
         let device = s.device;
         *s = Slot::new(device);
-        if easy_mode {
-            s.lives += rules::EASY_EXTRA_LIVES;
+    }
+}
+
+/// A lost tank: the player waits out `rules::versus_respawn` (the spawn twinkle included) instead of using a spare.
+pub fn lost_tank(slot: &mut Slot) {
+    slot.deaths += 1;
+    slot.out = true;
+    slot.out_wait = rules::versus_respawn(slot.deaths) - rules::SPAWN_TIME;
+}
+
+/// A player whose wait is over comes back beside their base (`out_wait` counts down in `stage::borrow_life`).
+pub fn respawn(mut commands: Commands, mut session: ResMut<Session>, run: Res<StageRun>) {
+    if session.mode != Mode::Versus || run.phase != Phase::Play {
+        return;
+    }
+    for (p, slot) in session.slots.iter_mut().enumerate() {
+        if let Some(s) = slot.as_mut().filter(|s| s.out && s.out_wait <= 0.0) {
+            s.out = false;
+            let (at, facing) = SPAWNS[p];
+            super::stage::spawn_player(&mut commands, p, s.level, at, facing);
         }
     }
 }
@@ -46,11 +65,26 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_round_goes_to_whoever_still_stands() {
-        assert_eq!(outcome([true, true], [false, false]), None);
-        assert_eq!(outcome([false, true], [false, false]), Some(Some(1)), "player 1's base fell");
-        assert_eq!(outcome([true, true], [false, true]), Some(Some(0)), "player 2 is out of tanks");
-        assert_eq!(outcome([true, false], [true, false]), Some(None), "both on one tick: a draw");
+    fn a_round_goes_to_whoever_still_has_a_base() {
+        assert_eq!(outcome([true, true]), None);
+        assert_eq!(outcome([false, true]), Some(Some(1)), "player 1's base fell");
+        assert_eq!(outcome([true, false]), Some(Some(0)));
+        assert_eq!(outcome([false, false]), Some(None), "both on one tick: a draw");
+    }
+
+    #[test]
+    fn each_loss_waits_longer_and_nobody_runs_out() {
+        let mut s = Slot::new(crate::input::Device::KeysLeft);
+        let waits: Vec<f32> = (0..9)
+            .map(|_| {
+                lost_tank(&mut s);
+                s.out_wait + rules::SPAWN_TIME
+            })
+            .collect();
+        assert_eq!(waits, [1.0, 3.0, 5.0, 7.0, 10.0, 15.0, 20.0, 25.0, 30.0]);
+        lost_tank(&mut s);
+        assert_eq!(s.out_wait + rules::SPAWN_TIME, 30.0, "capped");
+        assert_eq!(s.lives, rules::START_LIVES, "no spares spent");
     }
 
     #[test]

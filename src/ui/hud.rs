@@ -169,17 +169,21 @@ fn refresh(
     mut icons: Query<(&mut Visibility, &EnemyIcon)>,
 ) {
     let Some(run) = run else { return };
+    let versus = session.mode == Mode::Versus;
     for (mut t, hud) in &mut texts {
         let s = match *hud {
+            // VERSUS: unlimited tanks, so the count is of those lost.
+            Hud::Lives(i) if versus => session.slots[i].as_ref().map(|s| format!("LOST {}", s.deaths)),
             Hud::Lives(i) => session.slots[i].as_ref().map(|s| format!("x {}", s.lives)),
             Hud::Score(i) => session.slots[i].as_ref().map(|s| format!("{:>7}", s.score)),
             Hud::Level(i) => session.slots[i].as_ref().map(|s| match s.out {
+                true if versus => format!("BACK IN {}", (s.out_wait + crate::rules::SPAWN_TIME).ceil().max(1.0)),
                 true if session.can_borrow(i) => "A: BORROW A TANK".into(),
                 true => "OUT".into(),
                 false => format!("POWER {}", s.level),
             }),
             Hud::Stage => Some(session.stage.to_string()),
-            Hud::Hi => Some(if session.mode == Mode::Versus { String::new() } else { format!("HI {}", session.hi_score) }),
+            Hud::Hi => Some(if versus { String::new() } else { format!("HI {}", session.hi_score) }),
         };
         set_text(&mut t, s.unwrap_or_default());
     }

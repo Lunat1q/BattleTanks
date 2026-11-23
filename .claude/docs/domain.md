@@ -271,7 +271,7 @@ can't be read is never written.
   keeps its height, turrets, minis and placed enemies (the world board's district table depends on them). No 8-row
   stretch of street appears twice anywhere in City Run (tested).
 
-## VERSUS (`game/versus.rs`, `versus_map.rs`, `ui/versus.rs`, ADR 0019; plan M18)
+## VERSUS (`game/versus.rs`, `versus_map.rs`, `ui/versus.rs`, ADR 0019, 0020; plan M18)
 First step (V1): a plain duel, no NPC armies, no setup screen, no power-ups yet.
 - Title → PLAY → VERSUS with both players joined (offline only for now) starts round 1. Player 1 defends the classic
   base at the bottom and starts beside it; player 2 defends the same base turned round at the top and starts at
@@ -283,9 +283,12 @@ First step (V1): a plain duel, no NPC armies, no setup screen, no power-ups yet.
 - Sides: the players' shells always hit each other, whatever FRIENDLY FIRE says, and destroy the tank (level-4
   armour holds once, as against enemies). Shells of the two sides cancel each other. A base takes damage only from
   the other side: your own shell pops on it harmlessly.
-- 3 tanks each (EASY MODE: 2 more), star level 0, a shield on each respawn beside the own base. No borrowing.
-- The round ends when a base falls or a player has no tank left: the banner shows PLAYER n WINS (gold blocks), or
-  DRAW when both happen on one tick. Then VERSUS results: round wins per player and tanks destroyed this round; A
+- Unlimited tanks (ADR 0020, owner), but each loss in a round waits longer to come back beside the own base:
+  1, 3, 5, 7, 10, 15 s, then 5 s more each time, at most 30 s (the spawn twinkle included; `rules::versus_respawn`).
+  The HUD shows `LOST n` and, while waiting, `BACK IN n`. Star level 0 each round, a shield on each respawn, no
+  borrowing; EASY MODE changes nothing in VERSUS.
+- The round ends only when a base falls: the banner shows PLAYER n WINS (gold blocks), or DRAW when both fall on one
+  tick. Then VERSUS results: round wins per player and tanks destroyed this round; A
   plays the next round on the next map, B goes to the title.
 - No world board, no achievements, the local hi score untouched; the HUD hides the HI line. Music: the fast stage
   pool for now.
