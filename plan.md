@@ -168,6 +168,13 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [x] 0.7.10: A on the playing OST track pauses it, A again resumes (owner)
 - [ ] Owner: rename OST tracks if the names don't fit (`music::NAMES`); import the new achievement in Play Console
 
+### M16 — Boss attacks + more music (v0.7.12) ✅
+- [x] Owner's 9 new tracks (slow 5, upbeat slow 1-2, hardfight 3-5, bossfight 3-5), -16 LUFS Vorbis; OST names
+- [x] Music shuffles after a stage's opener; mini-boss and boss fights open on a random track (owner)
+- [x] District boss: charge (lit row + column) -> barrage of three shells each way; from 2/3 HP it calls in sentry
+  guns (warned, fire four ways, fall with the boss) (owner: boss was a big mini-boss)
+- [ ] Owner: couch feel of the boss fights (barrage gap, sentry cap, band width in `rules.rs` / `game/boss.rs`)
+
 ## Current state
 
 City Run added, released as v0.3.0 on GitHub: 10 districts, district map, smoke screenshots checked for the map, a district start, a

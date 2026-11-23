@@ -121,10 +121,13 @@ fn recipe(s: Sfx) -> Vec<(f32, Voice)> {
             g
         }
         Sfx::BossBoom => vec![(0.0, v(140.0, 20.0, 1.8, 0.5, 0.85, 1.0)), (0.2, v(90.0, 25.0, 1.6, 0.2, 0.6, 0.7))],
+        // Rising whine over the charge, then a wide blast.
+        Sfx::BossCharge => vec![(0.0, v(180.0, 900.0, 1.3, 0.7, 0.15, 0.3)), (0.0, v(90.0, 450.0, 1.3, 0.0, 0.0, 0.25))],
+        Sfx::Barrage => vec![(0.0, v(500.0, 60.0, 0.4, 0.8, 0.6, 0.6)), (0.0, v(120.0, 30.0, 0.7, 0.3, 0.8, 0.6))],
     }
 }
 
-pub(crate) const ALL: [Sfx; 17] = [
+pub(crate) const ALL: [Sfx; 19] = [
     Sfx::Shoot,
     Sfx::Brick,
     Sfx::Steel,
@@ -142,6 +145,8 @@ pub(crate) const ALL: [Sfx; 17] = [
     Sfx::MenuPick,
     Sfx::GateOpen,
     Sfx::BossBoom,
+    Sfx::BossCharge,
+    Sfx::Barrage,
 ];
 
 fn build(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {

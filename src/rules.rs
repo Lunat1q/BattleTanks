@@ -133,13 +133,28 @@ pub enum Rank {
     Mini,
     /// District boss at the top of the map; killing it clears the district.
     Boss,
+    /// Gun the boss calls in (`game::boss`): never moves, fires all four ways at once, falls with the boss.
+    Sentry,
+}
+
+/// Seconds a district boss stands still with its row and column lit before its barrage.
+pub const BOSS_CHARGE: f32 = 1.2;
+
+/// Seconds between a district boss's barrages: more often further in.
+pub fn boss_barrage_gap(d: usize) -> f32 {
+    8.0 - 0.35 * d.min(10) as f32
+}
+
+/// Sentries a district boss keeps up once it is down to 2/3 HP.
+pub fn sentry_cap(d: usize) -> usize {
+    1 + d / 5
 }
 
 impl Rank {
     /// Side of the square hit box in field units.
     pub fn size(self) -> f32 {
         match self {
-            Rank::Normal | Rank::Turret => 16.0,
+            Rank::Normal | Rank::Turret | Rank::Sentry => 16.0,
             Rank::Mini => 24.0,
             Rank::Boss => 32.0,
         }
@@ -152,6 +167,7 @@ impl Rank {
             Rank::Turret => 2 + d / 3,
             Rank::Mini => 8 + d,
             Rank::Boss => 20 + 3 * d,
+            Rank::Sentry => 2 + d / 4,
         }
     }
     pub fn points(self, kind: EnemyKind) -> u32 {
@@ -160,12 +176,13 @@ impl Rank {
             Rank::Turret => 500,
             Rank::Mini => 1000,
             Rank::Boss => 5000,
+            Rank::Sentry => 200,
         }
     }
     pub fn speed(self, kind: EnemyKind) -> f32 {
         match self {
             Rank::Normal => kind.speed(),
-            Rank::Turret => 0.0,
+            Rank::Turret | Rank::Sentry => 0.0,
             Rank::Mini => 34.0,
             Rank::Boss => 26.0,
         }
@@ -173,7 +190,7 @@ impl Rank {
     /// Bullets it may have in flight.
     pub fn max_bullets(self) -> usize {
         match self {
-            Rank::Normal | Rank::Turret => 1,
+            Rank::Normal | Rank::Turret | Rank::Sentry => 1,
             Rank::Mini => 2,
             Rank::Boss => 3,
         }
@@ -186,6 +203,7 @@ impl Rank {
             Rank::Turret => (0.9 * k, 2.2 * k),
             Rank::Mini => (0.35 * k, 1.0 * k),
             Rank::Boss => (0.25 * k, 0.7 * k),
+            Rank::Sentry => (1.6 * k, 2.6 * k),
         }
     }
 }

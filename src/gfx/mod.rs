@@ -9,6 +9,7 @@ mod art_title;
 mod art_world;
 mod badge_art;
 mod badge_city;
+mod boss;
 pub mod canvas;
 mod font;
 mod fx;
@@ -103,6 +104,7 @@ pub fn rank_color(rank: Rank, kind: EnemyKind, hp: u32, max_hp: u32) -> Color {
         Rank::Turret => Color::srgb(0.88, 0.56, 0.50),
         Rank::Mini => Color::srgb(0.56, 0.48, 1.0),
         Rank::Boss => Color::srgb(0.92, 0.24, 0.32),
+        Rank::Sentry => Color::srgb(1.0, 0.55, 0.2),
     };
     full.mix(&Color::srgb(0.78, 0.78, 0.80), 0.6 * (1.0 - hp as f32 / max_hp.max(1) as f32))
 }
@@ -112,6 +114,7 @@ pub fn plugin(app: &mut App) {
     let gfx = build_textures(&mut app.world_mut().resource_mut::<Assets<Image>>());
     app.insert_resource(gfx).insert_resource(ClearColor(Color::srgb(0.035, 0.04, 0.055))).add_systems(Startup, spawn_camera).add_plugins((
         world::plugin,
+        boss::plugin,
         fx::plugin,
         icon::plugin,
     ));

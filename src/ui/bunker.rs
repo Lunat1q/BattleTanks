@@ -230,6 +230,6 @@ mod tests {
         assert_eq!(follow(10, 3), 3, "above the top jumps up to it");
         assert_eq!(follow(5, 23), 23 + 1 - ROWS, "wrapping to the end shows the end");
         assert_eq!(spaced("ArmorHit"), "ARMOR HIT");
-        assert_eq!(lines(1).len(), 24);
+        assert_eq!(lines(1).len(), 33);
     }
 }

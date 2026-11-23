@@ -62,6 +62,9 @@ pub fn think(
         }
         let pos = tf.translation.xy();
         let nearest = player_pos.iter().copied().min_by(|a, b| a.distance(pos).total_cmp(&b.distance(pos)));
+        if ai.rank == Rank::Sentry {
+            continue; // fires on its own clock (`boss`)
+        }
         let (lo, hi) = ai.rank.fire_gap(session.stage);
         if ai.rank == Rank::Turret {
             // Bolted to the wall: swing the gun towards the nearest player and keep shooting.

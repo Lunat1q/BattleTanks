@@ -39,7 +39,7 @@ src/
   city_brushes/       # test-only street brushes per district theme (picked by name): mod.rs helpers, outer.rs 1-5, inner.rs 6-10
   input.rs            # Device (pads, two keyboard layouts) -> Intent per frame (DeviceIntents); Rumble -> pad; TvRemote marker
   audio.rs            # synthesises WAVs at startup; plays Sfx messages (deduped per frame); BT_SHOT/BT_MUTE mute
-  music.rs            # one track at a time: pick(screen, mode, stage, boss up) -> pool, next() on end [pure]; pauses with the game;
+  music.rs            # one track at a time: pick(screen, mode, stage, boss up) -> pool, next() (opener by stage, then shuffled) [pure]; pauses with the game;
                       # NAMES (OST titles) + Jukebox (the bunker's pick overrides the pool, then plays on down the list)
   dev.rs              # BT_SHOT smoke hook: auto-join, start stage, screenshot, log average fps, quit;
                       # BT_LAN smoke: auto host/join, bot input, desync nudge, hash log
@@ -60,6 +60,8 @@ src/
                       # time (Pull.want), at start, per City Run unlock and after new achievements; max / union merge
     tank.rs           # player_control (intent -> want/trigger), drive (collisions, snap, ice), fire
     enemy.rs          # think: choose_dir (pure) + random fire, freeze; turret_dir (up/down at the nearest player)
+    boss.rs           # City Run district boss attacks: charge -> barrage (pure barrage), sentry guns it calls in
+                      # (sentry_spots pure), sentries fire four ways and fall with the boss
     combat.rs         # fly_bullets (sub-steps: tanks, base, terrain; bullet-vs-bullet) -> Hit; resolve_hits
     powerup.rs        # drop on bonus hit, pickup effects
   gfx/
@@ -80,6 +82,7 @@ src/
     badge_city.rs     # City Run emblems: one per district (scarecrow, stall, bridge, church, ironworks, snowflake, anchor,
                       # locomotive, gatehouse, burning citadel) + the City Run extras
     art_promo.rs      # title banner (pub: paint_banner, used by the Android wrapper); Steam capsules/hero/logo (test-only writer)
+    boss.rs           # warnings for the boss's attacks: lit row + column while it charges, red square under an arriving sentry
     fx.rs             # Fx messages -> particles, score pop-ups (Text2d), camera shake; achievement stars (Record.news grows
                       # on a stage -> star flies onto the margin, bursts into pixel cubes)
   ui/
@@ -119,7 +122,7 @@ Update          ├─ title / pause / results / game-over menus read DeviceInte
                 ├─ stage: watch_controllers ─▶ pause_when_away ─▶ toggle_pause ─▶ advance_phase (Intro→Play, Won/Lost→next Screen)
                 │
                 └─ Sim (only: Screen::Stage, !Paused, phase != Intro), chained:
-                   spawn_enemies ─▶ tick_timers ─▶ [city: scroll ─▶ wake ─▶ reinforce ─▶ watch ─▶ cull] ─▶ borrow_life ─▶ player_control ─▶ enemy::think ─▶ drive ─▶ fire
+                   spawn_enemies ─▶ tick_timers ─▶ [city: scroll ─▶ wake ─▶ reinforce ─▶ watch ─▶ cull] ─▶ borrow_life ─▶ player_control ─▶ enemy::think ─▶ boss::act ─▶ drive ─▶ fire
                    ─▶ fly_bullets ──Hit──▶ resolve_hits ─▶ powerup::pickup ─▶ check_end      (all write Feat ──▶ achieve::track)
                          │  │                    │
                          │  └── Terrain.dirty ───┼──────────────▶ gfx::world::sync_terrain (spawn/despawn chips)

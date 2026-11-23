@@ -197,6 +197,8 @@ pub fn resolve_hits(
                 if let Some(slot) = session.slots[p].as_mut() {
                     match enemy.rank {
                         Rank::Normal => slot.kills[enemy.kind.index()] += 1,
+                        // Called in by the boss, any number: not in the district's facts the board checks.
+                        Rank::Sentry => {}
                         big => slot.big[big as usize - 1] += 1,
                     }
                 }

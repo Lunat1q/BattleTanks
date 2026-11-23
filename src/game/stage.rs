@@ -140,7 +140,7 @@ pub fn spawn_enemy(commands: &mut Commands, kind: EnemyKind, rank: Rank, pos: Ve
                 trigger: false,
                 cooldown: 0.0,
             },
-            Enemy { kind, rank, hp, max_hp: hp, bonus, turn_in: rng.range(0.5, 2.0), fire_in: rng.range(0.5, 1.5) },
+            Enemy { kind, rank, hp, max_hp: hp, bonus, turn_in: rng.range(0.5, 2.0), fire_in: rng.range(0.5, 1.5), skill: 4.0 },
             Spawning(rules::SPAWN_TIME),
             Transform::from_translation(pos.extend(0.0)),
             DespawnOnExit(Screen::Stage),

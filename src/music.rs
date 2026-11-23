@@ -10,7 +10,7 @@ use bevy::audio::{AudioPlayer, AudioSink, AudioSinkPlayback, AudioSource, Playba
 use bevy::prelude::*;
 use bevy::window::AppLifecycle;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Track {
     Menu,
     MenuAlt,
@@ -18,6 +18,9 @@ pub enum Track {
     Slow2,
     Slow3,
     Slow4,
+    Slow5,
+    Upbeat1,
+    Upbeat2,
     Medium1,
     Medium2,
     Medium3,
@@ -31,8 +34,14 @@ pub enum Track {
     Fast6,
     HardFight1,
     HardFight2,
+    HardFight3,
+    HardFight4,
+    HardFight5,
     BossFight1,
     BossFight2,
+    BossFight3,
+    BossFight4,
+    BossFight5,
     Victory,
     Loss1,
     Loss2,
@@ -40,19 +49,23 @@ pub enum Track {
 
 use Track::*;
 
-pub static ALL: [Track; 24] = [
-    Menu, MenuAlt, Slow1, Slow2, Slow3, Slow4, Medium1, Medium2, Medium3, Medium4, Medium5, Fast1, Fast2, Fast3, Fast4, Fast5, Fast6,
-    HardFight1, HardFight2, BossFight1, BossFight2, Victory, Loss1, Loss2,
+pub static ALL: [Track; 33] = [
+    Menu, MenuAlt, Slow1, Slow2, Slow3, Slow4, Slow5, Upbeat1, Upbeat2, Medium1, Medium2, Medium3, Medium4, Medium5, Fast1, Fast2, Fast3,
+    Fast4, Fast5, Fast6, HardFight1, HardFight2, HardFight3, HardFight4, HardFight5, BossFight1, BossFight2, BossFight3, BossFight4,
+    BossFight5, Victory, Loss1, Loss2,
 ];
 
 /// OST names for the bunker's jukebox, in `ALL` order: (name, where it plays). Ours to rename.
-pub const NAMES: [(&str, &str); 24] = [
+pub const NAMES: [(&str, &str); 33] = [
     ("ROLL CALL", "title"),
     ("CITY LIGHTS", "district map"),
     ("MORNING PATROL", "stages 1-10"),
     ("BRICK BY BRICK", "stages 1-10"),
     ("DUG IN", "stages 1-10"),
     ("FOG OF WAR", "stages 1-10"),
+    ("NIGHT WATCH", "stages 1-10"),
+    ("TREAD LIGHTLY", "stages 1-10"),
+    ("SUNDAY DRIVE", "stages 1-10"),
     ("ADVANCE", "stages 11-20"),
     ("CROSSFIRE", "stages 11-20"),
     ("STEEL RAIN", "stages 11-20"),
@@ -66,8 +79,14 @@ pub const NAMES: [(&str, &str); 24] = [
     ("RED LINE", "stages 21-30"),
     ("HEAVY METAL", "mini-boss"),
     ("ARMOUR PIERCING", "mini-boss"),
+    ("IRON FIST", "mini-boss"),
+    ("SIEGE ENGINE", "mini-boss"),
+    ("WAR MACHINE", "mini-boss"),
     ("THE BIG ONE", "district boss"),
     ("LAST BASTION", "district boss"),
+    ("FINAL STAND", "district boss"),
+    ("TITAN", "district boss"),
+    ("CROWN OF STEEL", "district boss"),
     ("STAGE CLEAR", "results"),
     ("BASE DOWN", "game over"),
     ("SCRAP HEAP", "game over"),
@@ -85,16 +104,16 @@ impl Jukebox {
     }
 }
 
-// Pools a screen rotates through: when a track ends the next one in its pool starts.
-const SLOW: &[Track] = &[Slow1, Slow2, Slow3, Slow4];
+// Pools a screen plays from: a stage opens with the track its number picks, then shuffles (`next`).
+const SLOW: &[Track] = &[Slow1, Slow2, Slow3, Slow4, Slow5, Upbeat1, Upbeat2];
 const MEDIUM: &[Track] = &[Medium1, Medium2, Medium3, Medium4, Medium5];
 const FAST: &[Track] = &[Fast1, Fast2, Fast3, Fast4, Fast5, Fast6];
 /// City districts are long, so their pools also reach one speed up.
-const CITY_SLOW: &[Track] = &[Slow1, Slow2, Slow3, Slow4, Medium1, Medium2];
+const CITY_SLOW: &[Track] = &[Slow1, Slow2, Slow3, Slow4, Medium1, Medium2, Slow5, Upbeat1, Upbeat2];
 const CITY_MEDIUM: &[Track] = &[Medium1, Medium2, Medium3, Medium4, Medium5, Fast1, Fast2];
 const LOSS: &[Track] = &[Loss1, Loss2];
-const HARD: &[Track] = &[HardFight1, HardFight2];
-const BOSS: &[Track] = &[BossFight1, BossFight2];
+const HARD: &[Track] = &[HardFight1, HardFight2, HardFight3, HardFight4, HardFight5];
+const BOSS: &[Track] = &[BossFight1, BossFight2, BossFight3, BossFight4, BossFight5];
 
 fn bytes(t: Track) -> &'static [u8] {
     match t {
@@ -104,6 +123,9 @@ fn bytes(t: Track) -> &'static [u8] {
         Slow2 => include_bytes!("../assets/music/battle_music_slow_2.ogg"),
         Slow3 => include_bytes!("../assets/music/battle_music_slow_3.ogg"),
         Slow4 => include_bytes!("../assets/music/battle_music_slow_4.ogg"),
+        Slow5 => include_bytes!("../assets/music/battle_music_slow_5.ogg"),
+        Upbeat1 => include_bytes!("../assets/music/battle_upbeat_music_slow_1.ogg"),
+        Upbeat2 => include_bytes!("../assets/music/battle_upbeat_music_slow_2.ogg"),
         Medium1 => include_bytes!("../assets/music/battle_music_medium_1.ogg"),
         Medium2 => include_bytes!("../assets/music/battle_music_medium_2.ogg"),
         Medium3 => include_bytes!("../assets/music/battle_music_medium_3.ogg"),
@@ -117,8 +139,14 @@ fn bytes(t: Track) -> &'static [u8] {
         Fast6 => include_bytes!("../assets/music/battle_music_fast_6.ogg"),
         HardFight1 => include_bytes!("../assets/music/battle_hardfight_music_fast_1.ogg"),
         HardFight2 => include_bytes!("../assets/music/battle_hardfight_music_fast_2.ogg"),
+        HardFight3 => include_bytes!("../assets/music/battle_hardfight_music_fast_3.ogg"),
+        HardFight4 => include_bytes!("../assets/music/battle_hardfight_music_fast_4.ogg"),
+        HardFight5 => include_bytes!("../assets/music/battle_hardfight_music_fast_5.ogg"),
         BossFight1 => include_bytes!("../assets/music/battle_bossfight_music_fast_1.ogg"),
         BossFight2 => include_bytes!("../assets/music/battle_bossfight_music_fast_2.ogg"),
+        BossFight3 => include_bytes!("../assets/music/battle_bossfight_music_fast_3.ogg"),
+        BossFight4 => include_bytes!("../assets/music/battle_bossfight_music_fast_4.ogg"),
+        BossFight5 => include_bytes!("../assets/music/battle_bossfight_music_fast_5.ogg"),
         Victory => include_bytes!("../assets/music/battle_music_victory_1.ogg"),
         Loss1 => include_bytes!("../assets/music/battle_music_loss_1.ogg"),
         Loss2 => include_bytes!("../assets/music/battle_music_loss_2.ogg"),
@@ -160,11 +188,17 @@ pub fn pick(screen: Screen, mode: Mode, stage: usize, fight: Fight) -> &'static 
     }
 }
 
-/// Track to play from `pool`: the one after `ended` if it was from this pool, else entry `start` (the stage
-/// number, so consecutive stages open with different tracks).
-pub fn next(pool: &[Track], ended: Option<Track>, start: usize) -> Track {
-    let i = ended.and_then(|e| pool.iter().position(|&t| t == e)).map_or(start, |i| i + 1);
-    pool[i % pool.len()]
+/// Track to play from `pool`. A stage pool opens with entry `start` (the stage number, so consecutive stages open
+/// with different tracks); mini-boss and boss fights (`start` None) open on a random one. After that it shuffles:
+/// any track of the pool but the one that just `ended`. `roll` is a random number (music's own dice, not the
+/// gameplay ones: LAN peers may hear different tracks).
+pub fn next(pool: &[Track], ended: Option<Track>, start: Option<usize>, roll: u32) -> Track {
+    let n = pool.len();
+    match (ended.and_then(|e| pool.iter().position(|&t| t == e)), start) {
+        (Some(i), _) if n > 1 => pool[(i + 1 + roll as usize % (n - 1)) % n],
+        (None, Some(s)) => pool[s % n],
+        _ => pool[roll as usize % n],
+    }
 }
 
 /// The track a new pick goes on from: the one that just ended (same pool), else the track the old pool itself
@@ -181,6 +215,7 @@ struct Music {
     playing: Option<(&'static [Track], Track, Entity)>,
     /// Track the playing pool cut in on (`handover`); cleared off the stage, so each stage opens by its number.
     before: Option<Track>,
+    rng: crate::rng::Rng,
 }
 
 pub fn plugin(app: &mut App) {
@@ -194,7 +229,7 @@ pub fn plugin(app: &mut App) {
 
 fn load(mut commands: Commands, mut sources: ResMut<Assets<AudioSource>>) {
     let handles = ALL.iter().map(|&t| sources.add(AudioSource { bytes: bytes(t).into() })).collect();
-    commands.insert_resource(Music { handles, playing: None, before: None });
+    commands.insert_resource(Music { handles, playing: None, before: None, rng: crate::rng::Rng::from_time() });
 }
 
 fn switch(
@@ -238,7 +273,9 @@ fn switch(
         music.before = None;
     }
     if let Some(pool) = want {
-        let t = next(pool, ended, session.stage.max(1) - 1);
+        let fight = pool == HARD || pool == BOSS;
+        let roll = music.rng.next_u32();
+        let t = next(pool, ended, (!fight).then(|| session.stage.max(1) - 1), roll);
         let i = ALL.iter().position(|&a| a == t).unwrap_or(0);
         let volume = Volume::Linear(settings.music as f32 / 100.0);
         let e = commands.spawn((AudioPlayer(music.handles[i].clone()), PlaybackSettings::DESPAWN.with_volume(volume))).id();
@@ -284,7 +321,7 @@ mod tests {
 
     #[test]
     fn tracks_follow_the_screen_and_speed_up() {
-        let first = |mode, n| next(pick(Screen::Stage, mode, n, Fight::None), None, n - 1);
+        let first = |mode, n| next(pick(Screen::Stage, mode, n, Fight::None), None, Some(n - 1), 0);
         assert_eq!(pick(Screen::Settings, Mode::Classic, 1, Fight::None), [Menu]);
         assert_eq!(pick(Screen::CityMap, Mode::City, 1, Fight::None), [MenuAlt]);
         assert_eq!(pick(Screen::Results, Mode::City, 5, Fight::Boss), [Victory]);
@@ -292,7 +329,7 @@ mod tests {
         assert_eq!(pick(Screen::Board, Mode::Classic, 5, Fight::None), LOSS, "game over's track plays on");
         assert_eq!(
             [1, 2, 10, 11, 12, 20, 21, 30, 31].map(|n| first(Mode::Classic, n)),
-            [Slow1, Slow2, Slow2, Medium1, Medium2, Medium5, Fast3, Fast6, Slow3]
+            [Slow1, Slow2, Slow3, Medium1, Medium2, Medium5, Fast3, Fast6, Slow3]
         );
         assert_eq!(
             (1..=10).map(|d| first(Mode::City, d)).collect::<Vec<_>>(),
@@ -317,17 +354,20 @@ mod tests {
     }
 
     #[test]
-    fn an_ended_track_hands_over_to_the_next_in_its_pool() {
-        assert_eq!(next(FAST, Some(Fast2), 0), Fast3);
-        assert_eq!(next(FAST, Some(Fast6), 0), Fast1, "wraps");
-        assert_eq!(next(BOSS, Some(Fast4), 1), BossFight2, "track from another pool: start fresh");
-        assert_eq!(next(&[Menu], Some(Menu), 7), Menu, "single-track pool repeats");
-        let mut t = Slow1;
-        for _ in 0..4 {
-            let n = next(CITY_SLOW, Some(t), 0);
-            assert_ne!(n, t, "never the same track twice in a row");
-            t = n;
+    fn after_the_opener_the_pool_shuffles() {
+        for pool in [SLOW, CITY_SLOW, CITY_MEDIUM, FAST, HARD, BOSS, LOSS] {
+            let mut seen = std::collections::HashSet::new();
+            for &ended in pool {
+                for roll in 0..20 {
+                    let t = next(pool, Some(ended), Some(0), roll);
+                    assert!(pool.contains(&t) && t != ended, "never the same track twice in a row");
+                    seen.insert(t);
+                }
+            }
+            assert_eq!(seen.len(), pool.len(), "every track comes up");
         }
+        assert_eq!(next(BOSS, Some(Fast4), None, 3), BossFight4, "a fight opens on a random track");
+        assert_eq!(next(&[Menu], Some(Menu), Some(7), 5), Menu, "single-track pool repeats");
     }
 
     #[test]
@@ -336,7 +376,8 @@ mod tests {
         let mut before = None;
         assert_eq!(handover(false, Some(Slow2), &mut before), None, "fight pool opens fresh");
         let after = handover(false, Some(HardFight1), &mut before);
-        assert_eq!(next(CITY_SLOW, after, 0), Slow3);
+        assert_eq!(after, Some(Slow2));
+        assert_ne!(next(CITY_SLOW, after, Some(0), 0), Slow1, "not back to the opener");
         assert_eq!(handover(true, Some(Slow3), &mut before), Some(Slow3), "same pool: the ended track");
     }
 

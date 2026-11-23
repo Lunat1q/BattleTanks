@@ -35,7 +35,7 @@ pub struct Reach(Vec<bool>);
 
 impl Reach {
     /// A 16-unit drop centred on `p` lands on a reachable cell.
-    fn ok(&self, p: Vec2) -> bool {
+    pub(crate) fn ok(&self, p: Vec2) -> bool {
         let (x, y) = (((p.x - 8.0) / 8.0) as usize, ((p.y - 8.0) / 8.0) as usize);
         self.0.get(y * crate::geom::CELLS + x) == Some(&true)
     }

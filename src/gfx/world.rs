@@ -163,7 +163,7 @@ fn tank_looks(
                 }
                 let image = match e.rank {
                     Rank::Normal => &gfx.enemies[e.kind.index()][frame],
-                    Rank::Turret => &gfx.turret,
+                    Rank::Turret | Rank::Sentry => &gfx.turret,
                     Rank::Mini => &gfx.mini[frame],
                     Rank::Boss => &gfx.boss[frame],
                 };

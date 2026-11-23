@@ -27,7 +27,7 @@ const SCREENS: [Screen; 11] = [
     Screen::Achievements,
     Screen::Unlocks,
 ];
-const RANKS: [Rank; 4] = [Rank::Normal, Rank::Turret, Rank::Mini, Rank::Boss];
+const RANKS: [Rank; 5] = [Rank::Normal, Rank::Turret, Rank::Mini, Rank::Boss, Rank::Sentry];
 const PHASES: [Phase; 4] = [Phase::Intro, Phase::Play, Phase::Won, Phase::Lost];
 const MODES: [Mode; 2] = [Mode::Classic, Mode::City];
 /// No entity (a dead bullet owner, no boss yet).
@@ -350,7 +350,7 @@ fn put_tank(w: &mut W, t: &Tank, g: &Gun, e: Option<&Enemy>) {
         None => _ = w.bool(false),
         Some(e) => {
             w.bool(true).u8(index(&EnemyKind::ALL, &e.kind)).u8(index(&RANKS, &e.rank));
-            w.u32(e.hp).u32(e.max_hp).bool(e.bonus).f32(e.turn_in).f32(e.fire_in);
+            w.u32(e.hp).u32(e.max_hp).bool(e.bonus).f32(e.turn_in).f32(e.fire_in).f32(e.skill);
         }
     }
 }
@@ -379,7 +379,16 @@ fn get_thing(r: &mut R) -> Option<Thing> {
             let gun = Gun { stats, trigger: r.bool()?, cooldown: r.f32()? };
             let enemy = if r.bool()? {
                 let (kind, rank) = (r.pick(&EnemyKind::ALL)?, r.pick(&RANKS)?);
-                Some(Enemy { kind, rank, hp: r.u32()?, max_hp: r.u32()?, bonus: r.bool()?, turn_in: r.f32()?, fire_in: r.f32()? })
+                Some(Enemy {
+                    kind,
+                    rank,
+                    hp: r.u32()?,
+                    max_hp: r.u32()?,
+                    bonus: r.bool()?,
+                    turn_in: r.f32()?,
+                    fire_in: r.f32()?,
+                    skill: r.f32()?,
+                })
             } else {
                 None
             };

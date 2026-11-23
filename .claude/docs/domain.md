@@ -225,7 +225,14 @@ can't be read is never written.
   HP 2 + d/3, 500 pts. **Mini-bosses** 24×24, HP 8 + d, 2 bullets,
   1000 pts, drop a power-up; **boss** 32×32 at the map top, HP 20 + 3d, 3 bullets, 5000 pts. While a mini-boss or
   the boss is alive the camera holds still. Killing the boss clears the district.
-- Power-ups: no shovel; grenade only destroys ordinary tanks. Drops land on open ground in view.
+- **Boss attacks** (`game/boss.rs`): first 4 s after it wakes, then every 8 − 0.35d s (`boss_barrage_gap`) the boss
+  stops and its row and column glow red for 1.2 s (`BOSS_CHARGE`, a rising whine), then a **barrage**: three shells
+  each way along them (a 24-unit band, 0.75 × its shell speed). From 2/3 HP down each barrage also calls in
+  **sentries** up to 1 + d/5 alive: orange guns on reachable open ground at least 24 units from every tank, with a
+  red pulsing square and the spawn twinkle as warning. A sentry never moves, fires all four ways at once every
+  1.6–2.6 s (quarter turn per volley), HP 2 + d/4, 200 pts, no board kill (any number can appear); grenades destroy
+  them, and they all blow up with the boss.
+- Power-ups: no shovel; grenade only destroys ordinary tanks and sentries. Drops land on open ground in view.
 - Difficulty per district: enemy mix (`mix` line), more bastions (3→8) and turrets per wall (2→6), more minis
   (2→5), faster turret/boss fire.
 - Map rule (tested): from the start, every mini-boss and the boss is reachable with gates open, and closing any one
@@ -246,13 +253,13 @@ can't be read is never written.
 ## Music (`music.rs`, ADR 0007)
 All tracks are normalised to −16 LUFS (linear gain from the MP3 master, see Operational lessons for the
 command). One track at a time, chosen by screen: title + settings `menu_music`, City Run map `menu_music_alternative`,
-results `victory`, game over `loss` (2, rotating). In a stage the screen picks a **pool** and the
-music walks through it: when a track ends the next one in the pool starts (no track twice in a row unless the
-pool has one). Classic stages 1–10 slow (4 tracks), 11–20 medium (5), 21–30 fast (6), by map so laps restart
-slow; City Run districts 1–3 slow + medium 1–2, 4–7 medium + fast 1–2, 8–10 fast. The stage number picks the opening
-track, so consecutive stages start differently. In City Run a live mini-boss switches to the `hardfight`
-pair, the boss to the `bossfight` pair, and when it dies the stage pool goes on with the track after the one the
-fight interrupted (not back to its opener). The pause menu pauses the music. Jingles (stage start, game over)
+results `victory`, game over `loss` (2). In a stage the screen picks a **pool**: the stage number picks the opening
+track (consecutive stages start differently), after that the pool **shuffles**: when a track ends any other track
+of the pool starts (never the same twice in a row unless the pool has one; music's own dice, so LAN peers may hear
+different tracks). Classic stages 1–10 slow (slow 1–5 + upbeat 1–2), 11–20 medium (5), 21–30 fast (6), by map so
+laps restart slow; City Run districts 1–3 slow + medium 1–2 + upbeat, 4–7 medium + fast 1–2, 8–10 fast. A live
+mini-boss switches to the `hardfight` pool (5), the boss to the `bossfight` pool (5), each opening on a random
+track; when the fight ends the stage pool shuffles on from the track it interrupted (not back to its opener). The pause menu pauses the music. Jingles (stage start, game over)
 play over it.
 
 ## Achievements (`achieve/`, `ui/achievements.rs`, ADR 0017; list and rules in `achievements.md`)
@@ -337,6 +344,7 @@ same rules, each machine draws it and plays its own sound and rumble.
 | 1P: scouts raced down open side lanes to the base (owner; stages 1, 4, 5, 7, 10, 12, 16, 20-22, 24) | straight or 2-4-sidestep brick-free ways from the top spawns to the bottom | brick rows across the lower half; `no_quick_run_from_a_top_spawn_to_the_backline` |
 | Smoke runs blasted sound in the room | audio always on | audio plugin skips when `BT_SHOT` / `BT_MUTE` is set |
 | 10 fps on a TV-class GPU (Mali-G57), CPU idle | Bevy's default 4x MSAA + bloom passes at 1080p, each ~halving fps | `Msaa::Off` everywhere (sprites are pre-anti-aliased); bloom is `Platform::bloom`, off on such hosts: 56 fps |
+| New tracks came as AAC `.m4a` (48 kHz, cover art, ~−27 LUFS) | Bevy decodes only our Vorbis, and `every_track_decodes` wants 44.1 kHz | same ffmpeg line as the MP3s (`-map 0:a -vn` drops the cover); `.m4a` masters gitignored |
 | Looping music would hold ~55 MB per song | rodio `repeat_infinite` buffers every decoded sample | play once (DESPAWN), respawn when it ends |
 | New track failed `every_track_decodes` (`UnrecognizedFormat`) | MP3 cover art became a Theora video stream in the .ogg | encode with `ffmpeg -i x.mp3 -map 0:a -vn -map_metadata -1 -af volume=<-16 − measured LUFS>dB -ar 44100 -c:a libvorbis -q:a 1 x.ogg` (measure with `-af loudnorm=print_format=json -f null -`) |
 | Stage music restarted from its pool's opener after a mini-boss died (owner) | a pool change started fresh, forgetting the track the fight cut in on | `music::handover` keeps it in `Music.before`, the stage pool goes on after it |

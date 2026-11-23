@@ -110,9 +110,9 @@ pub fn pickup(
                 }
             }
             rules::PowerKind::Grenade => {
-                // No points for grenade kills, like the classic. Turrets and bosses shrug it off.
+                // No points for grenade kills, like the classic. Turrets and bosses shrug it off; the boss's sentries don't.
                 let mut count = 0;
-                for (e, tf, _) in enemies.iter().filter(|(_, _, en)| en.rank == rules::Rank::Normal) {
+                for (e, tf, _) in enemies.iter().filter(|(_, _, en)| matches!(en.rank, rules::Rank::Normal | rules::Rank::Sentry)) {
                     commands.entity(e).try_despawn();
                     fx.write(Fx { kind: FxKind::TankBoom, pos: tf.translation.xy() });
                     count += 1;

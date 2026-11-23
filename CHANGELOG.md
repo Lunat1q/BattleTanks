@@ -2,6 +2,12 @@
 
 Shown in the game too, so each line stays short and talks to players.
 
+## 0.7.12 (2026-11-22)
+- District bosses fight back: barrages along their row and column (mind the red glow)
+- Hurt bosses call in sentry guns that fire four ways at once
+- Nine new music tracks; stage music shuffles after its opening track
+- Mini-boss and boss fights pick a random theme
+
 ## 0.7.11 (2026-11-22)
 - Look Both Ways now unlocks on Play Games, with a new riddle for a description
 

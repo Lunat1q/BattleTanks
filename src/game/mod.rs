@@ -1,6 +1,7 @@
 //! Gameplay: shared components/resources, screen states and the simulation schedule.
 //! Logic entities carry no sprites; `gfx` attaches visuals when they appear.
 
+pub mod boss;
 pub mod city;
 pub mod cloud;
 pub mod combat;
@@ -255,6 +256,8 @@ pub struct Enemy {
     pub bonus: bool,
     pub turn_in: f32,
     pub fire_in: f32,
+    /// District boss: seconds to its next barrage, below 0 while it charges (`boss`).
+    pub skill: f32,
 }
 
 #[derive(Component)]
@@ -382,6 +385,9 @@ pub enum Sfx {
     MenuPick,
     GateOpen,
     BossBoom,
+    /// District boss starts charging a barrage.
+    BossCharge,
+    Barrage,
 }
 
 #[derive(SystemSet, Clone, PartialEq, Eq, Hash, Debug)]
@@ -412,6 +418,7 @@ pub fn plugin(app: &mut App) {
                 stage::borrow_life,
                 tank::player_control,
                 enemy::think,
+                boss::act,
                 tank::drive,
                 tank::fire,
                 combat::fly_bullets,

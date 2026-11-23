@@ -207,6 +207,7 @@ pub fn parse(src: &str, seed: u64) -> Result<District, String> {
             }
             Rank::Mini => s.kind = EnemyKind::Armor,
             Rank::Boss => s.kind = EnemyKind::Power,
+            Rank::Sentry => {} // never in a map: the boss calls them in
         }
     }
     if let Some(i) = guarded.iter().position(|g| !g) {
