@@ -312,8 +312,9 @@ Built so far: the duel (V1), NPC armies (V2), setup, draft and rounds (V3), maps
 - NPCs are the enemy models in a darker shade of their player's colour, with the enemies' speeds, HP and fire timing.
   They head 60 % for the other base, 40 % for the nearest hostile tank (the other player or their NPCs); their
   wander drifts towards the other side. Same-side rules as the players: own NPCs' shells pass through you and yours
-  through them, they can't hurt their own base; NPCs of the two sides fight each other. Only a player's kills count
-  for them (results).
+  through them, they can't hurt their own base and hold their fire when the shot would fly into their own base or
+  its brick ring (owner); NPCs of the two sides fight each other. A destroyed NPC counts for the side that shot it,
+  player or army (owner), in the results' "NPCs destroyed".
 - **Power-ups** (+500, picked up by players only): dropped by flashing NPCs anywhere a player can drive; with armies
   OFF one appears in the middle band (cell rows 10-15) every 20 s. In VERSUS:
   helmet and star as usual; the **clock** freezes the other side, player and NPCs, for 5 s (tinted icy); the

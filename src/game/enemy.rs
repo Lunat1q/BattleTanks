@@ -12,6 +12,16 @@ pub fn turret_dir(pos: Vec2, target: Vec2) -> Dir {
     if target.y > pos.y { Dir::Up } else { Dir::Down }
 }
 
+/// Would a shell from `pos` heading `dir` fly into side `side`'s base or its brick ring? A VERSUS NPC holds its
+/// fire then (owner: they shot holes in their own ring).
+pub fn into_own_fort(pos: Vec2, dir: Dir, side: usize) -> bool {
+    let fort = Rect::new(88.0, 0.0, 120.0, 24.0);
+    let fort = if side == 0 { fort } else { Rect::new(FIELD - fort.max.x, FIELD - fort.max.y, FIELD - fort.min.x, FIELD - fort.min.y) };
+    // The shell's lane: 4 wide, from the tank to past the field's edge.
+    let lane = Rect::from_corners(pos, pos + dir.vec() * 2.0 * FIELD).inflate(2.0);
+    crate::geom::overlaps(lane, fort)
+}
+
 /// Pick a heading. Pure so it can be tested; `roll` in [0, 1).
 pub fn choose_dir(pos: Vec2, target: Vec2, current: Dir, blocked: bool, roll: f32, roll2: f32) -> Dir {
     if roll < 0.45 {
@@ -133,6 +143,9 @@ pub fn think(
         gun.trigger = ai.fire_in <= 0.0;
         if gun.trigger {
             ai.fire_in = rng.range(lo, hi);
+            if let Team::Npc(side) = tank.team {
+                gun.trigger = !into_own_fort(pos, tank.dir, side);
+            }
         }
     }
 }
@@ -166,6 +179,19 @@ mod tests {
                 assert_ne!(d, cur, "roll {r} cur {cur:?}");
             }
         }
+    }
+
+    #[test]
+    fn npcs_never_fire_into_their_own_base_or_ring() {
+        // Player 1's base is bottom centre, its ring x 88..120, y 0..24.
+        assert!(into_own_fort(Vec2::new(104.0, 100.0), Dir::Down, 0), "straight down onto the base");
+        assert!(into_own_fort(Vec2::new(90.0, 100.0), Dir::Down, 0), "onto the ring's edge");
+        assert!(into_own_fort(Vec2::new(8.0, 16.0), Dir::Right, 0), "across the back row into the ring");
+        assert!(!into_own_fort(Vec2::new(8.0, 30.0), Dir::Right, 0), "just above the ring");
+        assert!(!into_own_fort(Vec2::new(104.0, 100.0), Dir::Up, 0), "away from it");
+        assert!(!into_own_fort(Vec2::new(104.0, 100.0), Dir::Down, 1), "the other base is fair game");
+        assert!(into_own_fort(Vec2::new(104.0, 100.0), Dir::Up, 1));
+        assert!(into_own_fort(Vec2::new(200.0, 192.0), Dir::Left, 1), "player 2's back row");
     }
 
     #[test]

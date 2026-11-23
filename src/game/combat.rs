@@ -219,7 +219,8 @@ pub fn resolve_hits(
                 sfx.write(if enemy.rank == Rank::Boss { Sfx::BossBoom } else { Sfx::EnemyBoom });
                 rumble.write(if big { Rumble::big_kill(p) } else { Rumble::kill(p) });
             }
-            // VERSUS: an NPC hit by the other side (a player or an NPC); only a player's kill counts for them.
+            // VERSUS: an NPC hit by the other side (a player or an NPC). The kill counts for the shooter's side, so
+            // what your army destroys is yours too (owner); rumble only for a player's own shot.
             (Team::Npc(_), by, Some(mut enemy)) => {
                 let p = match by {
                     Team::Player(p) => Some(p),
@@ -237,7 +238,7 @@ pub fn resolve_hits(
                 if enemy.bonus {
                     powerup::spawn_random(&mut commands, &mut rng, &mut sfx, 0.0, &terrain, false);
                 }
-                if let Some(s) = p.and_then(|p| session.slots[p].as_mut()) {
+                if let Some(s) = by.side().and_then(|side| session.slots[side].as_mut()) {
                     s.kills[enemy.kind.index()] += 1;
                 }
                 fx.write(Fx { kind: FxKind::TankBoom, pos });
@@ -412,6 +413,42 @@ mod tests {
         // Owner: a HEAVY dropped its power-up on the first hit, and a second drop took away the first.
         assert_eq!(drops_after(3), (1, true), "nothing until it dies");
         assert_eq!(drops_after(4), (2, true), "the kill drops one, the old one stays");
+    }
+
+    #[test]
+    fn an_army_kill_counts_for_its_player() {
+        // Owner: my NPCs destroying the other army count as mine on the results.
+        use bevy::ecs::system::RunSystemOnce;
+        let mut app = App::new();
+        app.add_message::<Hit>().add_message::<Fx>().add_message::<Sfx>().add_message::<Rumble>().add_message::<Feat>();
+        let slots = [Some(Slot::new(crate::input::Device::KeysLeft)), Some(Slot::new(crate::input::Device::KeysRight))];
+        app.insert_resource(Session { slots, mode: Mode::Versus, ..default() })
+            .insert_resource(Rng::new(1))
+            .insert_resource(View::default())
+            .insert_resource(crate::versus_map::load(1))
+            .insert_resource(crate::settings::Settings::default());
+        let world = app.world_mut();
+        let npc = |kind| Enemy {
+            kind,
+            rank: Rank::Normal,
+            hp: 1,
+            max_hp: 1,
+            bonus: false,
+            turn_in: 1.0,
+            fire_in: 1.0,
+            skill: 0.0,
+            phase: 0,
+            mark: None,
+        };
+        let mine = world.spawn((Tank::new(Team::Npc(0), Dir::Up, 30.0), npc(EnemyKind::Basic), Transform::default())).id();
+        let theirs = world.spawn((Tank::new(Team::Npc(1), Dir::Down, 40.0), npc(EnemyKind::Power), Transform::default())).id();
+        let p2 = world.spawn((Tank::new(Team::Player(1), Dir::Down, 40.0), Transform::default())).id();
+        world.write_message(Hit { target: theirs, by: Team::Npc(0), shooter: mine });
+        world.write_message(Hit { target: mine, by: Team::Player(1), shooter: p2 });
+        world.run_system_once(resolve_hits).unwrap();
+        let kills = |p: usize| world.resource::<Session>().slots[p].as_ref().unwrap().kills;
+        assert_eq!(kills(0), [0, 0, 1, 0], "player 1's army took a GUNNER");
+        assert_eq!(kills(1), [1, 0, 0, 0], "player 2 shot a LIGHT");
     }
 
     #[test]
