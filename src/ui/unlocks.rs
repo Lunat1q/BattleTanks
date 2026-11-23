@@ -46,12 +46,12 @@ pub fn plugin(app: &mut App) {
 }
 
 /// Where the game goes after a run ends: this screen if the run unlocked something, else the world board / onward.
-/// An `easy` run unlocks nothing and skips the board.
-pub fn after_play(rec: &Record, platform: &crate::Platform, session: &Session, linked: bool, easy: bool) -> Screen {
+/// An `unranked` run (`Settings::ranked`) skips the board.
+pub fn after_play(rec: &Record, platform: &crate::Platform, session: &Session, linked: bool, unranked: bool) -> Screen {
     if platform.achieve.is_some() && !linked && !rec.news.is_empty() {
         Screen::Unlocks
     } else {
-        super::board::after_run(session, platform, linked || easy)
+        super::board::after_run(session, platform, linked || unranked)
     }
 }
 
@@ -134,7 +134,7 @@ fn input(
             reveal.t = all_in; // show the rest at once
         } else if reveal.t > all_in + 0.4 {
             sfx.write(Sfx::MenuPick);
-            next.set(super::board::after_run(&session, &platform, net.linked() || settings.easy_mode));
+            next.set(super::board::after_run(&session, &platform, net.linked() || !settings.ranked(session.players())));
         }
     }
     // A chime for each row as it lands; the list follows the newest one, then up/down browses it.

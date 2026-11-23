@@ -111,7 +111,7 @@ all 20 destroyed → 3 s → results tally → next stage. Base lost or every pl
   until the last kill. City Run has no time bonus; its clear time is what its world boards rank.
 - **Results tally** counts up like the classics: row by row, one blip per kill (0.07 s each, 0.35 s between rows), then
   the stage time with the bonus, then the score. A skips the count; then A (after 1 s) or 10 s moves on.
-- **Hi score** is kept in `%APPDATA%\BattleTanks\scores.txt` (`hi=`, plus `name1=` / `name2=`: the name last
+- **Hi score** is kept in `%APPDATA%\BattleTanks\scores.txt` (`hi=`, `city1=` / `city2=`: fastest clear per district in tenths, 1P / 2P, 0 = none; plus `name1=` / `name2=`: the name last
   entered per slot, prefilled next time), saved on results, game over and the title.
 - **World board** (builds with a game key, host with `post_score`): its own screen after the game over screen (A).
   Each player sets a name of up to 7 letters with their own controller, prefilled with their last one (up/down letter,
@@ -177,7 +177,7 @@ Title → SETTINGS (any controller or keyboard; left/right or A changes, B back)
 | MUSIC | 0–100 % in 10s | 60 % | music track volume, changes live; 0 stops the music |
 | SCREEN SHAKE | ON/OFF | ON | comfort on a big TV |
 | SHOW FPS | ON/OFF | OFF | smoothed FPS, top-right, every screen |
-| FRIENDLY FIRE | ON/OFF | ON | ON = classic (players paralyze each other); OFF = player bullets pass through the other player |
+| FRIENDLY FIRE | ON/OFF | ON | ON = classic (players paralyze each other); OFF = player bullets pass through the other player. Two-player runs with it OFF are easier, so they skip the world board (`Settings::ranked`; achievements still count); the row shows `OFF - 2P NOT RANKED` |
 | EASY MODE | ON/OFF | OFF | ON = losing a tank (or spending level-4 armour) costs one star, not all of them (City Run districts still start at 0); 2 more spare tanks at the start of a classic run or district try; a 6 s respawn shield instead of 3 s. Stages and districts cleared in easy mode open only for easy mode (`easy_classic=` / `easy_unlocked=` in `city.txt` and the cloud copy; an easy run may start anything either frontier opened). Such runs skip the world board and earn no achievements (the local hi score counts); the row shows `ON - NOT RANKED`. Turning it on opens a popup that explains this: A turns it on, B keeps it off. Saved as `easy_mode` (older files' `keep_power` is read as it) |
 | VIBRATION | ON/OFF | ON | rumble on the slot's own pad: own tank destroyed (a sad, falling three-pulse), enemy hit (short), kill (medium), mini-boss / boss kill (strong), paralyzed (medium), base lost (everyone, long), power-up (tick) |
 
@@ -189,7 +189,8 @@ Controller disconnect → game pauses with a note; any unassigned controller pre
 
 ## City Run (`game/city.rs`, `city_map.rs`, `levels/city/NN.txt`)
 Title → CITY RUN → district map (10 dots on a pixel-art city, dotted roads). Cleared = gold, next = white,
-later = locked. Left/right picks among unlocked, A starts, B back. Unlocks saved to
+later = locked. Left/right picks among unlocked, A starts, B back. Under the map: the district's name and this
+machine's fastest clear for the joined player count (`BEST m:ss.t`), else CLEARED. Unlocks saved to
 `%APPDATA%\BattleTanks\city.txt` (`unlocked=N`, classic stages `classic=N`). A district opens only by clearing the one
 before it (no gaps; same rule as classic stages). A host with a cloud copy (`Platform::cloud_load` / `cloud_save`,
 none on the exe) syncs it at start and after each new unlock: the higher count wins on both sides, and a cloud that
@@ -226,6 +227,8 @@ can't be read is never written.
   HP 2 + d/3, 500 pts. **Mini-bosses** 24×24, HP 8 + d, 2 bullets,
   1000 pts, drop a power-up; **boss** 32×32 at the map top, HP 20 + 3d, 3 bullets, 5000 pts. While a mini-boss or
   the boss is alive the camera holds still. Killing the boss clears the district.
+- **HP bars**: the boss and each mini-boss carry a red bar under them (over trees) that shrinks with their HP; they
+  also fade to grey as they take damage.
 - **Boss attacks** (`game/boss.rs`): first 4 s after it wakes, then every 8 − 0.35d s (`boss_barrage_gap`) the boss
   stops and its row and column glow red for 1.2 s (`BOSS_CHARGE`, a rising whine), then a **barrage**: three shells
   each way along them (a 24-unit band, 0.75 × its shell speed). From 2/3 HP down each barrage also calls in
@@ -324,14 +327,14 @@ same rules, each machine draws it and plays its own sound and rumble.
   guesses a /24 broadcast); no reconnect after a drop.
 - The world board can't stop a careful cheat who extracts the key and fakes a plausible stage log (open source).
 - HI SCORES shows the top 10 only; the website shows the top 100 of every board.
-- City Run keeps no local best time per district; only the world board has it.
+- City Run best times are local only (`scores.txt`), not in the cloud copy.
 - Grenade-killed spawning enemies leave their sparkle to finish (cosmetic).
 - Keyboard layouts share Esc and Backspace; both act for whoever is joined on the keyboard.
 - Variable timestep (dt clamped 0.05 s) rather than fixed; fine at 60 fps vsync, revisit if behaviour drifts
   at very low frame rates.
 - No online play, no AI teammate, no level editor (maps are plain text). Network use: the world board (sending runs,
   HI SCORES) and LAN co-op on the local network.
-- City Run: no boss HP bar (bosses fade to grey as they take damage); the view never scrolls back down.
+- City Run: the view never scrolls back down.
 
 ## Operational lessons
 | Symptom | Cause | Guard |

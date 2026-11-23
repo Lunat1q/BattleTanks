@@ -135,6 +135,8 @@ fn refresh(
     progress: Res<Progress>,
     settings: Res<crate::settings::Settings>,
     sel: Res<Sel>,
+    session: Res<Session>,
+    best: Res<crate::scores::Best>,
     mut dots: Query<(&DistrictDot, &mut BackgroundColor, &mut Outline), Without<RoadDot>>,
     mut roads: Query<(&RoadDot, &mut BackgroundColor), Without<DistrictDot>>,
     mut labels: Query<(&DotLabel, &mut TextColor)>,
@@ -158,7 +160,11 @@ fn refresh(
         color.0 = if label.0 <= open { Color::srgb(0.08, 0.08, 0.1) } else { DIM };
     }
     if let Ok(mut t) = info.single_mut() {
-        let status = if sel.0 < open { "   CLEARED" } else { "" };
+        let status = match best.city_time(session.players(), sel.0) {
+            Some(t) => format!("   BEST {}", crate::scores::clock_text(t)),
+            None if sel.0 < open => "   CLEARED".into(),
+            None => String::new(),
+        };
         set_text(&mut t, format!("DISTRICT {}  {}{status}", sel.0, crate::city_map::name(sel.0).to_uppercase()));
     }
 }

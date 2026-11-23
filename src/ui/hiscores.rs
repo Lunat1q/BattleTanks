@@ -289,7 +289,7 @@ mod tests {
         let r = Row { rank: 1, score: 1503, stages: 31, names: "MAX & ZED".into() };
         assert_eq!(row_text(&r, true), "   1  MAX & ZED          2:30.3      31");
         assert_eq!(row_text(&r, false).len(), columns("#", "NAME", "SCORE", "STAGES").len());
-        let best = Best { hi: 0, names: ["ZED".into(), "BBB".into()] };
+        let best = Best { hi: 0, names: ["ZED".into(), "BBB".into()], ..Best::default() };
         assert!(ours(&r, &best));
         assert!(!ours(&Row { names: "MAXI".into(), ..r }, &best));
         let district = selector(&Pick { city: true, district: 3, ..Pick::default() }, 2);

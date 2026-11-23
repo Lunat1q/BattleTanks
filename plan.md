@@ -53,7 +53,8 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
   swinging sideways into their wall (co-op exploit), screen jump after a boss; regression tests for each
 - [x] Owner's report: a reinforcement dropped into a sealed pocket in district 5; drops and placed enemies only on
   reachable cells (tested)
-- [ ] Couch-test difficulty and length; boss HP bar if bosses feel like sponges
+- [ ] Couch-test difficulty and length
+- [x] Boss and mini-boss HP bars; local best clear time per district on the district map
 
 ### M4 — Ship to the TV ⏳
 - [x] Release profile (thin LTO, stripped, no console window)
@@ -82,8 +83,8 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] HI SCORES screen on the title: world top 10 per category (classic 1P/2P, City Run district x 1P/2P), read live
   from the server's public board (`?format=text`); checked against the live server in a smoke run
 - [x] Assisted runs stay off the world board: EASY MODE (was KEEP POWER) runs skip the board and achievements (0.7.2).
-  Still open: FRIENDLY FIRE off in 2P counts as ranked. Runs sent since 0.4.0 carry no flag, so the boards may hold
-  assisted runs
+  FRIENDLY FIRE off in 2P skips the board too (`Settings::ranked`). Runs sent before carry no flag, so the boards
+  may hold assisted runs
 - [x] World board live check: server reachable at `scores.maxpodolski.com` (tunnel route + DNS added, key and rules checked live; runs sent and boards read from the TV and a phone)
 
 ### M8 — LAN co-op ✅ (v0.5.0, ADR 0014 + 0015)
@@ -182,6 +183,16 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [x] Flashing enemies drop on the kill, not the first hit; a new drop no longer removes the one on the field
 - [x] City Run respawns only where the tank can climb on without leaving the view (district 7 pocket, owner)
 - [ ] Owner: couch feel of districts 7-10's bosses
+
+### M18 — VERSUS (planned, ADR 0019 proposed; confirm the open questions before building)
+- [ ] V1 plain duel: `Mode::Versus`, two bases (top base = rotated bottom one), `Team::side`, side hit rules, round
+  end, results; 3 hand-drawn point-symmetric maps; title VERSUS with two players joined
+- [ ] V2 NPC armies: costs (LIGHT 1, SCOUT 2, GUNNER 3, HEAVY 5), budget 20 with an auto mix, spawn cadence, NPC targets
+  (other base / nearest hostile tank), side tints, drops, VERSUS power-ups
+- [ ] V3 setup + draft: MAP / NPC ARMY / ROUNDS screen, per-player draft cards, rounds and rematch
+- [ ] V4 maps: `versus_gen` + validator (symmetry, reachability, base cover, pockets), ~12 in `levels/versus/`, RANDOM
+  at runtime from the session seed
+- [ ] V5 LAN versus: setup in `Hello`, new state in `net::snap`, `net::tests` versus world; music pool
 
 ## Current state
 

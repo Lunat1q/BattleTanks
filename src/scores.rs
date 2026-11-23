@@ -1,11 +1,12 @@
-//! Scores: the local best (`scores.txt` next to the settings: hi score + last initials) and the world board on the
+//! Scores: the local best (`scores.txt` next to the settings: hi score, last initials, City Run best times) and the world board on the
 //! owner's score server (ADR 0009; game id `battletanks`). A classic run is sent at game over as its stage log; the
 //! server recomputes and checks the score. A City Run district clear is sent as its play time and kills (boards per
 //! district, fastest first); the server checks both against the district (`CITY_FACTS`).
 //! The game key is baked in at build time (`BT_SCORES_KEY`, from the gitignored `scores.key`); builds without it
 //! stay offline.
 
-use crate::game::{Phase, Screen, Session, StageLog, StageRun};
+use crate::game::{Mode, Phase, Screen, Session, StageLog, StageRun};
+use crate::rules::CITY_DISTRICTS;
 use bevy::prelude::*;
 use std::sync::{Arc, Mutex};
 
@@ -14,20 +15,55 @@ const KEY: Option<&str> = option_env!("BT_SCORES_KEY");
 const FILE: &str = "scores.txt";
 
 /// Local best and the initials last entered per slot.
-#[derive(Resource, Clone, PartialEq, Debug)]
+#[derive(Resource, Clone, PartialEq, Debug, Default)]
 pub struct Best {
     pub hi: u32,
     pub names: [String; 2],
+    /// Fastest City Run clear per player count (1P, 2P) and district, tenths of a second; 0 = none yet.
+    pub city: [[u32; CITY_DISTRICTS]; 2],
 }
 
 impl Best {
     pub fn parse(text: &str) -> Self {
         let get = |k: &str| text.lines().find_map(|l| l.trim().strip_prefix(k).map(str::to_string));
         let name = |k: &str, d: &str| get(k).map(|n| clean_name(&n)).filter(|n| !n.is_empty()).unwrap_or(d.into());
-        Best { hi: get("hi=").and_then(|v| v.parse().ok()).unwrap_or(0), names: [name("name1=", "AAA"), name("name2=", "BBB")] }
+        let times = |k: &str| {
+            let mut t = [0; CITY_DISTRICTS];
+            for (slot, v) in t.iter_mut().zip(get(k).unwrap_or_default().split(',')) {
+                *slot = v.trim().parse().unwrap_or(0);
+            }
+            t
+        };
+        Best {
+            hi: get("hi=").and_then(|v| v.parse().ok()).unwrap_or(0),
+            names: [name("name1=", "AAA"), name("name2=", "BBB")],
+            city: [times("city1="), times("city2=")],
+        }
     }
     pub fn serialize(&self) -> String {
-        format!("hi={}\nname1={}\nname2={}\n", self.hi, self.names[0], self.names[1])
+        let times = |t: &[u32]| t.iter().map(u32::to_string).collect::<Vec<_>>().join(",");
+        let [one, two] = &self.city;
+        format!("hi={}\nname1={}\nname2={}\ncity1={}\ncity2={}\n", self.hi, self.names[0], self.names[1], times(one), times(two))
+    }
+
+    fn city_slot(&mut self, players: usize, district: usize) -> Option<&mut u32> {
+        self.city.get_mut(players.clamp(1, 2) - 1)?.get_mut(district.checked_sub(1)?)
+    }
+
+    /// The fastest clear of `district` (1-based) with `players`, if any.
+    pub fn city_time(&self, players: usize, district: usize) -> Option<u32> {
+        let t = *self.city.get(players.clamp(1, 2) - 1)?.get(district.checked_sub(1)?)?;
+        (t > 0).then_some(t)
+    }
+
+    /// A clear in `tenths`: kept if it is the first or the fastest. True if it is a new best.
+    pub fn clear_city(&mut self, players: usize, district: usize, tenths: u32) -> bool {
+        let Some(t) = self.city_slot(players, district) else { return false };
+        let new = tenths > 0 && (*t == 0 || tenths < *t);
+        if new {
+            *t = tenths;
+        }
+        new
     }
 }
 
@@ -220,10 +256,17 @@ pub fn save(best: &Best) {
     }
 }
 
-/// A screen change after play: keep a new local best.
+/// A screen change after play: keep a new local best (and a district's fastest clear on its results).
 fn keep_best(session: Res<Session>, mut best: ResMut<Best>) {
+    let mut news = false;
     if session.hi_score > best.hi {
         best.hi = session.hi_score;
+        news = true;
+    }
+    if let Some(l) = session.log.last().filter(|l| session.mode == Mode::City && l.won) {
+        news |= best.clear_city(l.kills.len(), l.stage, l.tenths);
+    }
+    if news {
         save(&best);
     }
 }
@@ -247,9 +290,23 @@ mod tests {
     #[test]
     fn best_file_round_trips_and_cleans_names() {
         let b = Best::parse("hi=12300\nname1=ab1c\nname2=\n");
-        assert_eq!(b, Best { hi: 12300, names: ["ABC".into(), "BBB".into()] });
+        assert_eq!(b, Best { hi: 12300, names: ["ABC".into(), "BBB".into()], ..Best::default() });
         assert_eq!(Best::parse(&b.serialize()), b);
         assert_eq!(Best::parse("garbage").hi, 0);
+    }
+
+    #[test]
+    fn city_best_times_keep_the_fastest_per_player_count() {
+        let mut b = Best::parse("");
+        assert_eq!(b.city_time(1, 3), None);
+        assert!(b.clear_city(1, 3, 1500));
+        assert!(!b.clear_city(1, 3, 1600), "slower: kept the old one");
+        assert!(b.clear_city(1, 3, 1400));
+        assert!(b.clear_city(2, 3, 2000), "2P has its own");
+        assert!(!b.clear_city(1, 0, 100) && !b.clear_city(1, CITY_DISTRICTS + 1, 100), "no such district");
+        assert_eq!((b.city_time(1, 3), b.city_time(2, 3), b.city_time(1, 4)), (Some(1400), Some(2000), None));
+        assert_eq!(Best::parse(&b.serialize()), b);
+        assert_eq!(Best::parse("city1=5,x\n").city_time(1, 1), Some(5), "a damaged line keeps what it can");
     }
 
     #[test]

@@ -24,7 +24,7 @@ src/
     tracker.rs        # Feat messages (written by the sim) + Tracker: per-run / per-stage counters, local slots only [pure]
   geom.rs             # units (SUB 4, CELL 8, TILE 16, FIELD 208), Dir, rect overlap, grid snap  [pure]
   rng.rs              # xorshift64* Resource: below/range/chance/pick/shuffle                     [pure]
-  scores.rs           # Best (hi score + last initials) <-> scores.txt; world board: payload (stage log JSON), city_payload
+  scores.rs           # Best (hi score, last initials, City Run best times) <-> scores.txt; world board: payload (stage log JSON), city_payload
                       # (district clear time + kills), curl_post, Online (worker thread -> poll), parse_board (plain-text
                       # answer), curl_get (HI SCORES); log_stage on leaving a stage or district; CITY_FACTS test = server table  [ADR 0009, 0010]
   settings.rs         # Settings (fps, vsync, fullscreen, volume, music, shake, show_fps, friendly_fire, vibration) <-> %APPDATA%\BattleTanks\settings.txt;
@@ -85,7 +85,7 @@ src/
                       # locomotive, gatehouse, burning citadel) + the City Run extras
     art_promo.rs      # title banner (pub: paint_banner, used by the Android wrapper); Steam capsules/hero/logo (test-only writer)
     boss.rs           # warnings for the boss's attacks: lit row + column while it charges (and until the echo), marked
-                      # player lines, red square under an arriving sentry
+                      # player lines, red square under an arriving sentry; boss / mini-boss HP bars (bar_width pure)
     fx.rs             # Fx messages -> particles, score pop-ups (Text2d), camera shake; achievement stars (Record.news grows
                       # on a stage -> star flies onto the margin, bursts into pixel cubes)
   ui/

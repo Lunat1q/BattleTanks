@@ -144,11 +144,17 @@ impl Settings {
             4 => format!("{}%", self.music),
             5 => on_off(self.shake).into(),
             6 => on_off(self.show_fps).into(),
-            7 => on_off(self.friendly_fire).into(),
+            7 => if self.friendly_fire { "ON" } else { "OFF - 2P NOT RANKED" }.into(),
             8 => on_off(self.vibration).into(),
             9 => if self.easy_mode { "ON - NOT RANKED" } else { "OFF" }.into(),
             _ => String::new(),
         }
+    }
+
+    /// The run may go to the world board: not EASY MODE, and with two players FRIENDLY FIRE on (off makes co-op
+    /// easier: no paralysing each other). Achievements only follow EASY MODE.
+    pub fn ranked(&self, players: usize) -> bool {
+        !self.easy_mode && (players < 2 || self.friendly_fire)
     }
 
     pub fn window_mode(&self) -> WindowMode {
@@ -288,6 +294,14 @@ mod tests {
         assert_eq!(Settings::parse("volume=47").volume, 40);
         assert_eq!(Settings::parse("music=101").music, 100);
         assert_eq!(Settings::parse(""), Settings::default());
+    }
+
+    #[test]
+    fn friendly_fire_off_unranks_only_co_op() {
+        let off = Settings { friendly_fire: false, ..Settings::default() };
+        assert!(Settings::default().ranked(2) && off.ranked(1));
+        assert!(!off.ranked(2));
+        assert!(!Settings { easy_mode: true, ..Settings::default() }.ranked(1));
     }
 
     #[test]

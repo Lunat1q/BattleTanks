@@ -44,7 +44,8 @@ pub fn wants_board(session: &Session, platform: &crate::Platform) -> bool {
 }
 
 /// After a run (and its NEW ACHIEVEMENTS): the world board if it is on for this run, else onward. `skip` for LAN runs
-/// (name entry waits on a network answer, which the two machines would get at different ticks) and EASY MODE runs.
+/// (name entry waits on a network answer, which the two machines would get at different ticks) and unranked runs
+/// (`Settings::ranked`).
 pub fn after_run(session: &Session, platform: &crate::Platform, skip: bool) -> Screen {
     if wants_board(session, platform) && !skip { Screen::Board } else { onward(session) }
 }

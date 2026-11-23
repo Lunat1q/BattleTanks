@@ -251,7 +251,7 @@ fn results_input(
     if (done > 1.0 && pressed) || done > RESULTS_WAIT {
         if session.mode == Mode::City {
             // The district's new achievements and world board, then the map (pick the next district or replay one).
-            next.set(super::unlocks::after_play(&rec, &platform, &session, net.linked(), settings.easy_mode));
+            next.set(super::unlocks::after_play(&rec, &platform, &session, net.linked(), !settings.ranked(session.players())));
         } else {
             session.stage += 1;
             next.set(Screen::Stage);
@@ -272,6 +272,6 @@ fn game_over_input(
 ) {
     if advance_pressed(&mut time, t.delta_secs(), &session, &devices) {
         // The run's new achievements and world board, then the title; City Run: back to the district map to retry.
-        next.set(super::unlocks::after_play(&rec, &platform, &session, net.linked(), settings.easy_mode));
+        next.set(super::unlocks::after_play(&rec, &platform, &session, net.linked(), !settings.ranked(session.players())));
     }
 }
