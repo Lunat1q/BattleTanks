@@ -245,9 +245,10 @@ pub fn tick_timers(
     }
 }
 
-/// A player who is out presses A to take one of the partner's spare tanks (any mode).
+/// A player who has been out `rules::BORROW_WAIT` presses A to take one of the partner's spare tanks (any mode).
 pub fn borrow_life(
     mut commands: Commands,
+    time: Res<Time>,
     mut session: ResMut<Session>,
     devices: Res<DeviceIntents>,
     run: Res<StageRun>,
@@ -257,6 +258,11 @@ pub fn borrow_life(
     mut sfx: MessageWriter<Sfx>,
     mut feats: MessageWriter<Feat>,
 ) {
+    if run.phase == Phase::Play {
+        for s in session.slots.iter_mut().flatten() {
+            s.out_wait -= time.delta_secs();
+        }
+    }
     for p in 0..2 {
         if run.phase == Phase::Play && session.intent(p, &devices).confirm && session.borrow(p) {
             let level = session.slots[p].as_ref().map_or(0, |s| s.level);
@@ -378,6 +384,9 @@ mod tests {
     fn an_out_player_can_borrow_a_spare_tank() {
         let slot = |lives, out| Some(Slot { lives, out, ..Slot::new(Device::KeysLeft) });
         let mut s = Session { slots: [slot(0, true), slot(2, false)], ..default() };
+        s.slots[0].as_mut().unwrap().out_wait = 0.5;
+        assert!(!s.borrow(0), "not before the wait is over");
+        s.slots[0].as_mut().unwrap().out_wait = 0.0;
         assert!(!s.can_borrow(1), "player 2 is still in");
         assert!(s.borrow(0));
         assert_eq!((s.slots[0].as_ref().unwrap().out, s.slots[1].as_ref().unwrap().lives), (false, 1));

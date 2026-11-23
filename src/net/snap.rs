@@ -195,7 +195,7 @@ fn put_session(w: &mut W, s: &Session) {
         match slot {
             None => _ = w.bool(false),
             Some(p) => {
-                w.bool(true).u32(p.lives).u32(p.score).u8(p.level).bool(p.out).u32(p.pickups);
+                w.bool(true).u32(p.lives).u32(p.score).u8(p.level).bool(p.out).f32(p.out_wait).u32(p.pickups);
                 p.kills.iter().chain(&p.big).for_each(|&k| _ = w.u32(k));
             }
         }
@@ -225,7 +225,8 @@ fn get_session(r: &mut R) -> Option<SessionData> {
     for s in &mut slots {
         if r.bool()? {
             let mut slot = Slot::new(Device::Net(0));
-            (slot.lives, slot.score, slot.level, slot.out, slot.pickups) = (r.u32()?, r.u32()?, r.u8()?, r.bool()?, r.u32()?);
+            (slot.lives, slot.score, slot.level, slot.out, slot.out_wait, slot.pickups) =
+                (r.u32()?, r.u32()?, r.u8()?, r.bool()?, r.f32()?, r.u32()?);
             for k in slot.kills.iter_mut().chain(&mut slot.big) {
                 *k = r.u32()?;
             }

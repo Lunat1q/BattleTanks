@@ -285,6 +285,7 @@ pub fn player_lost_tank(commands: &mut Commands, session: &mut Session, p: usize
         spawn_player(commands, p, slot.level, respawn_at);
     } else {
         slot.out = true;
+        slot.out_wait = rules::BORROW_WAIT;
     }
 }
 

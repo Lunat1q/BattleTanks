@@ -7,6 +7,8 @@ pub const VIEW_CATCH_UP: f32 = 2.0 * PLAYER_SPEED;
 pub const START_LIVES: u32 = 2; // spare tanks, so 3 tanks in total
 /// City Run districts start with one spare more: they are long and have no stage breaks.
 pub const CITY_START_LIVES: u32 = START_LIVES + 1;
+/// Seconds of play a player stays out before they may borrow a partner's spare tank.
+pub const BORROW_WAIT: f32 = 5.0;
 pub const EXTRA_LIFE_EVERY: u32 = 20_000;
 pub const POWERUP_POINTS: u32 = 500;
 pub const ENEMIES_PER_STAGE: usize = 20;

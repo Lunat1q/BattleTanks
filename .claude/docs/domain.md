@@ -23,8 +23,8 @@ All numbers live in `src/rules.rs` unless noted.
 
 ### Players
 - 2 spare tanks (3 total); +1 every 20 000 points; tank power-up +1.
-- **Borrowing** (both modes): a player who is out presses A (fire/confirm) to take one of the partner's spare
-  tanks and respawn at once. The HUD shows `A: BORROW A TANK` while that is possible.
+- **Borrowing** (both modes): a player who has been out 5 s of play (`rules::BORROW_WAIT`) presses A (fire/confirm)
+  to take one of the partner's spare tanks and respawn at once. The HUD shows `A: BORROW A TANK` while that is possible.
 - Star levels: 0 slow bullet · 1 fast bullet · 2 two bullets · 3 breaks steel / digs deeper / cuts the first trees ·
   4 same gun, drives over water, and is armour. Losing a tank resets to 0 (in EASY MODE: one star less).
 - **Armour (level 4)**: an enemy hit doesn't destroy the tank. It blinks for 3 s, untouchable (also by the partner's

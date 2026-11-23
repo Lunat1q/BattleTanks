@@ -61,6 +61,8 @@ pub struct Slot {
     pub level: u8,
     /// No lives left this game.
     pub out: bool,
+    /// Seconds of play left before an out player may borrow (`rules::BORROW_WAIT`).
+    pub out_wait: f32,
     /// Kills per `EnemyKind` this stage.
     pub kills: [u32; 4],
     /// Power-ups picked up this stage.
@@ -71,7 +73,7 @@ pub struct Slot {
 
 impl Slot {
     pub fn new(device: Device) -> Self {
-        Slot { device, lives: rules::START_LIVES, score: 0, level: 0, out: false, kills: [0; 4], pickups: 0, big: [0; 3] }
+        Slot { device, lives: rules::START_LIVES, score: 0, level: 0, out: false, out_wait: 0.0, kills: [0; 4], pickups: 0, big: [0; 3] }
     }
 }
 
@@ -121,9 +123,9 @@ impl Session {
         extra
     }
 
-    /// Player `p` is out but the partner has a spare tank to give.
+    /// Player `p` has been out `rules::BORROW_WAIT` and the partner has a spare tank to give.
     pub fn can_borrow(&self, p: usize) -> bool {
-        self.slots[p].as_ref().is_some_and(|s| s.out) && self.slots[1 - p].as_ref().is_some_and(|s| s.lives > 0)
+        self.slots[p].as_ref().is_some_and(|s| s.out && s.out_wait <= 0.0) && self.slots[1 - p].as_ref().is_some_and(|s| s.lives > 0)
     }
 
     /// Player `p` takes one of the partner's spare tanks and is back in. False if there is none to take.
