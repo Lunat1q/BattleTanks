@@ -1,5 +1,5 @@
 //! Classic stage select: a grid of stage tiles, each with its mini-map. Stages open one by one as they are cleared
-//! (`Progress::classic`); the cursor moves only over open tiles. A starts, B goes back to the title.
+//! (`Progress::classic`); the cursor moves only over open tiles. A starts, B goes back to PLAY.
 
 use super::*;
 use crate::game::progress::Progress;
@@ -141,7 +141,7 @@ fn input(
         }
     }
     if nav.back {
-        next.set(Screen::Title);
+        next.set(Screen::Play);
     } else if (nav.confirm || nav.start) && session.players() > 0 {
         session.mode = Mode::Classic;
         session.stage = sel.0;

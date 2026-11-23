@@ -2,7 +2,7 @@
 
 pub mod art_badges;
 mod art_icons;
-mod art_map;
+pub(crate) mod art_map;
 pub mod art_promo;
 mod art_tanks;
 mod art_title;

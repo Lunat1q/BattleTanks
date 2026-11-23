@@ -21,6 +21,8 @@ use bevy::prelude::*;
 pub enum Screen {
     #[default]
     Title,
+    /// PLAY from the title: a card per mode.
+    Play,
     Stage,
     Results,
     GameOver,

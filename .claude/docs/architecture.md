@@ -91,9 +91,10 @@ src/
   ui/
     mod.rs            # text() in vh units, colours, menu helpers; Headings (block-built headings, painted on first use, cached)
     title.rs          # brick/steel logo; player tanks drive in beside it on join (step_toward, tank_offset);
-                      # player cards (join/leave, controller found) left and right of CLASSIC / CITY RUN / LAN CO-OP /
-                      # HI SCORES / ACHIEVEMENTS / SETTINGS / EXIT (linked: CLASSIC / CITY RUN / LEAVE LAN); host's hints;
+                      # player cards (join/leave, controller found) left and right of PLAY / LAN CO-OP /
+                      # HI SCORES / ACHIEVEMENTS / SETTINGS / EXIT (linked: PLAY / LEAVE LAN); host's hints;
                       # COMBO (secret bunker, offline only; combo() pure)
+    play.rs           # Screen::Play: a card per mode (CLASSIC / CITY RUN / VERSUS) with a picture and progress (step pure)
     stages.rs         # Screen::StageSelect: 6x5 classic stage tiles with mini-maps, open ones only (step pure)
     city_map.rs       # district map: 10 dots + dotted roads, pick an unlocked district
     settings.rs       # rows from settings::ITEMS + BACK; saves on every change
@@ -145,7 +146,7 @@ HiScores: Pick (selectors) ──▶ ui::hiscores::fetch (worker thread: Platfor
 Achievements ◀──ACHIEVEMENTS / B──▶ Title (hosts with Platform::achieve) ◀──B── Bunker ◀──title COMBO (offline)
 GameOver / district Results ──A──▶ [Unlocks (new achievements, not in LAN)] ──A──▶ [Board] ──▶ Title / CityMap
 HiScores ◀──HI SCORES / B──▶ Title ◀──B / linked──▶ Lan (LAN CO-OP)
-Settings ◀──SETTINGS / B──▶ Title ──CLASSIC──▶ StageSelect ──A──▶ Stage ──all 20 killed──▶ Results ──tally, then A / 10 s──▶ Stage (n+1)
+Settings ◀──SETTINGS / B──▶ Title ──PLAY──▶ Play ──CLASSIC──▶ StageSelect ──A──▶ Stage ──all 20 killed──▶ Results ──tally, then A / 10 s──▶ Stage (n+1)
                              ▲                │
                              │                └──base destroyed or everyone out──▶ GameOver ──A──▶ [Board ──A / B──▶] Title
                              └────────────── pause menu "QUIT TO TITLE" ◀──────────┘
@@ -153,8 +154,8 @@ Settings ◀──SETTINGS / B──▶ Title ──CLASSIC──▶ StageSelect
 
 `[Board]` = the world board screen, only when it is on (game key + host `post_score`) and the run counts.
 
-City Run: Title ──CITY RUN──▶ CityMap ──A──▶ Stage (mode City) ──boss killed──▶ Results ──▶ [Board ──▶] CityMap;
-game over ──▶ CityMap (retry). B on the map ──▶ Title.
+City Run: Title ──PLAY──▶ Play ──CITY RUN──▶ CityMap ──A──▶ Stage (mode City) ──boss killed──▶ Results ──▶ [Board ──▶] CityMap;
+game over ──▶ CityMap (retry). B on the map or the stage tiles ──▶ Play ──B──▶ Title.
 
 `StageRun.phase` inside `Screen::Stage`: `Intro` (banner, frozen) → `Play` → `Won` | `Lost` (3 s, world keeps
 running) → next screen. `Paused` is a separate resource; the pause overlay is part of the stage UI.

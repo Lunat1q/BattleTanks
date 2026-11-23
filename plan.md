@@ -185,6 +185,8 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [ ] Owner: couch feel of districts 7-10's bosses
 
 ### M18 — VERSUS (planned, ADR 0019; owner's answers in it)
+- [x] Title PLAY → mode cards (CLASSIC / CITY RUN / VERSUS, pictures + progress), so the title menu stays short;
+  VERSUS shows COMING SOON until V1
 - [ ] V1 plain duel: `Mode::Versus`, two bases (top base = rotated bottom one), `Team::side`, side hit rules, round
   end, results; 3 hand-drawn point-symmetric maps; title VERSUS with two players joined
 - [ ] V2 NPC armies: costs (LIGHT 1, SCOUT 2, GUNNER 3, HEAVY 5), budget 20 with an auto mix, spawn cadence, NPC targets

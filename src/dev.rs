@@ -103,6 +103,10 @@ fn run(
                 rec.steps.extend([("kills_100", 64), ("kills_1000", 64), ("kills_5000", 64), ("wallbreaker", 12)]);
                 next.set(Screen::Achievements);
             }
+            Ok("play") if session.players() == 0 => {
+                session.slots = keys();
+                next.set(Screen::Play);
+            }
             Ok("city") if session.players() == 0 => {
                 session.slots = keys();
                 next.set(Screen::CityMap);

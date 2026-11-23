@@ -70,8 +70,13 @@ than on the field so they read on black; the banner darkens the field more (85 %
 brick heading reads over bricks.
 
 ## Title (`ui/title.rs`, ADR 0018)
-- Menu: CLASSIC, CITY RUN, LAN CO-OP (hosts with `Platform::lan`), HI SCORES, ACHIEVEMENTS (hosts with
-  `Platform::achieve`), SETTINGS, EXIT. CLASSIC and CITY RUN are dimmed until someone has joined.
+- Menu: PLAY, LAN CO-OP (hosts with `Platform::lan`), HI SCORES, ACHIEVEMENTS (hosts with `Platform::achieve`),
+  SETTINGS, EXIT. PLAY is dimmed until someone has joined.
+- **PLAY** (`ui/play.rs`) shows a card per mode, left to right: CLASSIC (the highest open stage's mini-map), CITY RUN
+  (a slice of the district map's city), VERSUS (two tanks face to face; "COMING SOON" until it is built, ADR 0019).
+  Each card has its name, a one-line description and how far the players have got ("UP TO STAGE n" / "ALL CLEARED").
+  Left/right picks (the cursor is kept between visits), A goes on to the stage tiles or the district map, B back to
+  the title; B there comes back to PLAY.
 - The logo is built from terrain: "BATTLE" in brick, "TANKS" in steel. When a player joins, their tank drives in
   from their side of the screen (1.8 s, slowing as it parks) and parks beside the logo; it backs out when they leave.
 - A **card per player** (pixel-art frame in the player's colour): PLAYER 1 left of the menu, PLAYER 2 right. Joining: A (Space / Enter) from any device that hasn't
@@ -91,7 +96,7 @@ brick heading reads over bricks.
   `Platform::keyboard`.
 
 ## Classic stage select (`ui/stages.rs`, `game/progress.rs`, ADR 0018)
-CLASSIC → a 6 × 5 grid of stage tiles, each showing its map in miniature with the stage number. Cleared tiles have a
+PLAY → CLASSIC → a 6 × 5 grid of stage tiles, each showing its map in miniature with the stage number. Cleared tiles have a
 gold frame, the next unbeaten one a white frame; the rest are dark with a padlock. Stage 1 is open from the start.
 Clearing the highest open stage opens the next; replays and clears past it open nothing. The cursor moves only over
 open tiles and starts on the highest: left/right step through the stages in order, up/down jump a row, A starts,
@@ -99,7 +104,7 @@ B goes back. Saved as `classic=N` in `city.txt` and the cloud copy (see City Run
 (see Settings).
 
 ## Flow
-Title → join (A / Space / Enter) → CLASSIC → pick a stage tile → stage banner 1.2 s (world frozen) → play →
+Title → join (A / Space / Enter) → PLAY → CLASSIC → pick a stage tile → stage banner 1.2 s (world frozen) → play →
 all 20 destroyed → 3 s → results tally → next stage. Base lost or every player out → 3 s → game over → title.
 30 stages, rosters ramping from mostly LIGHT (1) to mostly HEAVY (30). After stage 30 the maps loop; each lap converts
 4 weaker enemies into stronger ones.
@@ -127,7 +132,7 @@ all 20 destroyed → 3 s → results tally → next stage. Base lost or every pl
   live on both sides (`scores.rs` `CITY_FACTS`, server `CityRules.Facts`); the test
   `city_facts_match_the_maps_and_the_server` fails on a map change until both are updated.
 
-- **HI SCORES** (title menu, between CITY RUN and SETTINGS; any pad, remote or keyboard): the world
+- **HI SCORES** (title menu, between PLAY and SETTINGS; any pad, remote or keyboard): the world
   board's top 10 for one category at a time. Selectors: MODE (CLASSIC / CITY RUN), PLAYERS (1 / 2), and in City Run
   DISTRICT (1-10 with its name). Up/down picks a selector, left/right (or A) changes it, B goes back; the last board
   looked at is kept until the game closes. Columns: rank, names, score + stages cleared (City Run: clear time + kills).
@@ -188,7 +193,7 @@ Leaving the game (Home, another app, TV off) pauses a live stage, holds the musi
 Controller disconnect → game pauses with a note; any unassigned controller pressing A takes over the slot.
 
 ## City Run (`game/city.rs`, `city_map.rs`, `levels/city/NN.txt`)
-Title → CITY RUN → district map (10 dots on a pixel-art city, dotted roads). Cleared = gold, next = white,
+Title → PLAY → CITY RUN → district map (10 dots on a pixel-art city, dotted roads). Cleared = gold, next = white,
 later = locked. Left/right picks among unlocked, A starts, B back. Under the map: the district's name and this
 machine's fastest clear for the joined player count (`BEST m:ss.t`), else CLEARED. Unlocks saved to
 `%APPDATA%\BattleTanks\city.txt` (`unlocked=N`, classic stages `classic=N`). A district opens only by clearing the one
@@ -309,7 +314,7 @@ Title → LAN CO-OP (hosts whose `Platform::lan` is set). One player picks HOST 
 (the list says which version a host runs). Once linked both go to the title with nobody joined; each player joins
 with A on their own device and is shown by machine name. Then it is the normal game for two: classic or City Run,
 same rules, each machine draws it and plays its own sound and rumble.
-- Linked title: CLASSIC, CITY RUN, LEAVE LAN (no HI SCORES / SETTINGS / EXIT). Pause menu: EXIT GAME becomes
+- Linked title: PLAY, LEAVE LAN (no HI SCORES / SETTINGS / EXIT). Pause menu: EXIT GAME becomes
   LEAVE LAN. Leaving ends it for both. The host's FRIENDLY FIRE, EASY MODE, open stages and districts apply; the
   joiner's own come back afterwards.
 - Unlocks over LAN (ADR 0018): the host's move as always. A stage or district cleared together also counts for the

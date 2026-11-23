@@ -8,6 +8,7 @@ mod city_map;
 mod hiscores;
 mod hud;
 mod lan;
+mod play;
 mod screens;
 mod settings;
 mod stages;
@@ -41,6 +42,7 @@ pub fn plugin(app: &mut App) {
         unlocks::plugin,
         stages::plugin,
         bunker::plugin,
+        play::plugin,
     ));
 }
 

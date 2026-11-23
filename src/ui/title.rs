@@ -1,9 +1,9 @@
 //! Title: players join by pressing A (or Space / Enter) on a card, player 1 left of the menu, player 2 right; B leaves
 //! a slot.
-//! CLASSIC goes to the stage tiles, CITY RUN to the district map. `COMBO` opens the secret bunker.
+//! PLAY goes to the mode cards (`play`). `COMBO` opens the secret bunker.
 
 use super::*;
-use crate::game::{Mode, Screen, Session, Sfx, Slot};
+use crate::game::{Screen, Session, Sfx, Slot};
 use crate::geom::Dir;
 use crate::gfx::Gfx;
 use crate::input::{Device, DeviceIntents, Intent};
@@ -60,8 +60,7 @@ struct PingLine;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Item {
-    Classic,
-    City,
+    Play,
     Lan,
     HiScores,
     Achievements,
@@ -74,9 +73,9 @@ enum Item {
 fn items(linked: bool, platform: &crate::Platform) -> Vec<Item> {
     use Item::*;
     if linked {
-        return vec![Classic, City, Leave];
+        return vec![Play, Leave];
     }
-    [Classic, City]
+    [Play]
         .into_iter()
         .chain(platform.lan.is_some().then_some(Lan))
         .chain([HiScores])
@@ -263,14 +262,7 @@ fn input(
     }
     if nav.confirm || nav.start {
         let to = match items[menu.sel] {
-            Item::Classic if session.players() > 0 => {
-                session.mode = Mode::Classic;
-                Some(Screen::StageSelect)
-            }
-            Item::City if session.players() > 0 => {
-                session.mode = Mode::City;
-                Some(Screen::CityMap)
-            }
+            Item::Play if session.players() > 0 => Some(Screen::Play),
             Item::Lan => Some(Screen::Lan),
             Item::HiScores => Some(Screen::HiScores),
             Item::Achievements => Some(Screen::Achievements),
@@ -339,8 +331,7 @@ fn refresh(
         }
         if let Some(MenuLine(i)) = line {
             let label = match items.get(*i) {
-                Some(Item::Classic) => "CLASSIC",
-                Some(Item::City) => "CITY RUN",
+                Some(Item::Play) => "PLAY",
                 Some(Item::Lan) => "LAN CO-OP",
                 Some(Item::HiScores) => "HI SCORES",
                 Some(Item::Achievements) => "ACHIEVEMENTS",
@@ -351,7 +342,7 @@ fn refresh(
             };
             set_text(&mut t, menu_label(menu.sel == *i, label));
             // The modes wait for a player.
-            let waiting = session.players() == 0 && matches!(items.get(*i), Some(Item::Classic | Item::City));
+            let waiting = session.players() == 0 && items.get(*i) == Some(&Item::Play);
             color.0 = if waiting { DIM } else { INK };
         }
         if let Some(&CardLine(i, row)) = card {
@@ -414,8 +405,8 @@ mod tests {
     #[test]
     fn menu_fits_and_drops_what_a_link_cant_share() {
         let all = crate::Platform { achieve: Some(|_, _| {}), ..default() };
-        assert_eq!(items(false, &all).len(), 7, "the longest menu");
-        assert_eq!(items(true, &all), vec![Item::Classic, Item::City, Item::Leave]);
+        assert_eq!(items(false, &all).len(), 6, "the longest menu");
+        assert_eq!(items(true, &all), vec![Item::Play, Item::Leave]);
         assert!(!items(false, &crate::Platform { lan: None, ..default() }).contains(&Item::Lan));
     }
 

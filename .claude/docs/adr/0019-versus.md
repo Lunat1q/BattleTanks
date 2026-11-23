@@ -65,8 +65,9 @@ fight for their side. The map is either picked from a pre-generated set or gener
 - Rematch keeps the setup; RANDOM draws a new map each round.
 
 **Flow**
-- The title gets VERSUS. It is dimmed until two players have joined, and is also shown when linked over LAN.
-- Title → `Screen::VersusSetup`:
+- Title → PLAY shows a VERSUS card next to CLASSIC and CITY RUN (owner, 2026-11-23: keeps the title menu short). It
+  needs two players joined, and is also shown when linked over LAN.
+- PLAY → VERSUS → `Screen::VersusSetup`:
   - MAP: RANDOM, or tiles of the pre-generated maps with mini-maps (`stage_map`);
   - NPC ARMY: OFF / 10 / 20 / 30;
   - ROUNDS: 1 / 3 / 5.

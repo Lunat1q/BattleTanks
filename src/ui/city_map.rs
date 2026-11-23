@@ -121,7 +121,7 @@ fn input(
         sfx.write(Sfx::MenuMove);
     }
     if nav.back {
-        next.set(Screen::Title);
+        next.set(Screen::Play);
     } else if (nav.confirm || nav.start) && session.players() > 0 {
         session.mode = Mode::City;
         session.stage = sel.0;
