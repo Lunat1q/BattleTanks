@@ -56,6 +56,8 @@ fn setup(
     mut session: ResMut<Session>,
     mut view: ResMut<View>,
     settings: Res<crate::settings::Settings>,
+    duel: Res<super::versus::Match>,
+    mut rng: ResMut<Rng>,
     mut sfx: MessageWriter<Sfx>,
     mut feats: MessageWriter<Feat>,
 ) {
@@ -69,6 +71,7 @@ fn setup(
     } else if session.mode == Mode::Versus {
         commands.remove_resource::<super::city::CityRun>();
         super::versus::reset_slots(&mut session);
+        commands.insert_resource(super::versus::Armies::new(duel.budget, &mut rng));
         for (side, at) in super::versus::BASES.into_iter().enumerate() {
             commands.spawn((Base(side), Transform::from_translation(at.extend(0.0)), DespawnOnExit(Screen::Stage)));
         }
@@ -95,7 +98,8 @@ fn setup(
         spawn_timer: 0.0,
         spawn_point: 0,
         freeze: 0.0,
-        shovel: 0.0,
+        frozen: [0.0; 2],
+        shovel: [0.0; 2],
         base_alive: [true; 2],
         clock: 0.0,
     });
@@ -253,11 +257,16 @@ pub fn tick_timers(
         run.clock += dt;
     }
     run.freeze = (run.freeze - dt).max(0.0);
-    if run.shovel > 0.0 {
-        run.shovel = (run.shovel - dt).max(0.0);
-        // Steel, blinking back to brick during the last 3 seconds.
-        let steel = run.shovel > 3.0 || ((run.shovel * 4.0) as u32).is_multiple_of(2);
-        terrain.set_base_ring(if steel && run.shovel > 0.0 { Tile::Steel } else { Tile::Brick });
+    for side in 0..2 {
+        run.frozen[side] = (run.frozen[side] - dt).max(0.0);
+        let left = run.shovel[side];
+        if left > 0.0 {
+            let left = (left - dt).max(0.0);
+            run.shovel[side] = left;
+            // Steel, blinking back to brick during the last 3 seconds.
+            let steel = left > 3.0 || ((left * 4.0) as u32).is_multiple_of(2);
+            terrain.set_ring(side, if steel && left > 0.0 { Tile::Steel } else { Tile::Brick });
+        }
     }
 }
 

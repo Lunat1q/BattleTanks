@@ -3,6 +3,7 @@
 
 use super::stage::BASE_POS;
 use super::*;
+use crate::geom::FIELD;
 use crate::rng::Rng;
 
 /// Turrets sit in a full-width wall: a sideways shot only hits the wall, so they aim up or down only. Swinging
@@ -35,6 +36,22 @@ pub fn choose_dir(pos: Vec2, target: Vec2, current: Dir, blocked: bool, roll: f3
     }
 }
 
+/// `choose_dir` for a tank whose way forward is up (a VERSUS NPC of player 1): the same pick in the field turned
+/// 180 degrees, so its wander drifts up towards the other side.
+pub fn choose_dir_up(pos: Vec2, target: Vec2, current: Dir, blocked: bool, roll: f32, roll2: f32) -> Dir {
+    let f = Vec2::splat(FIELD);
+    turned(choose_dir(f - pos, f - target, turned(current), blocked, roll, roll2))
+}
+
+fn turned(d: Dir) -> Dir {
+    match d {
+        Dir::Up => Dir::Down,
+        Dir::Down => Dir::Up,
+        Dir::Left => Dir::Right,
+        Dir::Right => Dir::Left,
+    }
+}
+
 pub fn think(
     time: Res<Time>,
     run: Res<StageRun>,
@@ -53,9 +70,18 @@ pub fn think(
         .filter(|(_, t)| matches!(t.team, Team::Player(_)))
         .map(|(tf, _)| tf.translation.xy())
         .collect();
+    // VERSUS NPCs hunt the other side: its player and its NPCs (spawn order again, for ties).
+    let npcs: Vec<(Team, Vec2)> =
+        enemies.iter().sort_by_key::<Entity, _>(|e| order(&ids, *e)).map(|(tf, t, _, _)| (t.team, tf.translation.xy())).collect();
+    let tanks: Vec<(Team, Vec2)> =
+        players.iter().sort_by_key::<Entity, _>(|e| order(&ids, *e)).map(|(tf, t)| (t.team, tf.translation.xy())).chain(npcs).collect();
     // Spawn order: each enemy draws from the shared dice, so the order decides who gets which roll.
     for (tf, mut tank, mut gun, mut ai) in enemies.iter_mut().sort_by_key::<Entity, _>(|e| order(&ids, *e)) {
-        if run.freeze > 0.0 {
+        let frozen = match tank.team {
+            Team::Npc(side) => run.frozen[side] > 0.0,
+            _ => run.freeze > 0.0,
+        };
+        if frozen {
             tank.want = None;
             gun.trigger = false;
             continue;
@@ -80,13 +106,23 @@ pub fn think(
         }
         ai.turn_in -= dt;
         if tank.blocked || ai.turn_in <= 0.0 || tank.want.is_none() {
-            // Mostly the base; sometimes the nearest player. No base (City Run): always the players.
-            let target = match nearest {
-                Some(p) if base.is_empty() || rng.chance(0.35) => p,
-                _ => BASE_POS,
+            let (target, up) = match tank.team {
+                // VERSUS NPC: 60 % the other base, 40 % the nearest hostile tank.
+                Team::Npc(side) => {
+                    let hostile = tanks.iter().filter(|(t, _)| t.side() != Some(side)).map(|(_, p)| *p);
+                    let near = hostile.min_by(|a, b| a.distance(pos).total_cmp(&b.distance(pos)));
+                    let base = super::versus::BASES[1 - side];
+                    (near.filter(|_| rng.chance(0.4)).unwrap_or(base), side == 0)
+                }
+                // Mostly the base; sometimes the nearest player. No base (City Run): always the players.
+                _ => match nearest {
+                    Some(p) if base.is_empty() || rng.chance(0.35) => (p, false),
+                    _ => (BASE_POS, false),
+                },
             };
             let roll = rng.f32();
-            tank.want = Some(choose_dir(pos, target, tank.dir, tank.blocked, roll, rng.f32()));
+            let pick = if up { choose_dir_up } else { choose_dir };
+            tank.want = Some(pick(pos, target, tank.dir, tank.blocked, roll, rng.f32()));
             let (t0, t1) = if tank.blocked { (0.2, 0.8) } else { ai.kind.turn_gap() };
             ai.turn_in = rng.range(t0, t1);
             if tank.blocked && rng.chance(0.5) {
@@ -130,5 +166,14 @@ mod tests {
                 assert_ne!(d, cur, "roll {r} cur {cur:?}");
             }
         }
+    }
+
+    #[test]
+    fn player_one_npcs_wander_up_towards_the_other_side() {
+        // Wander roll 0.1 is "towards the base side": down for enemies and player 2's NPCs, up for player 1's.
+        assert_eq!(choose_dir(Vec2::splat(100.0), Vec2::ZERO, Dir::Left, false, 0.9, 0.1), Dir::Down);
+        assert_eq!(choose_dir_up(Vec2::splat(100.0), Vec2::ZERO, Dir::Left, false, 0.9, 0.1), Dir::Up);
+        // Heading for a target still heads for it.
+        assert_eq!(choose_dir_up(Vec2::new(104.0, 20.0), Vec2::new(104.0, 200.0), Dir::Left, false, 0.1, 0.5), Dir::Up);
     }
 }

@@ -190,8 +190,12 @@ pub struct StageRun {
     pub next_enemy: usize,
     pub spawn_timer: f32,
     pub spawn_point: usize,
+    /// Classic clock: enemies stand still.
     pub freeze: f32,
-    pub shovel: f32,
+    /// VERSUS clock, per side: that side's player and NPCs stand still.
+    pub frozen: [f32; 2],
+    /// Steel ring time left per base (classic: only `[0]`).
+    pub shovel: [f32; 2],
     /// Per side: player 1's base (bottom), player 2's (top, VERSUS only).
     pub base_alive: [bool; 2],
     /// Seconds in `Phase::Play` (pauses and banners excluded): the clear time.
@@ -218,13 +222,15 @@ impl View {
 pub enum Team {
     Player(usize),
     Enemy,
+    /// VERSUS: a player's NPC tank, by side (ADR 0019).
+    Npc(usize),
 }
 
 impl Team {
     /// VERSUS side (0 bottom, 1 top); the classic enemy has none.
     pub fn side(self) -> Option<usize> {
         match self {
-            Team::Player(p) => Some(p),
+            Team::Player(p) | Team::Npc(p) => Some(p),
             Team::Enemy => None,
         }
     }
@@ -455,6 +461,7 @@ pub fn plugin(app: &mut App) {
             Update,
             (
                 stage::spawn_enemies,
+                versus::spawn_npcs,
                 stage::tick_timers,
                 stage::borrow_life,
                 versus::respawn,

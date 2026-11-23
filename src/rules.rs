@@ -17,6 +17,35 @@ pub const BONUS_CARRIERS: [usize; 3] = [3, 10, 17];
 
 pub const SPAWN_TIME: f32 = 1.0; // spawn twinkle before a tank becomes real
 
+/// VERSUS NPC armies (ADR 0019): points per player, one NPC per side every `NPC_SPAWN_GAP` s with at most
+/// `NPC_MAX_ALIVE` of a side on the field; every `NPC_BONUS_EVERY`th flashes and drops a power-up.
+pub const ARMY_BUDGET: u32 = 20;
+pub const NPC_SPAWN_GAP: f32 = 4.0;
+pub const NPC_MAX_ALIVE: usize = 4;
+pub const NPC_BONUS_EVERY: usize = 4;
+/// VERSUS clock: the other side (player and NPCs) stands still this long.
+pub const VERSUS_FREEZE: f32 = 5.0;
+/// VERSUS without armies: a power-up in the middle band this often.
+pub const VERSUS_DROP_GAP: f32 = 20.0;
+
+/// AUTO army: one of each kind, cheapest first, round after round while the points last. 20 points:
+/// LIGHT, SCOUT, GUNNER, HEAVY, LIGHT, SCOUT, GUNNER, LIGHT, SCOUT.
+pub fn auto_army(budget: u32) -> Vec<EnemyKind> {
+    let (mut army, mut left) = (Vec::new(), budget);
+    loop {
+        let before = army.len();
+        for k in EnemyKind::ALL {
+            if k.cost() <= left {
+                left -= k.cost();
+                army.push(k);
+            }
+        }
+        if army.len() == before {
+            return army;
+        }
+    }
+}
+
 /// VERSUS (ADR 0020, owner): tanks are unlimited, but the `deaths`-th loss of a round (1-based) waits longer to
 /// come back: 1, 3, 5, 7, 10, 15 s, then 5 s more each time, at most 30 s. The spawn twinkle is part of it.
 pub fn versus_respawn(deaths: u32) -> f32 {
@@ -48,6 +77,10 @@ impl EnemyKind {
 
     pub fn index(self) -> usize {
         self as usize
+    }
+    /// VERSUS army points (ADR 0019).
+    pub fn cost(self) -> u32 {
+        [1, 2, 3, 5][self.index()]
     }
     pub fn speed(self) -> f32 {
         match self {

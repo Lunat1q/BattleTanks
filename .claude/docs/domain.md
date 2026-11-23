@@ -272,7 +272,8 @@ can't be read is never written.
   stretch of street appears twice anywhere in City Run (tested).
 
 ## VERSUS (`game/versus.rs`, `versus_map.rs`, `ui/versus.rs`, ADR 0019, 0020; plan M18)
-First step (V1): a plain duel, no NPC armies, no setup screen, no power-ups yet.
+Built so far: the duel (V1) and NPC armies (V2); no setup or draft screen yet, so every match uses AUTO armies of 20
+points.
 - Title → PLAY → VERSUS with both players joined (offline only for now) starts round 1. Player 1 defends the classic
   base at the bottom and starts beside it; player 2 defends the same base turned round at the top and starts at
   the mirrored spot (x 136), facing down. Both bases have the brick ring.
@@ -288,8 +289,23 @@ First step (V1): a plain duel, no NPC armies, no setup screen, no power-ups yet.
   The HUD shows `LOST n` and, while waiting, `BACK IN n`. Star level 0 each round, a shield on each respawn, no
   borrowing; EASY MODE changes nothing in VERSUS.
 - The round ends only when a base falls: the banner shows PLAYER n WINS (gold blocks), or DRAW when both fall on one
-  tick. Then VERSUS results: round wins per player and tanks destroyed this round; A
-  plays the next round on the next map, B goes to the title.
+  tick. Then VERSUS results: round wins per player, tanks and NPCs destroyed this round; A plays the next round on
+  the next map, B goes to the title.
+- **NPC armies** (ADR 0019): each player gets an army bought with 20 points (LIGHT 1, SCOUT 2, GUNNER 3, HEAVY 5).
+  Until the draft screen (V3) it is the AUTO mix: one of each kind cheapest first, round after round while the points
+  last (20 = LIGHT, SCOUT, GUNNER, HEAVY, LIGHT, SCOUT, GUNNER, LIGHT, SCOUT), shuffled by the gameplay dice each
+  round. One NPC per side every 4 s, at most 4 of a side alive, entering at the two corners of their side's back row
+  in turn (a taken corner waits). Every 4th NPC of a side flashes red and drops a power-up when destroyed.
+- NPCs are the enemy models in a darker shade of their player's colour, with the enemies' speeds, HP and fire timing.
+  They head 60 % for the other base, 40 % for the nearest hostile tank (the other player or their NPCs); their
+  wander drifts towards the other side. Same-side rules as the players: own NPCs' shells pass through you and yours
+  through them, they can't hurt their own base; NPCs of the two sides fight each other. Only a player's kills count
+  for them (results).
+- **Power-ups** (+500, picked up by players only): dropped by flashing NPCs anywhere a player can drive; with armies
+  OFF (`BT_ARMY=0` until the setup screen) one appears in the middle band (cell rows 10-15) every 20 s. In VERSUS:
+  helmet and star as usual; the **clock** freezes the other side, player and NPCs, for 5 s (tinted icy); the
+  **grenade** destroys the other side's NPCs on the field; the **shovel** turns your own base's ring to steel for 20 s;
+  the **tank** makes your next respawn wait one step shorter.
 - No world board, no achievements, the local hi score untouched; the HUD hides the HI line. Music: the fast stage
   pool for now.
 
@@ -351,6 +367,7 @@ same rules, each machine draws it and plays its own sound and rumble.
   at 2 (33 ms) on home Wi-Fi, up to 5 on a bad link; the linked title shows the round trip and the delay.
 
 ## Known gaps / deliberate omissions
+- VERSUS: no army count on the HUD (the classic reserve icons stay hidden); no LAN yet (plan M18 V5).
 - LAN: two players only, same network, same version; a phone acting as a hotspot host may not be found (the beacon
   guesses a /24 broadcast); no reconnect after a drop.
 - The world board can't stop a careful cheat who extracts the key and fakes a plausible stage log (open source).

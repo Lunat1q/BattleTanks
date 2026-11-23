@@ -192,8 +192,10 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [x] Owner: no tank limit, a growing respawn wait instead (1, 3, 5, 7, 10, 15 s, +5 s up to 30 s); a round ends
   only on a base (ADR 0020)
 - [ ] Owner: a couch duel (map feel, respawn waits)
-- [ ] V2 NPC armies: costs (LIGHT 1, SCOUT 2, GUNNER 3, HEAVY 5), budget 20 with an auto mix, spawn cadence, NPC targets
-  (other base / nearest hostile tank), side tints, drops, VERSUS power-ups
+- [x] V2 NPC armies: costs (LIGHT 1, SCOUT 2, GUNNER 3, HEAVY 5), budget 20 with an auto mix, spawn cadence, NPC targets
+  (other base / nearest hostile tank), side tints, drops, VERSUS power-ups (clock / grenade / shovel by side, tank =
+  shorter wait); timed middle drops without armies (`BT_ARMY=0`)
+- [ ] Owner: couch feel of the armies (4 s cadence, 4 alive, NPC aim)
 - [ ] V3 setup + draft: MAP / NPC ARMY / ROUNDS screen, per-player draft cards, rounds and rematch
 - [ ] V4 maps: `versus_gen` + validator (symmetry, reachability, base cover, pockets), ~12 in `levels/versus/`, RANDOM
   at runtime from the session seed

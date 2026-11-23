@@ -5,7 +5,7 @@
 //! district `BT_CITY`, saves a screenshot after `BT_SHOT_AT` seconds (default 7) and quits. `BT_VIEW=<units>` pins the
 //! City Run view that far up the map, to look at bastions and bosses. `BT_SCREEN=lan` the LAN CO-OP screen, `bunker` the secret bunker (`BT_TAB=1` OST, `2` sound test). In a stage,
 //! `BT_PAUSE=1` opens the pause menu and `BT_FLYOUT=<secs>` fakes two unlocks that long before the shot (the achievement stars).
-//! `BT_VERSUS=<map>` starts a VERSUS round on that map; `BT_SCREEN=versus` shows a made-up VERSUS results screen.
+//! `BT_VERSUS=<map>` starts a VERSUS round on that map (`BT_ARMY=<points>` per army, default 20, 0 = none); `BT_SCREEN=versus` shows a made-up VERSUS results screen.
 //! Inert unless `BT_SHOT` is set.
 
 use crate::game::{Mode, Screen, Session, Slot, StageLog, View};
@@ -72,7 +72,9 @@ fn run(
         session.slots = keys();
         session.mode = Mode::Versus;
         session.stage = shot.versus;
-        commands.insert_resource(crate::game::versus::Match { round: 1, ..default() });
+        commands.insert_resource(crate::game::versus::Match::new(
+            std::env::var("BT_ARMY").ok().and_then(|v| v.parse().ok()).unwrap_or(crate::rules::ARMY_BUDGET),
+        ));
         next.set(Screen::Stage);
     }
     if let Some(v) = shot.view.filter(|_| *state.get() == Screen::Stage) {
@@ -123,7 +125,7 @@ fn run(
                 for (i, slot) in session.slots.iter_mut().flatten().enumerate() {
                     slot.frags = 4 - 2 * i as u32;
                 }
-                commands.insert_resource(crate::game::versus::Match { wins: [2, 1], round: 3, last: Some(0) });
+                commands.insert_resource(crate::game::versus::Match { wins: [2, 1], round: 3, last: Some(0), budget: 20 });
                 next.set(Screen::VersusResults);
             }
             Ok("city") if session.players() == 0 => {

@@ -31,8 +31,11 @@ fn spawn(mut commands: Commands, session: Res<Session>, duel: Res<Match>, mut ti
                     .with_children(|c| {
                         c.spawn(text(format!("PLAYER {}", p + 1), 4.0, [GOLD, GREEN][p]));
                         c.spawn(text(duel.wins[p].to_string(), 9.0, INK));
-                        let frags = session.slots[p].as_ref().map_or(0, |s| s.frags);
+                        let (frags, npcs) = session.slots[p].as_ref().map_or((0, 0), |s| (s.frags, s.kills.iter().sum::<u32>()));
                         c.spawn(text(format!("{frags} tanks destroyed"), 2.8, DIM));
+                        if duel.budget > 0 {
+                            c.spawn(text(format!("{npcs} NPCs destroyed"), 2.8, DIM));
+                        }
                     });
             }
         });

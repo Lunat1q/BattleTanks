@@ -209,7 +209,13 @@ impl Terrain {
     }
 
     pub fn set_base_ring(&mut self, t: Tile) {
+        self.set_ring(0, t);
+    }
+
+    /// The ring of base `side`: 0 bottom, 1 the VERSUS top base (the bottom ring turned 180 degrees).
+    pub fn set_ring(&mut self, side: usize, t: Tile) {
         for (x, y) in Terrain::base_ring() {
+            let (x, y) = if side == 0 { (x, y) } else { (SUBS - 1 - x, SUBS - 1 - y) };
             self.set(x, y, t);
         }
     }

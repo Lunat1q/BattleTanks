@@ -169,6 +169,7 @@ pub fn apply(world: &mut World, bytes: &[u8]) -> Option<()> {
 fn team(t: Team) -> u8 {
     match t {
         Team::Player(i) => i as u8,
+        Team::Npc(side) => 100 + side as u8,
         Team::Enemy => 255,
     }
 }
@@ -176,6 +177,7 @@ fn team(t: Team) -> u8 {
 fn get_team(r: &mut R) -> Option<Team> {
     Some(match r.u8()? {
         255 => Team::Enemy,
+        n @ 100..=101 => Team::Npc(n as usize - 100),
         i => Team::Player(i as usize),
     })
 }
@@ -260,7 +262,10 @@ fn put_run(w: &mut W, s: &StageRun) {
         .f32(s.spawn_timer)
         .usize(s.spawn_point)
         .f32(s.freeze)
-        .f32(s.shovel)
+        .f32(s.frozen[0])
+        .f32(s.frozen[1])
+        .f32(s.shovel[0])
+        .f32(s.shovel[1])
         .bool(s.base_alive[0])
         .bool(s.base_alive[1])
         .f32(s.clock);
@@ -277,7 +282,8 @@ fn get_run(r: &mut R) -> Option<StageRun> {
         spawn_timer: r.f32()?,
         spawn_point: r.usize()?,
         freeze: r.f32()?,
-        shovel: r.f32()?,
+        frozen: [r.f32()?, r.f32()?],
+        shovel: [r.f32()?, r.f32()?],
         base_alive: [r.bool()?, r.bool()?],
         clock: r.f32()?,
     })

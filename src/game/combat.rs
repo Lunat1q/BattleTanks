@@ -219,6 +219,31 @@ pub fn resolve_hits(
                 sfx.write(if enemy.rank == Rank::Boss { Sfx::BossBoom } else { Sfx::EnemyBoom });
                 rumble.write(if big { Rumble::big_kill(p) } else { Rumble::kill(p) });
             }
+            // VERSUS: an NPC hit by the other side (a player or an NPC); only a player's kill counts for them.
+            (Team::Npc(_), by, Some(mut enemy)) => {
+                let p = match by {
+                    Team::Player(p) => Some(p),
+                    _ => None,
+                };
+                enemy.hp = enemy.hp.saturating_sub(1);
+                if enemy.hp > 0 {
+                    commands.entity(hit.target).insert(HitFlash(0.12));
+                    sfx.write(Sfx::ArmorHit);
+                    rumble.write_batch(p.map(Rumble::hit));
+                    continue;
+                }
+                dead.push(hit.target);
+                commands.entity(hit.target).try_despawn();
+                if enemy.bonus {
+                    powerup::spawn_random(&mut commands, &mut rng, &mut sfx, 0.0, &terrain, false);
+                }
+                if let Some(s) = p.and_then(|p| session.slots[p].as_mut()) {
+                    s.kills[enemy.kind.index()] += 1;
+                }
+                fx.write(Fx { kind: FxKind::TankBoom, pos });
+                sfx.write(Sfx::EnemyBoom);
+                rumble.write_batch(p.map(Rumble::kill));
+            }
             (Team::Player(target), Team::Player(by), _) if !shielded && !versus => {
                 feats.write(Feat::Stun { by });
                 commands.entity(hit.target).insert(Paralyzed(rules::PARALYZE_TIME));
@@ -343,6 +368,11 @@ mod tests {
         assert!(!hurts_base(Team::Player(0), 0, true));
         assert!(hurts_base(Team::Player(1), 0, true));
         assert!(hurts_base(Team::Player(0), 1, true));
+        assert!(!hurts_base(Team::Npc(1), 1, true), "your NPCs can't hurt your base either");
+        assert!(hurts_base(Team::Npc(1), 0, true));
+        assert!(!can_hit(Team::Npc(0), Team::Player(0), true, true), "own NPCs' shells pass through you");
+        assert!(can_hit(Team::Npc(0), Team::Npc(1), false, true) && can_hit(Team::Player(1), Team::Npc(0), false, true));
+        assert!(opposing(Team::Npc(0), Team::Player(1), true) && !opposing(Team::Npc(1), Team::Player(1), true));
     }
 
     /// Power-ups on the field after `hits` player shells on a flashing HEAVY (4 HP), with one drop already lying there.

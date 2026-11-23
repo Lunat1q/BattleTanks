@@ -172,7 +172,7 @@ fn input(
             Pick::City => (Mode::City, Screen::CityMap),
             Pick::Versus => {
                 session.stage = 1;
-                commands.insert_resource(crate::game::versus::Match { round: 1, ..default() });
+                commands.insert_resource(crate::game::versus::Match::new(crate::rules::ARMY_BUDGET));
                 (Mode::Versus, Screen::Stage)
             }
         };

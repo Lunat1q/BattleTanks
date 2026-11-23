@@ -62,15 +62,19 @@ src/
     cloud.rs          # Progress + achievements Record <-> the host's cloud copy (Platform::cloud_load / cloud_save): one sync at a
                       # time (Pull.want), at start, per City Run unlock and after new achievements; max / union merge
     tank.rs           # player_control (intent -> want/trigger), drive (collisions, snap, ice), fire
-    enemy.rs          # think: choose_dir (pure) + random fire, freeze; turret_dir (up/down at the nearest player)
+    enemy.rs          # think: choose_dir (pure) + random fire, freeze; turret_dir (up/down at the nearest player);
+                      # VERSUS NPCs (Team::Npc): other base / nearest hostile, choose_dir_up for player 1's side
     boss.rs           # City Run district boss attacks: charge -> barrage (pure barrage), sentry guns it calls in;
                       # (sentry_spots pure), sentries fire four ways and fall with the boss; tricks by district
                       # (rules::boss_kit): echo, brick ring (pure ring), rage, marked lines (pure marked)
     combat.rs         # fly_bullets (sub-steps: tanks, bases, terrain; bullet-vs-bullet) -> Hit; resolve_hits;
                       # can_hit / opposing / hurts_base by side in VERSUS (pure)
     versus.rs         # VERSUS (ADR 0019, 0020): base + spawn spots per side, Match (round wins), outcome (pure), slot reset,
-                      # lost_tank (growing wait) + respawn (in Sim after borrow_life)
-    powerup.rs        # drop on a bonus carrier's kill (drops pile up), pickup effects
+                      # lost_tank (growing wait) + respawn (in Sim after borrow_life); Armies (AUTO army per side,
+                      # rules::auto_army) + spawn_npcs (back corners, 4 s, max 4, every 4th a carrier; no armies:
+                      # middle-band power-ups)
+    powerup.rs        # drop on a bonus carrier's kill (drops pile up), pickup effects (VERSUS: clock / grenade / shovel by
+                      # side); middle_spot (VERSUS without armies)
   gfx/
     mod.rs            # Gfx handles (built at plugin time), colours, z layers, camera (FixedVertical 224) + bloom
     canvas.rs         # SDF painter -> Image; sd_box/rbox/circle/seg/poly, star, tileable noise   [pure]
@@ -132,7 +136,7 @@ Update          ├─ title / pause / results / game-over menus read DeviceInte
                 ├─ stage: watch_controllers ─▶ pause_when_away ─▶ toggle_pause ─▶ advance_phase (Intro→Play, Won/Lost→next Screen)
                 │
                 └─ Sim (only: Screen::Stage, !Paused, phase != Intro), chained:
-                   spawn_enemies ─▶ tick_timers ─▶ [city: scroll ─▶ wake ─▶ reinforce ─▶ watch ─▶ cull] ─▶ borrow_life ─▶ versus::respawn ─▶ player_control ─▶ enemy::think ─▶ boss::act ─▶ drive ─▶ fire
+                   spawn_enemies ─▶ versus::spawn_npcs ─▶ tick_timers ─▶ [city: scroll ─▶ wake ─▶ reinforce ─▶ watch ─▶ cull] ─▶ borrow_life ─▶ versus::respawn ─▶ player_control ─▶ enemy::think ─▶ boss::act ─▶ drive ─▶ fire
                    ─▶ fly_bullets ──Hit──▶ resolve_hits ─▶ powerup::pickup ─▶ check_end      (all write Feat ──▶ achieve::track)
                          │  │                    │
                          │  └── Terrain.dirty ───┼──────────────▶ gfx::world::sync_terrain (spawn/despawn chips)

@@ -28,6 +28,20 @@ pub fn classic_spot(rng: &mut Rng, ter: &Terrain) -> Vec2 {
     (0..100).map(|_| random_spot(rng)).find(|&p| ok(p)).unwrap_or(Vec2::new(72.0, 8.0))
 }
 
+/// A VERSUS drop with no armies: open ground in the middle band (cell rows 10-15), reachable from player 1's spawn.
+pub fn middle_spot(rng: &mut Rng, ter: &Terrain) -> Vec2 {
+    let reach = levels::steps(ter, (8, 0), levels::hard_wall);
+    let ok = |p: Vec2| {
+        let (x, y) = ((p.x / CELL) as usize - 1, (p.y / CELL) as usize - 1);
+        !ter.blocks_tank(rect_at(p, TILE)) && reach[y * CELLS + x].is_some()
+    };
+    // ponytail: 100 tries, then the field's centre (usually open); a walled middle would want a scan.
+    (0..100)
+        .map(|_| Vec2::new((2 + rng.below(23)) as f32 * CELL, (11 + rng.below(5)) as f32 * CELL))
+        .find(|&p| ok(p))
+        .unwrap_or(Vec2::splat(104.0))
+}
+
 /// City Run has no base, so no shovel.
 const CITY_POWERS: [rules::PowerKind; 5] =
     [rules::PowerKind::Helmet, rules::PowerKind::Clock, rules::PowerKind::Star, rules::PowerKind::Grenade, rules::PowerKind::Tank];
@@ -55,7 +69,7 @@ pub fn pickup(
     mut terrain: ResMut<Terrain>,
     powerups: Query<(Entity, &PowerUp, &Transform)>,
     mut players: Query<(Entity, &Tank, &Transform, &mut Gun), (Without<Enemy>, Without<Spawning>)>,
-    enemies: Query<(Entity, &Transform, &Enemy)>,
+    enemies: Query<(Entity, &Transform, &Enemy, &Tank)>,
     mut fx: MessageWriter<Fx>,
     mut sfx: MessageWriter<Sfx>,
     mut rumble: MessageWriter<Rumble>,
@@ -73,6 +87,7 @@ pub fn pickup(
             continue;
         };
         let Team::Player(p) = tank.team else { continue };
+        let versus = session.mode == Mode::Versus;
         commands.entity(pe).despawn();
         sfx.write(Sfx::PowerPick);
         rumble.write(Rumble::tick(p));
@@ -85,10 +100,14 @@ pub fn pickup(
             rules::PowerKind::Helmet => {
                 commands.entity(te).insert(Shield(rules::HELMET_SHIELD));
             }
+            // VERSUS: the other side (player and NPCs) stands still.
+            rules::PowerKind::Clock if versus => run.frozen[1 - p] = rules::VERSUS_FREEZE,
             rules::PowerKind::Clock => run.freeze = rules::CLOCK_FREEZE,
             rules::PowerKind::Shovel => {
-                run.shovel = rules::SHOVEL_TIME;
-                terrain.set_base_ring(Tile::Steel);
+                // VERSUS: your own base; classic has only base 0.
+                let side = if versus { p } else { 0 };
+                run.shovel[side] = rules::SHOVEL_TIME;
+                terrain.set_ring(side, Tile::Steel);
             }
             rules::PowerKind::Star => {
                 if let Some(slot) = session.slots[p].as_mut() {
@@ -100,15 +119,25 @@ pub fn pickup(
                 }
             }
             rules::PowerKind::Grenade => {
-                // No points for grenade kills, like the classic. Turrets and bosses shrug it off; the boss's sentries don't.
+                // No points for grenade kills, like the classic. Turrets and bosses shrug it off; the boss's sentries
+                // don't. VERSUS: only the other side's NPCs.
                 let mut count = 0;
-                for (e, tf, _) in enemies.iter().filter(|(_, _, en)| matches!(en.rank, rules::Rank::Normal | rules::Rank::Sentry)) {
+                let hit = |en: &Enemy, t: &Tank| {
+                    matches!(en.rank, rules::Rank::Normal | rules::Rank::Sentry) && (!versus || t.team == Team::Npc(1 - p))
+                };
+                for (e, tf, _, _) in enemies.iter().filter(|(_, _, en, t)| hit(en, t)) {
                     commands.entity(e).try_despawn();
                     fx.write(Fx { kind: FxKind::TankBoom, pos: tf.translation.xy() });
                     count += 1;
                 }
                 feats.write(Feat::Grenade { slot: p, count });
                 sfx.write(Sfx::EnemyBoom);
+            }
+            // VERSUS has no spare tanks: the next respawn wait is one step shorter.
+            rules::PowerKind::Tank if versus => {
+                if let Some(slot) = session.slots[p].as_mut() {
+                    slot.deaths = slot.deaths.saturating_sub(1);
+                }
             }
             rules::PowerKind::Tank => {
                 if let Some(slot) = session.slots[p].as_mut() {

@@ -35,9 +35,10 @@ pub fn parse(src: &str) -> Result<Terrain, String> {
     }
     let top = half.iter().rev().map(|r| r.iter().rev().copied().collect());
     let mut ter = paint(&top.chain(half.iter().cloned()).collect::<Vec<_>>())?;
-    // Player 1's spawn (x 64..80) and base (96..112) clear, its ring brick; then the bottom half turned up.
+    // Player 1's spawn (x 64..80), base (96..112) and NPC corners clear, its ring brick; then the bottom half
+    // turned up.
     for y in 0..4 {
-        for x in (16..20).chain(24..28) {
+        for x in (0..4).chain(16..20).chain(24..28).chain(SUBS - 4..SUBS) {
             ter.set(x, y, Tile::Empty);
         }
     }
@@ -72,9 +73,12 @@ mod tests {
 
     #[test]
     fn every_spawn_can_reach_the_other_base() {
-        // Player 1 (cell 8, 0) to just under player 2's ring (cell rows 23-25, cols 11-14); player 2 by symmetry.
+        // Player 1 (cell 8, 0) and the NPC corners to just under player 2's ring (cell rows 23-25, cols 11-14);
+        // player 2's side by symmetry.
         for (name, ter) in maps() {
-            assert!(steps(&ter, (8, 0), hard_wall)[21 * CELLS + 12].is_some(), "{name}: player 1 is walled off from the top base");
+            for spawn in [(8, 0), (0, 0), (24, 0)] {
+                assert!(steps(&ter, spawn, hard_wall)[21 * CELLS + 12].is_some(), "{name}: {spawn:?} is walled off from the top base");
+            }
         }
     }
 

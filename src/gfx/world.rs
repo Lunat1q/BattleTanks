@@ -151,14 +151,21 @@ fn tank_looks(
         let (image, mut color) = match (tank.team, enemy) {
             (Team::Player(i), _) => {
                 let level = session.slots[i].as_ref().map_or(0, |s| s.level) as usize;
-                (gfx.players[level.min(gfx.players.len() - 1)][frame].clone(), player_color(i))
+                let c = player_color(i);
+                // VERSUS clock: held still, tinted icy like frozen enemies.
+                let c = if run.frozen[i] > 0.0 { c.mix(&Color::srgb(0.55, 0.8, 1.0), 0.5) } else { c };
+                (gfx.players[level.min(gfx.players.len() - 1)][frame].clone(), c)
             }
-            (Team::Enemy, Some(e)) => {
-                let mut c = rank_color(e.rank, e.kind, e.hp, e.max_hp);
+            (Team::Enemy | Team::Npc(_), Some(e)) => {
+                // VERSUS NPCs: the enemy models in a darker shade of their player's colour.
+                let mut c = match tank.team {
+                    Team::Npc(side) => player_color(side).mix(&Color::BLACK, 0.35),
+                    _ => rank_color(e.rank, e.kind, e.hp, e.max_hp),
+                };
                 if e.bonus && blink {
                     c = Color::srgb(1.0, 0.32, 0.28);
                 }
-                if run.freeze > 0.0 {
+                if run.freeze > 0.0 || tank.team.side().is_some_and(|s| run.frozen[s] > 0.0) {
                     c = c.mix(&Color::srgb(0.55, 0.8, 1.0), 0.5);
                 }
                 let image = match e.rank {
@@ -169,7 +176,7 @@ fn tank_looks(
                 };
                 (image.clone(), c)
             }
-            (Team::Enemy, None) => continue,
+            (_, None) => continue,
         };
         if flash {
             color = Color::srgb(2.5, 2.5, 2.5);
@@ -226,7 +233,7 @@ fn attach_bullets(mut commands: Commands, gfx: Res<Gfx>, mut added: Query<(Entit
     for (e, b, mut tf) in &mut added {
         let color = match b.team {
             Team::Player(_) => Color::linear_rgb(3.2, 2.4, 1.0),
-            Team::Enemy => Color::linear_rgb(3.4, 0.9, 0.5),
+            Team::Enemy | Team::Npc(_) => Color::linear_rgb(3.4, 0.9, 0.5),
         };
         tf.translation.z = z::BULLET;
         tf.rotation = Quat::from_rotation_z(b.dir.angle());

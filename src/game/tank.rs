@@ -15,7 +15,9 @@ pub fn player_control(
 ) {
     for (mut tank, mut gun, paralyzed, spawning) in &mut tanks {
         let Team::Player(i) = tank.team else { continue };
-        let intent = if run.phase == Phase::Lost || paralyzed || spawning { Intent::default() } else { session.intent(i, &devices) };
+        // VERSUS: the other player's clock holds this one still too.
+        let held = run.phase == Phase::Lost || paralyzed || spawning || run.frozen[i] > 0.0;
+        let intent = if held { Intent::default() } else { session.intent(i, &devices) };
         tank.want = intent.dir;
         gun.trigger = intent.fire_pressed || (intent.fire && gun.cooldown <= 0.0);
     }
