@@ -262,9 +262,8 @@ pub fn resolve_hits(
             }
             (Team::Player(p), by, _) if (by == Team::Enemy || versus) && !shielded => {
                 dead.push(hit.target);
-                if let Team::Player(k) = by
-                    && let Some(s) = session.slots[k].as_mut()
-                {
+                // VERSUS: the other player's tank counts for its side, shot by the player or their army (owner).
+                if let Some(s) = by.side().and_then(|k| session.slots[k].as_mut()) {
                     s.frags += 1;
                 }
                 commands.entity(hit.target).try_despawn();
@@ -416,8 +415,8 @@ mod tests {
     }
 
     #[test]
-    fn an_army_kill_counts_for_its_player() {
-        // Owner: my NPCs destroying the other army count as mine on the results.
+    fn army_kills_count_for_their_player() {
+        // Owner: what my NPCs destroy (the other army, the other player) counts as mine on the results.
         use bevy::ecs::system::RunSystemOnce;
         let mut app = App::new();
         app.add_message::<Hit>().add_message::<Fx>().add_message::<Sfx>().add_message::<Rumble>().add_message::<Feat>();
@@ -445,10 +444,14 @@ mod tests {
         let p2 = world.spawn((Tank::new(Team::Player(1), Dir::Down, 40.0), Transform::default())).id();
         world.write_message(Hit { target: theirs, by: Team::Npc(0), shooter: mine });
         world.write_message(Hit { target: mine, by: Team::Player(1), shooter: p2 });
+        world.write_message(Hit { target: p2, by: Team::Npc(0), shooter: mine });
         world.run_system_once(resolve_hits).unwrap();
-        let kills = |p: usize| world.resource::<Session>().slots[p].as_ref().unwrap().kills;
-        assert_eq!(kills(0), [0, 0, 1, 0], "player 1's army took a GUNNER");
-        assert_eq!(kills(1), [1, 0, 0, 0], "player 2 shot a LIGHT");
+        let slot = |p: usize| {
+            let s = world.resource::<Session>().slots[p].as_ref().unwrap();
+            (s.kills, s.frags)
+        };
+        assert_eq!(slot(0), ([0, 0, 1, 0], 1), "player 1's army took a GUNNER and player 2's tank");
+        assert_eq!(slot(1), ([1, 0, 0, 0], 0), "player 2 shot a LIGHT");
     }
 
     #[test]

@@ -313,8 +313,8 @@ Built so far: the duel (V1), NPC armies (V2), setup, draft and rounds (V3), maps
   They head 60 % for the other base, 40 % for the nearest hostile tank (the other player or their NPCs); their
   wander drifts towards the other side. Same-side rules as the players: own NPCs' shells pass through you and yours
   through them, they can't hurt their own base and hold their fire when the shot would fly into their own base or
-  its brick ring (owner); NPCs of the two sides fight each other. A destroyed NPC counts for the side that shot it,
-  player or army (owner), in the results' "NPCs destroyed".
+  its brick ring (owner); NPCs of the two sides fight each other. Whatever a side destroys counts for its player (owner): NPCs in
+  the results' "NPCs destroyed", the other player's tank in "tanks destroyed", whether the player or their army shot.
 - **Power-ups** (+500, picked up by players only): dropped by flashing NPCs anywhere a player can drive; with armies
   OFF one appears in the middle band (cell rows 10-15) every 20 s. In VERSUS:
   helmet and star as usual; the **clock** freezes the other side, player and NPCs, for 5 s (tinted icy); the
