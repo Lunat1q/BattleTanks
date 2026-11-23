@@ -2,6 +2,9 @@
 
 Shown in the game too, so each line stays short and talks to players.
 
+## 0.7.15 (2026-11-23)
+- No more black screen when the game restarts right after an update
+
 ## 0.7.14 (2026-11-23)
 - New mode VERSUS: a 1 on 1 duel, each player defends a base and attacks the other's
 - Pick the map (26, or RANDOM), NPC army points and best of 1, 3 or 5 rounds
