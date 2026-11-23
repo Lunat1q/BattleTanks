@@ -118,14 +118,18 @@ pub fn spawn_player(commands: &mut Commands, slot: usize, level: u8, pos: Vec2) 
         .id()
 }
 
-/// Where player `slot` re-enters: its start column at the bottom of the view, or the nearest open
-/// tank-sized spot beside or above it. On a classic stage that is always the start itself.
-pub fn respawn_point(slot: usize, bottom: f32, terrain: &Terrain) -> Vec2 {
+/// Where player `slot` re-enters: its start column at the bottom of the view, or the nearest open tank-sized spot
+/// beside or above it. On a classic stage that is always the start itself. In City Run (`reach`) only a spot from
+/// which the tank can climb on without going below the view (district 7 kept respawning a player in a sealed pocket).
+pub fn respawn_point(slot: usize, bottom: f32, terrain: &Terrain, reach: Option<&super::city::Reach>) -> Vec2 {
     let x0 = PLAYER_SPAWNS[slot].x;
     let y0 = (bottom / 8.0).ceil() * 8.0 + 8.0;
-    (0..12)
-        .flat_map(|row| [0.0, -16.0, 16.0, -32.0, 32.0, -48.0, 48.0].map(|dx| Vec2::new(x0 + dx, y0 + row as f32 * 8.0)))
-        .find(|&p| !terrain.blocks_tank(rect_at(p, 16.0)))
+    // Nearest columns first, the whole width; rows up to most of the view.
+    let mut cols: Vec<f32> = (1..crate::geom::CELLS).map(|c| c as f32 * 8.0).collect();
+    cols.sort_by(|a, b| (a - x0).abs().total_cmp(&(b - x0).abs()));
+    (0..20)
+        .flat_map(|row| cols.iter().map(move |&x| Vec2::new(x, y0 + row as f32 * 8.0)))
+        .find(|&p| !terrain.blocks_tank(rect_at(p, 16.0)) && reach.is_none_or(|r| r.climbs(p)))
         .unwrap_or(Vec2::new(x0, y0))
 }
 
@@ -140,7 +144,18 @@ pub fn spawn_enemy(commands: &mut Commands, kind: EnemyKind, rank: Rank, pos: Ve
                 trigger: false,
                 cooldown: 0.0,
             },
-            Enemy { kind, rank, hp, max_hp: hp, bonus, turn_in: rng.range(0.5, 2.0), fire_in: rng.range(0.5, 1.5), skill: 4.0 },
+            Enemy {
+                kind,
+                rank,
+                hp,
+                max_hp: hp,
+                bonus,
+                turn_in: rng.range(0.5, 2.0),
+                fire_in: rng.range(0.5, 1.5),
+                skill: 4.0,
+                phase: 0,
+                mark: None,
+            },
             Spawning(rules::SPAWN_TIME),
             Transform::from_translation(pos.extend(0.0)),
             DespawnOnExit(Screen::Stage),
@@ -238,6 +253,7 @@ pub fn borrow_life(
     run: Res<StageRun>,
     view: Res<View>,
     terrain: Res<Terrain>,
+    reach: Option<Res<super::city::Reach>>,
     mut sfx: MessageWriter<Sfx>,
     mut feats: MessageWriter<Feat>,
 ) {
@@ -246,7 +262,7 @@ pub fn borrow_life(
             let level = session.slots[p].as_ref().map_or(0, |s| s.level);
             let partner_left = session.slots[1 - p].as_ref().map_or(0, |s| s.lives);
             feats.write(Feat::Borrow { slot: p, partner_left });
-            spawn_player(&mut commands, p, level, respawn_point(p, view.bottom, &terrain));
+            spawn_player(&mut commands, p, level, respawn_point(p, view.bottom, &terrain, reach.as_deref()));
             sfx.write(Sfx::ExtraLife);
         }
     }
@@ -375,14 +391,35 @@ mod tests {
     #[test]
     fn respawn_finds_open_ground_at_the_bottom_of_the_view() {
         let classic = Terrain::default();
-        assert_eq!(respawn_point(0, 0.0, &classic), PLAYER_SPAWNS[0]);
+        assert_eq!(respawn_point(0, 0.0, &classic, None), PLAYER_SPAWNS[0]);
         let mut ter = Terrain::new(crate::geom::SUBS * 3);
         for y in 75..79 {
             for x in 16..20 {
                 ter.set(x, y, Tile::Steel); // right where player 1 would land at bottom = 293
             }
         }
-        let p = respawn_point(0, 293.0, &ter);
+        let p = respawn_point(0, 293.0, &ter, None);
         assert!(p.y >= 304.0 && !ter.blocks_tank(rect_at(p, 16.0)), "{p}");
+    }
+
+    #[test]
+    fn city_respawns_never_land_where_the_only_way_on_is_down() {
+        // Owner's report: district 7 respawned a player in a pocket (water both sides, steel above, brick below at
+        // the view's bottom) again and again. Every view a district can show must offer a spot that climbs on.
+        let mut old_traps = 0;
+        for n in 1..=rules::CITY_DISTRICTS {
+            let d = crate::city_map::load(n);
+            let reach = super::super::city::Reach::new(&d);
+            let mut bottom = 0.0;
+            while bottom + crate::geom::FIELD <= d.terrain.height() {
+                for slot in 0..2 {
+                    let p = respawn_point(slot, bottom, &d.terrain, Some(&reach));
+                    assert!(reach.climbs(p) && !d.terrain.blocks_tank(rect_at(p, 16.0)), "district {n}, view {bottom}: {p}");
+                    old_traps += usize::from(!reach.climbs(respawn_point(slot, bottom, &d.terrain, None)));
+                }
+                bottom += 8.0;
+            }
+        }
+        assert!(old_traps > 0, "the plain picker should hit a pocket somewhere, or this test proves nothing");
     }
 }

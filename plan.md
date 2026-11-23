@@ -175,6 +175,13 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
   guns (warned, fire four ways, fall with the boss) (owner: boss was a big mini-boss)
 - [ ] Owner: couch feel of the boss fights (barrage gap, sentry cap, band width in `rules.rs` / `game/boss.rs`)
 
+### M17 — Boss tricks by district + owner's reports (v0.7.13) ✅
+- [x] `rules::boss_kit`: echo barrage (d3+), rage at 1/3 HP (d5+), brick ring at 1/2 HP (d7+), marked lines
+  through the nearest player (d9+); districts 1-2 unchanged; phases act once (`Enemy.phase`, in the LAN snapshot)
+- [x] Flashing enemies drop on the kill, not the first hit; a new drop no longer removes the one on the field
+- [x] City Run respawns only where the tank can climb on without leaving the view (district 7 pocket, owner)
+- [ ] Owner: couch feel of districts 7-10's bosses
+
 ## Current state
 
 City Run added, released as v0.3.0 on GitHub: 10 districts, district map, smoke screenshots checked for the map, a district start, a

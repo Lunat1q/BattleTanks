@@ -30,14 +30,31 @@ pub struct CityRun {
 /// Cells a tank can drive to from the start (`city_map::reachable`, gates open). Reinforcements drop only there:
 /// district 5 had a pocket sealed by steel above a bastion, and a tank dropped into it could never get out.
 /// Fixed per district, so it stays out of `CityRun` (and the LAN snapshot).
+/// `climb` (`city_map::climbable`) is where a respawned player can get on without backing down out of the view.
 #[derive(Resource)]
-pub struct Reach(Vec<bool>);
+pub struct Reach {
+    cells: Vec<bool>,
+    climb: Vec<bool>,
+}
 
 impl Reach {
+    pub fn new(d: &city_map::District) -> Self {
+        Reach { cells: city_map::reachable(d, (8, 0), &[]), climb: city_map::climbable(d) }
+    }
+
     /// A 16-unit drop centred on `p` lands on a reachable cell.
     pub(crate) fn ok(&self, p: Vec2) -> bool {
-        let (x, y) = (((p.x - 8.0) / 8.0) as usize, ((p.y - 8.0) / 8.0) as usize);
-        self.0.get(y * crate::geom::CELLS + x) == Some(&true)
+        Self::at(&self.cells, p)
+    }
+
+    /// A 16-unit tank centred on `p` can climb to the map top from there without going below it.
+    pub fn climbs(&self, p: Vec2) -> bool {
+        Self::at(&self.climb, p)
+    }
+
+    fn at(grid: &[bool], p: Vec2) -> bool {
+        let (x, y) = (((p.x - 8.0) / 8.0).max(0.0) as usize, ((p.y - 8.0) / 8.0).max(0.0) as usize);
+        grid.get(y * crate::geom::CELLS + x) == Some(&true)
     }
 }
 
@@ -57,7 +74,7 @@ pub fn plugin(app: &mut App) {
 /// returns its terrain.
 pub fn setup(commands: &mut Commands, session: &mut Session) -> Terrain {
     let d = city_map::load(session.stage);
-    commands.insert_resource(Reach(city_map::reachable(&d, (8, 0), &[])));
+    commands.insert_resource(Reach::new(&d));
     let mut guards = vec![0; d.gates.len()];
     for b in d.spawns.iter().filter_map(|s| s.bastion) {
         guards[b] += 1;
@@ -257,7 +274,7 @@ mod tests {
         // Owner's report: district 5, left edge just above a bastion, steel all round; a reinforcement dropped
         // there (x 8 is a drop column) and spun for good. Open ground, so only the reach check keeps it out.
         let d = city_map::load(5);
-        let reach = Reach(city_map::reachable(&d, (8, 0), &[]));
+        let reach = Reach::new(&d);
         let pocket = Vec2::new(8.0, 464.0);
         assert!(!d.terrain.blocks_tank(rect_at(pocket, 16.0)));
         assert!(!reach.ok(pocket));

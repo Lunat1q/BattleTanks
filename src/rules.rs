@@ -140,9 +140,44 @@ pub enum Rank {
 /// Seconds a district boss stands still with its row and column lit before its barrage.
 pub const BOSS_CHARGE: f32 = 1.2;
 
-/// Seconds between a district boss's barrages: more often further in.
-pub fn boss_barrage_gap(d: usize) -> f32 {
-    8.0 - 0.35 * d.min(10) as f32
+/// Seconds between a district boss's barrages: more often further in, and in a rage (`BossKit::rage`) even more.
+pub fn boss_barrage_gap(d: usize, rage: bool) -> f32 {
+    (8.0 - 0.35 * d.min(10) as f32) * if rage { RAGE_GAP } else { 1.0 }
+}
+
+/// The district boss's tricks grow with the district (owner: district 2's boss easier than 6's). Every one is
+/// warned and survivable: lit bands, bricks that shoot away, a rage that only shortens the gaps.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct BossKit {
+    /// District 3 on: a second barrage `BOSS_ECHO` s after the first, down the same lit bands.
+    pub echo: bool,
+    /// District 5 on: at 1/3 HP it charges at once, then drives faster and barrages more often.
+    pub rage: bool,
+    /// District 7 on: at 1/2 HP it raises a brick ring round itself, once.
+    pub fortify: bool,
+    /// District 9 on: each charge also lights the row and column of the nearest player; shells come down them from the
+    /// view's edges with the barrage.
+    pub mark: bool,
+}
+
+pub fn boss_kit(d: usize) -> BossKit {
+    BossKit { echo: d >= 3, rage: d >= 5, fortify: d >= 7, mark: d >= 9 }
+}
+
+/// Seconds from a boss barrage to its echo.
+pub const BOSS_ECHO: f32 = 0.5;
+/// A raging boss: barrage gap and speed factors.
+pub const RAGE_GAP: f32 = 0.6;
+pub const RAGE_SPEED: f32 = 1.5;
+
+/// A boss's HP phase: 0 full, 1 at 2/3 (sentries), 2 at 1/2 (fortify), 3 at 1/3 (rage).
+pub fn boss_phase(hp: u32, max: u32) -> u8 {
+    match hp {
+        h if h * 3 <= max => 3,
+        h if h * 2 <= max => 2,
+        h if h * 3 <= max * 2 => 1,
+        _ => 0,
+    }
 }
 
 /// Sentries a district boss keeps up once it is down to 2/3 HP.
@@ -296,6 +331,21 @@ mod tests {
         assert_eq!(time_bonus(1, 1, 99_999), 0);
         // Same vector as the score server's RunRulesTests.Shares_its_numbers_with_the_game (score_server repo).
         assert_eq!((fastest_clear_tenths(7, 2), time_bonus(7, 2, 1500)), (462, 320));
+    }
+
+    #[test]
+    fn boss_tricks_pile_up_by_district() {
+        let tricks = |d| {
+            let k = boss_kit(d);
+            [k.echo, k.rage, k.fortify, k.mark].iter().filter(|&&t| t).count()
+        };
+        assert_eq!(tricks(1), 0);
+        assert_eq!(tricks(2), 0, "district 2 keeps the plain boss");
+        assert!(tricks(6) > tricks(2));
+        assert_eq!(tricks(10), 4);
+        assert!((1..10).all(|d| tricks(d) <= tricks(d + 1)), "never fewer further in");
+        assert!(boss_barrage_gap(10, true) > 2.0 * BOSS_CHARGE, "time to shoot back between barrages");
+        assert_eq!([30, 20, 15, 10, 1].map(|h| boss_phase(h, 30)), [0, 1, 2, 3, 3]);
     }
 
     #[test]

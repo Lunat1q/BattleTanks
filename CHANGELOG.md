@@ -2,6 +2,13 @@
 
 Shown in the game too, so each line stays short and talks to players.
 
+## 0.7.13 (2026-11-23)
+- Bosses learn new tricks further into the city: an echo barrage (district 3), a sudden rage at
+  low health (5), a brick ring around themselves (7), and red lines aimed at you (9)
+- Flashing enemies drop their power-up when destroyed, not on the first hit
+- A new power-up no longer makes the one already on the field vanish
+- City Run: a lost tank no longer comes back inside a walled-in pocket (district 7)
+
 ## 0.7.12 (2026-11-22)
 - District bosses fight back: barrages along their row and column (mind the red glow)
 - Hurt bosses call in sentry guns that fire four ways at once

@@ -258,6 +258,10 @@ pub struct Enemy {
     pub fire_in: f32,
     /// District boss: seconds to its next barrage, below 0 while it charges (`boss`).
     pub skill: f32,
+    /// District boss: HP phases already acted on (`rules::boss_phase`).
+    pub phase: u8,
+    /// District boss: the player's row and column it marked when this charge began (`BossKit::mark`).
+    pub mark: Option<Vec2>,
 }
 
 #[derive(Component)]

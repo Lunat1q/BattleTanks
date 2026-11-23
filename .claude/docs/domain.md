@@ -45,7 +45,8 @@ All numbers live in `src/rules.rs` unless noted.
 | Armor (HEAVY) | 32 | medium | 4 | 400 |
 
 - Spawn points top-left/centre/right in turn; skip an occupied one. Interval 3.2 s − 0.06·stage − 0.4 in 2P (≥ 1 s).
-- At most 4 on the field (1P) / 6 (2P). Enemies #4, #11, #18 flash red and drop a power-up when first hit.
+- At most 4 on the field (1P) / 6 (2P). Enemies #4, #11, #18 flash red and drop a power-up when destroyed (a
+  HEAVY after its fourth hit, not the first; owner).
 - AI: on a timer (0.8–3 s; scouts 1.4–4 s so they don't jitter) or when blocked, 45 % head for a target (base 65 %, nearest player 35 %) along the longer
   axis, else weighted wander (down 40 %, left/right 20 % each, up 20 %); never re-picks a blocked heading.
   Fires every 0.4–1.6 s, and right away half the time it gets blocked. Enemy bullets pass through enemies.
@@ -54,7 +55,7 @@ All numbers live in `src/rules.rs` unless noted.
 - Sub-stepped ≤ 2 units. Order per step: tank hit → base → terrain/edge.
 - Player and enemy bullets cancel each other (swept rectangles). Two players' bullets don't.
 
-## Power-ups (one on the field; a new drop replaces the old; +500 points)
+## Power-ups (+500 points; a drop stays until picked up, a new one doesn't replace it (owner))
 Classic drops land on open ground (no brick, steel or water) that a tank can reach from player 1's spawn without
 crossing steel or water (tested). Helmet (shield 10 s) · Clock (enemies freeze 10 s, tinted icy) · Shovel (steel base ring 20 s, blinks back to
 brick in the last 3 s) · Star (+1 level) · Grenade (destroys all enemies on the field, no points) · Tank (+1 life).
@@ -232,6 +233,17 @@ can't be read is never written.
   red pulsing square and the spawn twinkle as warning. A sentry never moves, fires all four ways at once every
   1.6–2.6 s (quarter turn per volley), HP 2 + d/4, 200 pts, no board kill (any number can appear); grenades destroy
   them, and they all blow up with the boss.
+- **Boss tricks by district** (`rules::boss_kit`; owner: district 2's boss easier than 6's), each warned and
+  survivable. Districts 1-2: barrage and sentries only. From 3, **echo**: a second barrage 0.5 s after the first
+  down the same bands (they stay lit, the boss holds still). From 5, **rage** at 1/3 HP: it charges at once, then
+  drives 1.5x faster and barrages 0.6x as often (d10: every 2.7 s, still more than twice the charge). From 7,
+  **fortify** at 1/2 HP, once: a brick ring one cell out round itself (8 thick, skipping cells under tanks), so it
+  digs itself out with its own fire while players shoot in. From 9, **marked lines**: each charge also lights the
+  row and column of the nearest player at that moment; with the barrage three shells per line sweep in from the
+  view's left and top edges (cover blocks them). Phases (`rules::boss_phase`: 2/3, 1/2, 1/3 HP) act once each.
+- **Respawns**: a lost (or borrowed) tank comes back at the bottom of the view near its start column, on the
+  nearest open spot from which it can drive on to the top without going below the view (`city_map::climbable`,
+  tested on every view of every district).
 - Power-ups: no shovel; grenade only destroys ordinary tanks and sentries. Drops land on open ground in view.
 - Difficulty per district: enemy mix (`mix` line), more bastions (3→8) and turrets per wall (2→6), more minis
   (2→5), faster turret/boss fire.
@@ -354,4 +366,6 @@ same rules, each machine draws it and plays its own sound and rumble.
 | City Run reinforcement stuck for good at district 5's left edge above a bastion (owner) | dropped into a pocket sealed by steel and the wall (open ground, so the drop check passed) | drops only on cells reachable from the start (`city::Reach`); placed enemies too (tested) |
 | Screen jumped when a City Run boss died | the camera lock let go and the view snapped to its target in one frame | `rules::VIEW_CATCH_UP` caps how fast the view rises |
 | HUD jumped sideways when a player went out and "A: BORROW A TANK" showed (owner) | side panels grew from their content width (`flex_basis: auto`), so the longer line widened one side | panels `flex_basis: 0`: equal split whatever the text |
+| City Run: a player kept respawning in a pocket, unable to get out or even die (owner, district 7) | respawn took the first open spot at the bottom of the view; that one's only way out ran down through brick, under the view | respawns only on `city_map::climbable` cells (no going down to get up) |
+| A flashing HEAVY dropped its power-up on the first hit; a second bonus kill took away the first drop (owner) | classic rule: drop on first hit, one power-up on the field | drop on the kill, drops pile up (`combat::tests`) |
 | `adb pull /sdcard/...` "no such file" from Git Bash | MSYS rewrites the remote path to `C:/Program Files/Git/sdcard/...` | prefix `MSYS_NO_PATHCONV=1` |

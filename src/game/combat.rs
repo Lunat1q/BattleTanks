@@ -151,8 +151,8 @@ pub fn resolve_hits(
     mut rng: ResMut<Rng>,
     view: Res<View>,
     terrain: Res<Terrain>,
+    reach: Option<Res<super::city::Reach>>,
     mut tanks: Query<(&Tank, &Transform, Option<&mut Enemy>, Has<Shield>, Has<Paralyzed>, Has<Armour>)>,
-    powerups: Query<Entity, (With<PowerUp>, Without<Stash>)>,
     mut fx: MessageWriter<Fx>,
     mut sfx: MessageWriter<Sfx>,
     mut rumble: MessageWriter<Rumble>,
@@ -172,13 +172,6 @@ pub fn resolve_hits(
         let pos = tf.translation.xy();
         match (tank.team, hit.by, enemy) {
             (Team::Enemy, Team::Player(p), Some(mut enemy)) => {
-                let drop_power = |commands: &mut Commands, rng: &mut Rng, sfx: &mut MessageWriter<Sfx>| {
-                    powerup::spawn_random(commands, rng, &powerups, sfx, view.bottom, &terrain, city);
-                };
-                if enemy.bonus {
-                    enemy.bonus = false;
-                    drop_power(&mut commands, &mut rng, &mut sfx);
-                }
                 enemy.hp = enemy.hp.saturating_sub(1);
                 if enemy.hp > 0 {
                     commands.entity(hit.target).insert(HitFlash(0.12));
@@ -191,8 +184,9 @@ pub fn resolve_hits(
                 kills.push((p, hit.target));
                 feats.write(Feat::Kill { slot: p, kind: enemy.kind, rank: enemy.rank });
                 let points = enemy.rank.points(enemy.kind);
-                if enemy.rank == Rank::Mini {
-                    drop_power(&mut commands, &mut rng, &mut sfx);
+                // On the kill, not the first hit (owner: a HEAVY dropped its power-up on the first of four hits).
+                if enemy.bonus || enemy.rank == Rank::Mini {
+                    powerup::spawn_random(&mut commands, &mut rng, &mut sfx, view.bottom, &terrain, city);
                 }
                 if let Some(slot) = session.slots[p].as_mut() {
                     match enemy.rank {
@@ -231,7 +225,7 @@ pub fn resolve_hits(
                 rumble.write_batch(Rumble::death(p));
                 feats.write(Feat::Lost { slot: p, stunned });
                 deaths.push((p, hit.shooter));
-                let at = respawn_point(p, view.bottom, &terrain);
+                let at = respawn_point(p, view.bottom, &terrain, reach.as_deref());
                 player_lost_tank(&mut commands, &mut session, p, at, settings.easy_mode);
             }
             _ => {}
@@ -249,6 +243,7 @@ pub fn armour_wears_off(
     mut session: ResMut<Session>,
     view: Res<View>,
     terrain: Res<Terrain>,
+    reach: Option<Res<super::city::Reach>>,
     settings: Res<crate::settings::Settings>,
     mut tanks: Query<(Entity, &Tank, &Transform, &mut Gun, &mut Armour)>,
     mut fx: MessageWriter<Fx>,
@@ -275,7 +270,7 @@ pub fn armour_wears_off(
             sfx.write(Sfx::PlayerBoom);
             rumble.write_batch(Rumble::death(p));
             feats.write(Feat::Lost { slot: p, stunned: false });
-            let at = respawn_point(p, view.bottom, &terrain);
+            let at = respawn_point(p, view.bottom, &terrain, reach.as_deref());
             player_lost_tank(&mut commands, &mut session, p, at, settings.easy_mode);
         }
     }
@@ -309,5 +304,44 @@ mod tests {
         assert!(opposing(Team::Enemy, Team::Player(0)));
         assert!(!opposing(Team::Player(0), Team::Player(1)));
         assert!(!opposing(Team::Enemy, Team::Enemy));
+    }
+
+    /// Power-ups on the field after `hits` player shells on a flashing HEAVY (4 HP), with one drop already lying there.
+    fn drops_after(hits: usize) -> (usize, bool) {
+        use bevy::ecs::system::RunSystemOnce;
+        let mut app = App::new();
+        app.add_message::<Hit>().add_message::<Fx>().add_message::<Sfx>().add_message::<Rumble>().add_message::<Feat>();
+        app.insert_resource(Session::default())
+            .insert_resource(Rng::new(1))
+            .insert_resource(View::default())
+            .insert_resource(Terrain::default())
+            .insert_resource(crate::settings::Settings::default());
+        let world = app.world_mut();
+        let old = world.spawn((PowerUp(rules::PowerKind::Star), Transform::default())).id();
+        let enemy = Enemy {
+            kind: EnemyKind::Armor,
+            rank: Rank::Normal,
+            hp: 4,
+            max_hp: 4,
+            bonus: true,
+            turn_in: 1.0,
+            fire_in: 1.0,
+            skill: 0.0,
+            phase: 0,
+            mark: None,
+        };
+        let heavy = world.spawn((Tank::new(Team::Enemy, Dir::Down, 32.0), enemy, Transform::default())).id();
+        for _ in 0..hits {
+            world.write_message(Hit { target: heavy, by: Team::Player(0), shooter: heavy });
+        }
+        world.run_system_once(resolve_hits).unwrap();
+        (world.query::<&PowerUp>().iter(world).count(), world.get_entity(old).is_ok())
+    }
+
+    #[test]
+    fn a_flashing_heavy_drops_on_the_kill_and_leaves_earlier_drops() {
+        // Owner: a HEAVY dropped its power-up on the first hit, and a second drop took away the first.
+        assert_eq!(drops_after(3), (1, true), "nothing until it dies");
+        assert_eq!(drops_after(4), (2, true), "the kill drops one, the old one stays");
     }
 }

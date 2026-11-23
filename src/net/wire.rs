@@ -6,7 +6,7 @@ use crate::input::Intent;
 use bevy::math::Vec2;
 
 /// Bumped on any change to these formats or to what the simulation does per tick.
-pub const PROTO: u32 = 3;
+pub const PROTO: u32 = 4;
 /// UDP port the host's beacon goes to; joiners listen here.
 pub const BEACON_PORT: u16 = 47474;
 /// Set on the host's input for a tick after which both sides load the host's snapshot.

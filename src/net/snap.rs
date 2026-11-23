@@ -350,7 +350,8 @@ fn put_tank(w: &mut W, t: &Tank, g: &Gun, e: Option<&Enemy>) {
         None => _ = w.bool(false),
         Some(e) => {
             w.bool(true).u8(index(&EnemyKind::ALL, &e.kind)).u8(index(&RANKS, &e.rank));
-            w.u32(e.hp).u32(e.max_hp).bool(e.bonus).f32(e.turn_in).f32(e.fire_in).f32(e.skill);
+            w.u32(e.hp).u32(e.max_hp).bool(e.bonus).f32(e.turn_in).f32(e.fire_in).f32(e.skill).u8(e.phase);
+            w.bool(e.mark.is_some()).vec2(e.mark.unwrap_or_default());
         }
     }
 }
@@ -388,6 +389,11 @@ fn get_thing(r: &mut R) -> Option<Thing> {
                     turn_in: r.f32()?,
                     fire_in: r.f32()?,
                     skill: r.f32()?,
+                    phase: r.u8()?,
+                    mark: {
+                        let (some, at) = (r.bool()?, r.vec2()?);
+                        some.then_some(at)
+                    },
                 })
             } else {
                 None

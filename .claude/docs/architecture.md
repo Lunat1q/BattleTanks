@@ -32,7 +32,8 @@ src/
   rules.rs            # every gameplay number: speeds, timers, enemy stats, gun levels, scoring    [pure]
   terrain.rs          # 52-wide sub-cell grid, any height; tank blocking, bullet impact strip, Wall/Gate/Secret, base ring, dirty list [pure]
   levels.rs           # parse stage files, force spawns/base clear, rosters, harder laps         [pure]
-  city_map.rs         # parse district files: tall terrain, placed enemies/turrets/minis/boss, gates, stashes [pure]
+  city_map.rs         # parse district files: tall terrain, placed enemies/turrets/minis/boss, gates, stashes; reachable /
+                      # climbable (respawn spots that never need going down) [pure]
   city_gen.rs         # test-only: write_city_districts draws levels/city/*.txt from each district's plan (height, turrets,
                       # minis, enemies) in bands bottom-up, redrawing any band that fails `sound` (way up, no pocket that
                       # needs backing down past the view's room, turrets free of steel in front and shootable)
@@ -60,10 +61,11 @@ src/
                       # time (Pull.want), at start, per City Run unlock and after new achievements; max / union merge
     tank.rs           # player_control (intent -> want/trigger), drive (collisions, snap, ice), fire
     enemy.rs          # think: choose_dir (pure) + random fire, freeze; turret_dir (up/down at the nearest player)
-    boss.rs           # City Run district boss attacks: charge -> barrage (pure barrage), sentry guns it calls in
-                      # (sentry_spots pure), sentries fire four ways and fall with the boss
+    boss.rs           # City Run district boss attacks: charge -> barrage (pure barrage), sentry guns it calls in;
+                      # (sentry_spots pure), sentries fire four ways and fall with the boss; tricks by district
+                      # (rules::boss_kit): echo, brick ring (pure ring), rage, marked lines (pure marked)
     combat.rs         # fly_bullets (sub-steps: tanks, base, terrain; bullet-vs-bullet) -> Hit; resolve_hits
-    powerup.rs        # drop on bonus hit, pickup effects
+    powerup.rs        # drop on a bonus carrier's kill (drops pile up), pickup effects
   gfx/
     mod.rs            # Gfx handles (built at plugin time), colours, z layers, camera (FixedVertical 224) + bloom
     canvas.rs         # SDF painter -> Image; sd_box/rbox/circle/seg/poly, star, tileable noise   [pure]
@@ -82,7 +84,8 @@ src/
     badge_city.rs     # City Run emblems: one per district (scarecrow, stall, bridge, church, ironworks, snowflake, anchor,
                       # locomotive, gatehouse, burning citadel) + the City Run extras
     art_promo.rs      # title banner (pub: paint_banner, used by the Android wrapper); Steam capsules/hero/logo (test-only writer)
-    boss.rs           # warnings for the boss's attacks: lit row + column while it charges, red square under an arriving sentry
+    boss.rs           # warnings for the boss's attacks: lit row + column while it charges (and until the echo), marked
+                      # player lines, red square under an arriving sentry
     fx.rs             # Fx messages -> particles, score pop-ups (Text2d), camera shake; achievement stars (Record.news grows
                       # on a stage -> star flies onto the margin, bursts into pixel cubes)
   ui/

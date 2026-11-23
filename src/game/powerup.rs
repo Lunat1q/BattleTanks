@@ -1,4 +1,4 @@
-//! Power-ups: dropped by flashing enemies, picked up by players. Only one on the field at a time.
+//! Power-ups: dropped by flashing enemies when they die, picked up by players. A new drop leaves earlier ones be.
 
 use super::*;
 use crate::geom::{CELL, CELLS, TILE, overlaps, rect_at};
@@ -32,19 +32,9 @@ pub fn classic_spot(rng: &mut Rng, ter: &Terrain) -> Vec2 {
 const CITY_POWERS: [rules::PowerKind; 5] =
     [rules::PowerKind::Helmet, rules::PowerKind::Clock, rules::PowerKind::Star, rules::PowerKind::Grenade, rules::PowerKind::Tank];
 
-/// Drops a power-up in the view, replacing the last drop (stashes stay) (`bottom` up), where a tank can drive.
-pub fn spawn_random(
-    commands: &mut Commands,
-    rng: &mut Rng,
-    existing: &Query<Entity, (With<PowerUp>, Without<Stash>)>,
-    sfx: &mut MessageWriter<Sfx>,
-    bottom: f32,
-    ter: &Terrain,
-    city: bool,
-) {
-    for e in existing {
-        commands.entity(e).try_despawn();
-    }
+/// Drops a power-up in the view (`bottom` up) where a tank can drive. Earlier drops stay (owner: a second bonus kill
+/// took away the first drop).
+pub fn spawn_random(commands: &mut Commands, rng: &mut Rng, sfx: &mut MessageWriter<Sfx>, bottom: f32, ter: &Terrain, city: bool) {
     let lift = Vec2::new(0.0, (bottom / CELL).ceil() * CELL);
     let (kind, pos) = match city {
         false => (rng.pick(&rules::PowerKind::ALL), classic_spot(rng, ter)),

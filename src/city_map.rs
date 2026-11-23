@@ -274,6 +274,64 @@ pub fn footprint(pos: Vec2, size: f32) -> impl Iterator<Item = (usize, usize)> {
 /// gates open unless listed in `closed`; live turrets count as wall (they become it when they die). Index
 /// `y * CELLS + x`, true where a tank's bottom-left cell can get to.
 pub fn reachable(d: &District, from: (usize, usize), closed: &[usize]) -> Vec<bool> {
+    let (fits, h) = fit_grid(d, closed);
+    let mut seen = vec![false; CELLS * h];
+    let mut todo = vec![from];
+    while let Some((x, y)) = todo.pop() {
+        if x >= CELLS || y >= h || !fits[y * CELLS + x] || std::mem::replace(&mut seen[y * CELLS + x], true) {
+            continue;
+        }
+        todo.extend([(x + 1, y), (x, y + 1)]);
+        todo.extend(x.checked_sub(1).map(|x| (x, y)));
+        todo.extend(y.checked_sub(1).map(|y| (x, y)));
+    }
+    seen
+}
+
+/// Like `reachable` (gates open), but true only where a tank gets to the map top without ever going below its own
+/// row: the only safe respawn spots, since the view never scrolls back. District 7 respawned a player into a pocket
+/// whose one way out ran down through brick, under the view, so the tank sat there for good, again on every respawn.
+/// Union-find with rows joined top-down: once row y is in, a cell of row y linked to the top climbs out.
+pub fn climbable(d: &District) -> Vec<bool> {
+    fn root(p: &mut [usize], mut i: usize) -> usize {
+        while p[i] != i {
+            p[i] = p[p[i]];
+            i = p[i];
+        }
+        i
+    }
+    let (fits, h) = fit_grid(d, &[]);
+    let sky = CELLS * h;
+    let mut p: Vec<usize> = (0..=sky).collect();
+    let join = |p: &mut Vec<usize>, a: usize, b: usize| {
+        let (a, b) = (root(p, a), root(p, b));
+        p[a] = b;
+    };
+    let mut out = vec![false; sky];
+    let Some(top) = (0..h).rev().find(|&y| (0..CELLS).any(|x| fits[y * CELLS + x])) else { return out };
+    for y in (0..=top).rev() {
+        for x in (0..CELLS).filter(|&x| fits[y * CELLS + x]) {
+            let i = y * CELLS + x;
+            if y == top {
+                join(&mut p, i, sky);
+            } else if fits[i + CELLS] {
+                join(&mut p, i, i + CELLS);
+            }
+            if x > 0 && fits[i - 1] {
+                join(&mut p, i, i - 1);
+            }
+        }
+        for x in 0..CELLS {
+            let i = y * CELLS + x;
+            out[i] = fits[i] && root(&mut p, i) == root(&mut p, sky);
+        }
+    }
+    out
+}
+
+/// Where a tank's bottom-left cell fits (2x2 cells free of steel, water and wall), `y * CELLS + x`, and the cell
+/// rows. Live turrets count as wall; gates are open unless listed in `closed`.
+fn fit_grid(d: &District, closed: &[usize]) -> (Vec<bool>, usize) {
     let mut ter = d.terrain.clone();
     for s in d.spawns.iter().filter(|s| s.rank == Rank::Turret) {
         footprint(s.pos, 16.0).for_each(|(x, y)| ter.set(x, y, Tile::Wall));
@@ -286,18 +344,11 @@ pub fn reachable(d: &District, from: (usize, usize), closed: &[usize]) -> Vec<bo
     let open = |cx: usize, cy: usize| {
         (0..2).all(|dx| (0..2).all(|dy| !matches!(ter.get(cx * 2 + dx, cy * 2 + dy), Tile::Steel | Tile::Water | Tile::Wall)))
     };
-    let fits = |x: usize, y: usize| x < CELLS - 1 && y < h - 1 && (0..2).all(|dx| (0..2).all(|dy| open(x + dx, y + dy)));
-    let mut seen = vec![false; CELLS * h];
-    let mut todo = vec![from];
-    while let Some((x, y)) = todo.pop() {
-        if !fits(x, y) || std::mem::replace(&mut seen[y * CELLS + x], true) {
-            continue;
-        }
-        todo.extend([(x + 1, y), (x, y + 1)]);
-        todo.extend(x.checked_sub(1).map(|x| (x, y)));
-        todo.extend(y.checked_sub(1).map(|y| (x, y)));
-    }
-    seen
+    let fits = (0..h)
+        .flat_map(|y| (0..CELLS).map(move |x| (x, y)))
+        .map(|(x, y)| x < CELLS - 1 && y < h - 1 && (0..2).all(|dx| (0..2).all(|dy| open(x + dx, y + dy))))
+        .collect();
+    (fits, h)
 }
 
 #[cfg(test)]
