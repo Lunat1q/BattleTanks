@@ -10,6 +10,7 @@ pub mod powerup;
 pub mod progress;
 pub mod stage;
 pub mod tank;
+pub mod versus;
 
 pub use crate::achieve::Feat;
 use crate::geom::Dir;
@@ -43,6 +44,8 @@ pub enum Screen {
     Unlocks,
     /// The secret bunker (a button combo on the title): changelog, jukebox, sound test.
     Bunker,
+    /// After a VERSUS round: who won it, round wins, kills.
+    VersusResults,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -52,6 +55,8 @@ pub enum Mode {
     Classic,
     /// 10 tall scrolling districts, each ending in a boss.
     City,
+    /// Two players, two bases, one point-symmetric map (ADR 0019).
+    Versus,
 }
 
 pub struct Slot {
@@ -71,11 +76,24 @@ pub struct Slot {
     pub pickups: u32,
     /// City Run kills this district beyond `kills`: turrets, mini-bosses, the boss.
     pub big: [u32; 3],
+    /// VERSUS: the other player's tanks destroyed this round.
+    pub frags: u32,
 }
 
 impl Slot {
     pub fn new(device: Device) -> Self {
-        Slot { device, lives: rules::START_LIVES, score: 0, level: 0, out: false, out_wait: 0.0, kills: [0; 4], pickups: 0, big: [0; 3] }
+        Slot {
+            device,
+            lives: rules::START_LIVES,
+            score: 0,
+            level: 0,
+            out: false,
+            out_wait: 0.0,
+            kills: [0; 4],
+            pickups: 0,
+            big: [0; 3],
+            frags: 0,
+        }
     }
 }
 
@@ -171,7 +189,8 @@ pub struct StageRun {
     pub spawn_point: usize,
     pub freeze: f32,
     pub shovel: f32,
-    pub base_alive: bool,
+    /// Per side: player 1's base (bottom), player 2's (top, VERSUS only).
+    pub base_alive: [bool; 2],
     /// Seconds in `Phase::Play` (pauses and banners excluded): the clear time.
     pub clock: f32,
 }
@@ -196,6 +215,16 @@ impl View {
 pub enum Team {
     Player(usize),
     Enemy,
+}
+
+impl Team {
+    /// VERSUS side (0 bottom, 1 top); the classic enemy has none.
+    pub fn side(self) -> Option<usize> {
+        match self {
+            Team::Player(p) => Some(p),
+            Team::Enemy => None,
+        }
+    }
 }
 
 /// Spawn order of a simulated thing (tank, bullet, power-up, base), counted from 1 per process. Sim loops whose
@@ -293,9 +322,10 @@ pub struct Bullet {
     pub trees: bool,
 }
 
-#[derive(Component)]
+/// A base to defend; the number is its side (0 bottom centre, 1 top centre in VERSUS).
+#[derive(Component, Clone, Copy)]
 #[require(NetId)]
-pub struct Base;
+pub struct Base(pub usize);
 
 #[derive(Component)]
 #[require(NetId)]

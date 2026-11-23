@@ -22,11 +22,12 @@ impl Default for Progress {
     }
 }
 
-/// One past the last district / stage: everything cleared.
+/// One past the last district / stage: everything cleared. ponytail: VERSUS opens nothing and is never asked; it
+/// shares classic's arms only so the matches stay total.
 fn cap(mode: Mode) -> usize {
     match mode {
         Mode::City => CITY_DISTRICTS + 1,
-        Mode::Classic => crate::levels::stage_count() + 1,
+        Mode::Classic | Mode::Versus => crate::levels::stage_count() + 1,
     }
 }
 
@@ -47,9 +48,9 @@ impl Progress {
     fn frontier(&mut self, mode: Mode, easy: bool) -> &mut usize {
         match (mode, easy) {
             (Mode::City, false) => &mut self.unlocked,
-            (Mode::Classic, false) => &mut self.classic,
+            (Mode::Classic | Mode::Versus, false) => &mut self.classic,
             (Mode::City, true) => &mut self.easy_unlocked,
-            (Mode::Classic, true) => &mut self.easy_classic,
+            (Mode::Classic | Mode::Versus, true) => &mut self.easy_classic,
         }
     }
 
@@ -57,7 +58,7 @@ impl Progress {
     pub fn open(&self, mode: Mode, easy: bool) -> usize {
         let (normal, easier) = match mode {
             Mode::City => (self.unlocked, self.easy_unlocked),
-            Mode::Classic => (self.classic, self.easy_classic),
+            Mode::Classic | Mode::Versus => (self.classic, self.easy_classic),
         };
         if easy { normal.max(easier) } else { normal }
     }

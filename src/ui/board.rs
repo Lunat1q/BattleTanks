@@ -40,6 +40,8 @@ pub fn wants_board(session: &Session, platform: &crate::Platform) -> bool {
         && match session.mode {
             Mode::Classic => session.team_score() > 0 && !session.log.is_empty(),
             Mode::City => session.log.last().is_some_and(|l| l.won),
+            // No fair score to rank (ADR 0019).
+            Mode::Versus => false,
         }
 }
 

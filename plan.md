@@ -184,11 +184,12 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [x] City Run respawns only where the tank can climb on without leaving the view (district 7 pocket, owner)
 - [ ] Owner: couch feel of districts 7-10's bosses
 
-### M18 — VERSUS (planned, ADR 0019; owner's answers in it)
-- [x] Title PLAY → mode cards (CLASSIC / CITY RUN / VERSUS, pictures + progress), so the title menu stays short;
-  VERSUS shows COMING SOON until V1
-- [ ] V1 plain duel: `Mode::Versus`, two bases (top base = rotated bottom one), `Team::side`, side hit rules, round
-  end, results; 3 hand-drawn point-symmetric maps; title VERSUS with two players joined
+### M18 — VERSUS ⏳ (ADR 0019; owner's answers in it)
+- [x] Title PLAY → mode cards (CLASSIC / CITY RUN / VERSUS, pictures + progress), so the title menu stays short
+- [x] V1 plain duel: `Mode::Versus`, two bases (top base = rotated bottom one), `Team::side`, side hit rules, round
+  end, results; 3 hand-drawn point-symmetric maps; title VERSUS with two players joined (offline only until V5).
+  Smoke: `BT_VERSUS=<map>`, `BT_SCREEN=versus`; rounds walk the maps in turn until V3's setup screen
+- [ ] Owner: a couch duel (map feel, 3 tanks enough?)
 - [ ] V2 NPC armies: costs (LIGHT 1, SCOUT 2, GUNNER 3, HEAVY 5), budget 20 with an auto mix, spawn cadence, NPC targets
   (other base / nearest hostile tank), side tints, drops, VERSUS power-ups
 - [ ] V3 setup + draft: MAP / NPC ARMY / ROUNDS screen, per-player draft cards, rounds and rematch

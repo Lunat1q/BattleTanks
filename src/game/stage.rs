@@ -16,7 +16,8 @@ pub const BASE_POS: Vec2 = Vec2::new(104.0, 8.0);
 const INTRO_TIME: f32 = 1.2;
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(OnEnter(Screen::Stage), setup)
+    app.init_resource::<super::versus::Match>()
+        .add_systems(OnEnter(Screen::Stage), setup)
         .add_systems(OnExit(Screen::Stage), |mut paused: ResMut<Paused>| paused.0 = false)
         .add_systems(Update, (watch_controllers, pause_when_away, toggle_pause, advance_phase).chain().run_if(in_state(Screen::Stage)));
 }
@@ -65,13 +66,20 @@ fn setup(
     feats.write(Feat::Start { mode: session.mode, stage: session.stage, joined, fresh });
     let (mut terrain, roster) = if session.mode == Mode::City {
         (super::city::setup(&mut commands, &mut session), Vec::new())
+    } else if session.mode == Mode::Versus {
+        commands.remove_resource::<super::city::CityRun>();
+        super::versus::reset_slots(&mut session, settings.easy_mode);
+        for (side, at) in super::versus::BASES.into_iter().enumerate() {
+            commands.spawn((Base(side), Transform::from_translation(at.extend(0.0)), DespawnOnExit(Screen::Stage)));
+        }
+        (crate::versus_map::load(session.stage), Vec::new())
     } else {
         commands.remove_resource::<super::city::CityRun>();
         let stage = levels::load(session.stage);
-        commands.spawn((Base, Transform::from_translation(BASE_POS.extend(0.0)), DespawnOnExit(Screen::Stage)));
+        commands.spawn((Base(0), Transform::from_translation(BASE_POS.extend(0.0)), DespawnOnExit(Screen::Stage)));
         (stage.terrain, stage.roster)
     };
-    if fresh && settings.easy_mode {
+    if fresh && settings.easy_mode && session.mode != Mode::Versus {
         for slot in session.slots.iter_mut().flatten() {
             slot.lives += rules::EASY_EXTRA_LIVES;
         }
@@ -88,9 +96,10 @@ fn setup(
         spawn_point: 0,
         freeze: 0.0,
         shovel: 0.0,
-        base_alive: true,
+        base_alive: [true; 2],
         clock: 0.0,
     });
+    let mode = session.mode;
     for (i, slot) in session.slots.iter_mut().enumerate() {
         if let Some(slot) = slot.as_mut() {
             slot.kills = [0; 4];
@@ -98,7 +107,8 @@ fn setup(
             slot.pickups = 0;
             if !slot.out {
                 // Already there when the banner lifts: no spawn twinkle to sit through, just the respawn shield.
-                let e = spawn_player(&mut commands, i, slot.level, PLAYER_SPAWNS[i]);
+                let (at, facing) = player_start(mode, i);
+                let e = spawn_player(&mut commands, i, slot.level, at, facing);
                 commands.entity(e).remove::<Spawning>().insert(Shield(rules::respawn_shield(settings.easy_mode)));
             }
         }
@@ -106,10 +116,15 @@ fn setup(
     sfx.write(Sfx::StageStart);
 }
 
-pub fn spawn_player(commands: &mut Commands, slot: usize, level: u8, pos: Vec2) -> Entity {
+/// Where player `slot` starts a stage, and facing which way: beside the base; in VERSUS player 2 at the top.
+pub fn player_start(mode: Mode, slot: usize) -> (Vec2, Dir) {
+    if mode == Mode::Versus { super::versus::SPAWNS[slot] } else { (PLAYER_SPAWNS[slot], Dir::Up) }
+}
+
+pub fn spawn_player(commands: &mut Commands, slot: usize, level: u8, pos: Vec2, facing: Dir) -> Entity {
     commands
         .spawn((
-            Tank::new(Team::Player(slot), Dir::Up, rules::PLAYER_SPEED),
+            Tank::new(Team::Player(slot), facing, rules::PLAYER_SPEED),
             Gun { stats: rules::player_gun(level), trigger: false, cooldown: 0.0 },
             Spawning(rules::SPAWN_TIME),
             Transform::from_translation(pos.extend(0.0)),
@@ -118,12 +133,13 @@ pub fn spawn_player(commands: &mut Commands, slot: usize, level: u8, pos: Vec2) 
         .id()
 }
 
-/// Where player `slot` re-enters: its start column at the bottom of the view, or the nearest open tank-sized spot
-/// beside or above it. On a classic stage that is always the start itself. In City Run (`reach`) only a spot from
-/// which the tank can climb on without going below the view (district 7 kept respawning a player in a sealed pocket).
-pub fn respawn_point(slot: usize, bottom: f32, terrain: &Terrain, reach: Option<&super::city::Reach>) -> Vec2 {
-    let x0 = PLAYER_SPAWNS[slot].x;
-    let y0 = (bottom / 8.0).ceil() * 8.0 + 8.0;
+/// Where a player re-enters: their `start` (`player_start`) raised to the bottom of the view, or the nearest open
+/// tank-sized spot beside or above it. On a classic or VERSUS stage that is always the start itself. In City Run
+/// (`reach`) only a spot from which the tank can climb on without going below the view (district 7 kept respawning
+/// a player in a sealed pocket).
+pub fn respawn_point(start: Vec2, bottom: f32, terrain: &Terrain, reach: Option<&super::city::Reach>) -> Vec2 {
+    let x0 = start.x;
+    let y0 = (bottom / 8.0).ceil() * 8.0 + start.y;
     // Nearest columns first, the whole width; rows up to most of the view.
     let mut cols: Vec<f32> = (1..crate::geom::CELLS).map(|c| c as f32 * 8.0).collect();
     cols.sort_by(|a, b| (a - x0).abs().total_cmp(&(b - x0).abs()));
@@ -263,12 +279,15 @@ pub fn borrow_life(
             s.out_wait -= time.delta_secs();
         }
     }
-    for p in 0..2 {
+    // VERSUS: the other player is no partner to borrow from.
+    let players = if session.mode == Mode::Versus { 0 } else { 2 };
+    for p in 0..players {
         if run.phase == Phase::Play && session.intent(p, &devices).confirm && session.borrow(p) {
             let level = session.slots[p].as_ref().map_or(0, |s| s.level);
             let partner_left = session.slots[1 - p].as_ref().map_or(0, |s| s.lives);
             feats.write(Feat::Borrow { slot: p, partner_left });
-            spawn_player(&mut commands, p, level, respawn_point(p, view.bottom, &terrain, reach.as_deref()));
+            let (start, facing) = player_start(session.mode, p);
+            spawn_player(&mut commands, p, level, respawn_point(start, view.bottom, &terrain, reach.as_deref()), facing);
             sfx.write(Sfx::ExtraLife);
         }
     }
@@ -280,14 +299,28 @@ pub fn check_end(
     city: Option<Res<super::city::CityRun>>,
     enemies: Query<(), With<Enemy>>,
     terrain: Res<Terrain>,
+    mut duel: ResMut<super::versus::Match>,
     mut sfx: MessageWriter<Sfx>,
     mut feats: MessageWriter<Feat>,
 ) {
     if run.phase != Phase::Play {
         return;
     }
+    if session.mode == Mode::Versus {
+        let out = [0, 1].map(|i| session.slots[i].as_ref().is_none_or(|s| s.out));
+        if let Some(winner) = super::versus::outcome(run.base_alive, out) {
+            run.phase = Phase::Won;
+            run.timer = rules::END_DELAY;
+            duel.last = winner;
+            if let Some(w) = winner {
+                duel.wins[w] += 1;
+            }
+            sfx.write(Sfx::BaseBoom);
+        }
+        return;
+    }
     let everyone_out = session.slots.iter().flatten().all(|s| s.out);
-    if !run.base_alive || everyone_out {
+    if !run.base_alive[0] || everyone_out {
         run.phase = Phase::Lost;
         run.timer = rules::END_DELAY;
         sfx.write(Sfx::GameOver);
@@ -314,7 +347,13 @@ pub fn check_end(
     }
 }
 
-fn advance_phase(time: Res<Time>, paused: Res<Paused>, mut run: ResMut<StageRun>, mut next: ResMut<NextState<Screen>>) {
+fn advance_phase(
+    time: Res<Time>,
+    paused: Res<Paused>,
+    session: Res<Session>,
+    mut run: ResMut<StageRun>,
+    mut next: ResMut<NextState<Screen>>,
+) {
     if paused.0 || run.phase == Phase::Play {
         return;
     }
@@ -324,6 +363,7 @@ fn advance_phase(time: Res<Time>, paused: Res<Paused>, mut run: ResMut<StageRun>
     }
     match run.phase {
         Phase::Intro => run.phase = Phase::Play,
+        _ if session.mode == Mode::Versus => next.set(Screen::VersusResults),
         Phase::Won => next.set(Screen::Results),
         Phase::Lost => next.set(Screen::GameOver),
         Phase::Play => {}
@@ -400,14 +440,16 @@ mod tests {
     #[test]
     fn respawn_finds_open_ground_at_the_bottom_of_the_view() {
         let classic = Terrain::default();
-        assert_eq!(respawn_point(0, 0.0, &classic, None), PLAYER_SPAWNS[0]);
+        assert_eq!(respawn_point(PLAYER_SPAWNS[0], 0.0, &classic, None), PLAYER_SPAWNS[0]);
+        let top = super::super::versus::SPAWNS[1].0;
+        assert_eq!(respawn_point(top, 0.0, &crate::versus_map::load(1), None), top, "VERSUS player 2 respawns at the top");
         let mut ter = Terrain::new(crate::geom::SUBS * 3);
         for y in 75..79 {
             for x in 16..20 {
                 ter.set(x, y, Tile::Steel); // right where player 1 would land at bottom = 293
             }
         }
-        let p = respawn_point(0, 293.0, &ter, None);
+        let p = respawn_point(PLAYER_SPAWNS[0], 293.0, &ter, None);
         assert!(p.y >= 304.0 && !ter.blocks_tank(rect_at(p, 16.0)), "{p}");
     }
 
@@ -421,10 +463,10 @@ mod tests {
             let reach = super::super::city::Reach::new(&d);
             let mut bottom = 0.0;
             while bottom + crate::geom::FIELD <= d.terrain.height() {
-                for slot in 0..2 {
-                    let p = respawn_point(slot, bottom, &d.terrain, Some(&reach));
+                for start in PLAYER_SPAWNS {
+                    let p = respawn_point(start, bottom, &d.terrain, Some(&reach));
                     assert!(reach.climbs(p) && !d.terrain.blocks_tank(rect_at(p, 16.0)), "district {n}, view {bottom}: {p}");
-                    old_traps += usize::from(!reach.climbs(respawn_point(slot, bottom, &d.terrain, None)));
+                    old_traps += usize::from(!reach.climbs(respawn_point(start, bottom, &d.terrain, None)));
                 }
                 bottom += 8.0;
             }

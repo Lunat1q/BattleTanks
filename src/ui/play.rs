@@ -1,6 +1,5 @@
 //! PLAY from the title: one card per mode (CLASSIC, CITY RUN, VERSUS) with a picture, left/right picks, A goes on to
-//! the mode's own picker (stage tiles, district map), B back to the title. VERSUS shows as coming soon until it is
-//! built (plan M18).
+//! the mode's own picker (stage tiles, district map) or, for VERSUS, straight into round 1, B back to the title.
 
 use super::*;
 use crate::game::progress::Progress;
@@ -34,9 +33,9 @@ impl Pick {
             Pick::Versus => "1 on 1 - destroy the other base",
         }
     }
-    /// Can it be started yet? ponytail: VERSUS is planned (ADR 0019); its card shows what is coming.
-    fn ready(self) -> bool {
-        self != Pick::Versus
+    /// Can it be started with `players` joined? VERSUS needs both, and not over LAN yet (ponytail: plan M18 V5).
+    fn ready(self, players: usize, linked: bool) -> bool {
+        self != Pick::Versus || (players == 2 && !linked)
     }
 }
 
@@ -149,7 +148,9 @@ fn picture(pic: &mut ChildSpawnerCommands, pick: Pick, gfx: &Gfx, stage: usize) 
 }
 
 fn input(
+    mut commands: Commands,
     devices: Res<DeviceIntents>,
+    net: Res<crate::net::Net>,
     mut session: ResMut<Session>,
     mut sel: ResMut<Sel>,
     mut next: ResMut<NextState<Screen>>,
@@ -165,23 +166,27 @@ fn input(
     }
     if nav.back {
         next.set(Screen::Title);
-    } else if (nav.confirm || nav.start) && session.players() > 0 {
-        let to = match PICKS[sel.0] {
-            Pick::Classic => Some((Mode::Classic, Screen::StageSelect)),
-            Pick::City => Some((Mode::City, Screen::CityMap)),
-            Pick::Versus => None,
+    } else if (nav.confirm || nav.start) && session.players() > 0 && PICKS[sel.0].ready(session.players(), net.linked()) {
+        let (mode, screen) = match PICKS[sel.0] {
+            Pick::Classic => (Mode::Classic, Screen::StageSelect),
+            Pick::City => (Mode::City, Screen::CityMap),
+            Pick::Versus => {
+                session.stage = 1;
+                commands.insert_resource(crate::game::versus::Match { round: 1, ..default() });
+                (Mode::Versus, Screen::Stage)
+            }
         };
-        if let Some((mode, screen)) = to {
-            session.mode = mode;
-            sfx.write(Sfx::MenuPick);
-            next.set(screen);
-        }
+        session.mode = mode;
+        sfx.write(Sfx::MenuPick);
+        next.set(screen);
     }
 }
 
 fn refresh(
     time: Res<Time>,
     sel: Res<Sel>,
+    session: Res<Session>,
+    net: Res<crate::net::Net>,
     progress: Res<Progress>,
     settings: Res<crate::settings::Settings>,
     mut cards: Query<(&ModeCard, &mut BorderColor, &mut Outline)>,
@@ -190,14 +195,16 @@ fn refresh(
     let pulse = 0.75 + 0.25 * (time.elapsed_secs() * 5.0).sin();
     for (card, mut border, mut outline) in &mut cards {
         let pick = PICKS[card.0];
-        *border = BorderColor::all(if pick.ready() { INK } else { LOCKED });
+        *border = BorderColor::all(if pick.ready(session.players(), net.linked()) { INK } else { LOCKED });
         outline.color = if card.0 == sel.0 { Color::WHITE.with_alpha(pulse) } else { Color::NONE };
     }
     for (note, mut t, mut color) in &mut notes {
         let (s, c) = match PICKS[note.0] {
             Pick::Classic => (opened("STAGE", progress.open(Mode::Classic, settings.easy_mode), crate::levels::stage_count()), GOLD),
             Pick::City => (opened("DISTRICT", progress.open(Mode::City, settings.easy_mode), CITY_DISTRICTS), GOLD),
-            Pick::Versus => ("COMING SOON".into(), DIM),
+            Pick::Versus if net.linked() => ("OVER LAN: COMING SOON".into(), DIM),
+            Pick::Versus if session.players() < 2 => ("NEEDS 2 PLAYERS".into(), DIM),
+            Pick::Versus => (format!("{} MAPS", crate::versus_map::count()), GOLD),
         };
         set_text(&mut t, s);
         color.0 = c;
@@ -221,6 +228,7 @@ mod tests {
         assert_eq!(step(1, Dir::Up), 1);
         assert_eq!(opened("STAGE", 1, 30), "UP TO STAGE 1");
         assert_eq!(opened("DISTRICT", 11, 10), "ALL CLEARED");
-        assert!(Pick::Classic.ready() && Pick::City.ready() && !Pick::Versus.ready());
+        assert!(Pick::Classic.ready(1, false) && Pick::City.ready(1, true));
+        assert!(Pick::Versus.ready(2, false) && !Pick::Versus.ready(1, false) && !Pick::Versus.ready(2, true));
     }
 }

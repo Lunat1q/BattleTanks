@@ -239,14 +239,16 @@ fn base_look(
     gfx: Res<Gfx>,
     run: Res<StageRun>,
     added: Query<Entity, Added<Base>>,
-    mut base: Query<(&mut Sprite, &mut Transform), With<Base>>,
+    mut base: Query<(&Base, &mut Sprite, &mut Transform)>,
 ) {
     for e in &added {
         commands.entity(e).insert(Sprite { image: gfx.base.clone(), custom_size: Some(Vec2::splat(16.0)), ..default() });
     }
-    for (mut s, mut tf) in &mut base {
+    for (side, mut s, mut tf) in &mut base {
         tf.translation.z = z::WALL;
-        let want = if run.base_alive { &gfx.base } else { &gfx.base_dead };
+        // VERSUS player 2's base at the top: the bottom one turned round, facing its attackers.
+        tf.rotation = Quat::from_rotation_z(side.0 as f32 * std::f32::consts::PI);
+        let want = if run.base_alive[side.0] { &gfx.base } else { &gfx.base_dead };
         if &s.image != want {
             s.image = want.clone();
         }

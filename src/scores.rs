@@ -238,6 +238,9 @@ fn poll(mut online: ResMut<Online>) {
 /// Leaving a stage or district (won, lost or quit) records it for the online score. After the end delay, so kills
 /// in the last 3 s count too (the clock stopped at the last kill).
 fn log_stage(mut session: ResMut<Session>, run: Res<StageRun>) {
+    if session.mode == Mode::Versus {
+        return; // no world board, no run to log
+    }
     let entry = StageLog {
         stage: session.stage,
         tenths: (run.clock * 10.0) as u32,

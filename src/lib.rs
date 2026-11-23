@@ -25,6 +25,7 @@ mod scores;
 mod settings;
 mod terrain;
 mod ui;
+mod versus_map;
 
 pub use achieve::{Ach, LIST as ACHIEVEMENTS};
 pub use gfx::art_badges::{PX as BADGE_PX, pixels as badge_pixels};

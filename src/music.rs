@@ -175,7 +175,7 @@ pub fn pick(screen: Screen, mode: Mode, stage: usize, fight: Fight) -> &'static 
         | Screen::Achievements
         | Screen::Bunker => &[Menu],
         Screen::CityMap => &[MenuAlt],
-        Screen::Results | Screen::Unlocks => &[Victory],
+        Screen::Results | Screen::Unlocks | Screen::VersusResults => &[Victory],
         Screen::GameOver => LOSS,
         // Keeps the screen before it playing: a district clear's victory, or a classic run's game over.
         Screen::Board if mode == Mode::City => &[Victory],
@@ -184,6 +184,8 @@ pub fn pick(screen: Screen, mode: Mode, stage: usize, fight: Fight) -> &'static 
             (Fight::Boss, _) => BOSS,
             (Fight::Mini, _) => HARD,
             (_, Mode::Classic) => [SLOW, MEDIUM, FAST][n % 30 / 10],
+            // ponytail: VERSUS borrows the fast pool until it gets its own (plan M18 V5).
+            (_, Mode::Versus) => FAST,
             (_, Mode::City) => match n {
                 0..=2 => CITY_SLOW,
                 3..=6 => CITY_MEDIUM,

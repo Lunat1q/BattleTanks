@@ -159,6 +159,7 @@ fn track(
     run: Option<Res<crate::game::StageRun>>,
     net: Res<crate::net::Net>,
     settings: Res<crate::settings::Settings>,
+    session: Res<crate::game::Session>,
 ) {
     let clock = run.map_or(0.0, |r| r.clock);
     seat.0.seat(net.me().map(usize::from));
@@ -168,8 +169,8 @@ fn track(
         {
             rec.news.clear();
         }
-        // EASY MODE runs earn nothing.
-        if !settings.easy_mode {
+        // EASY MODE runs earn nothing, and VERSUS has no fair score to earn by (ADR 0019).
+        if !settings.easy_mode && session.mode != Mode::Versus {
             seat.0.feat(f, clock, &mut rec);
         }
     }

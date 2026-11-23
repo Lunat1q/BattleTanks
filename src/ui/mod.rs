@@ -15,6 +15,7 @@ mod stages;
 mod tally;
 pub mod title;
 mod unlocks;
+mod versus;
 
 pub use crate::gfx::Block;
 use bevy::ecs::system::SystemParam;
@@ -43,6 +44,7 @@ pub fn plugin(app: &mut App) {
         stages::plugin,
         bunker::plugin,
         play::plugin,
+        versus::plugin,
     ));
 }
 

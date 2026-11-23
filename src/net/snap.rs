@@ -14,7 +14,7 @@ use crate::rules::{EnemyKind, GunStats, PowerKind, Rank};
 use crate::terrain::{Terrain, Tile};
 use bevy::prelude::*;
 
-const SCREENS: [Screen; 11] = [
+const SCREENS: [Screen; 12] = [
     Screen::Title,
     Screen::Stage,
     Screen::Results,
@@ -26,10 +26,11 @@ const SCREENS: [Screen; 11] = [
     Screen::Lan,
     Screen::Achievements,
     Screen::Unlocks,
+    Screen::VersusResults,
 ];
 const RANKS: [Rank; 5] = [Rank::Normal, Rank::Turret, Rank::Mini, Rank::Boss, Rank::Sentry];
 const PHASES: [Phase; 4] = [Phase::Intro, Phase::Play, Phase::Won, Phase::Lost];
-const MODES: [Mode; 2] = [Mode::Classic, Mode::City];
+const MODES: [Mode; 3] = [Mode::Classic, Mode::City, Mode::Versus];
 /// No entity (a dead bullet owner, no boss yet).
 const NONE: u32 = u32::MAX;
 
@@ -80,7 +81,7 @@ pub fn take(world: &mut World) -> Vec<u8> {
         } else if let Some(p) = world.get::<PowerUp>(e) {
             w.u8(2).u8(index(&PowerKind::ALL, &p.0)).bool(world.get::<Stash>(e).is_some());
         } else {
-            w.u8(3); // the base
+            w.u8(3 + world.get::<Base>(e).map_or(0, |b| b.0 as u8)); // a base: 3 player 1's, 4 player 2's
         }
         w.vec2(tf);
     }
@@ -137,7 +138,7 @@ pub fn apply(world: &mut World, bytes: &[u8]) -> Option<()> {
             }
             Kind::Power { kind, stash: true } => _ = ec.insert((PowerUp(kind), Stash)),
             Kind::Power { kind, stash: false } => _ = ec.insert(PowerUp(kind)),
-            Kind::Base => _ = ec.insert(Base),
+            Kind::Base(side) => _ = ec.insert(Base(side)),
         }
     }
     let mut session = world.resource_mut::<Session>();
@@ -255,7 +256,14 @@ fn get_session(r: &mut R) -> Option<SessionData> {
 fn put_run(w: &mut W, s: &StageRun) {
     w.u8(index(&PHASES, &s.phase)).f32(s.timer).usize(s.roster.len());
     s.roster.iter().for_each(|k| _ = w.u8(index(&EnemyKind::ALL, k)));
-    w.usize(s.next_enemy).f32(s.spawn_timer).usize(s.spawn_point).f32(s.freeze).f32(s.shovel).bool(s.base_alive).f32(s.clock);
+    w.usize(s.next_enemy)
+        .f32(s.spawn_timer)
+        .usize(s.spawn_point)
+        .f32(s.freeze)
+        .f32(s.shovel)
+        .bool(s.base_alive[0])
+        .bool(s.base_alive[1])
+        .f32(s.clock);
 }
 
 fn get_run(r: &mut R) -> Option<StageRun> {
@@ -270,7 +278,7 @@ fn get_run(r: &mut R) -> Option<StageRun> {
         spawn_point: r.usize()?,
         freeze: r.f32()?,
         shovel: r.f32()?,
-        base_alive: r.bool()?,
+        base_alive: [r.bool()?, r.bool()?],
         clock: r.f32()?,
     })
 }
@@ -361,7 +369,7 @@ enum Kind {
     Tank { tank: Tank, gun: Gun, enemy: Option<Enemy>, timers: [Option<f32>; 5] },
     Bullet { owner: u32, team: Team, dir: Dir, speed: f32, power: bool, trees: bool },
     Power { kind: PowerKind, stash: bool },
-    Base,
+    Base(usize),
 }
 
 struct Thing {
@@ -410,7 +418,7 @@ fn get_thing(r: &mut R) -> Option<Thing> {
             trees: r.bool()?,
         },
         2 => Kind::Power { kind: r.pick(&PowerKind::ALL)?, stash: r.bool()? },
-        3 => Kind::Base,
+        n @ 3..=4 => Kind::Base(n as usize - 3),
         _ => return None,
     };
     Some(Thing { kind, pos: r.vec2()? })

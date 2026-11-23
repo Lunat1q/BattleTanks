@@ -179,7 +179,7 @@ fn refresh(
                 false => format!("POWER {}", s.level),
             }),
             Hud::Stage => Some(session.stage.to_string()),
-            Hud::Hi => Some(format!("HI {}", session.hi_score)),
+            Hud::Hi => Some(if session.mode == Mode::Versus { String::new() } else { format!("HI {}", session.hi_score) }),
         };
         set_text(&mut t, s.unwrap_or_default());
     }

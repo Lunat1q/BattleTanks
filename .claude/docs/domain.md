@@ -73,7 +73,8 @@ brick heading reads over bricks.
 - Menu: PLAY, LAN CO-OP (hosts with `Platform::lan`), HI SCORES, ACHIEVEMENTS (hosts with `Platform::achieve`),
   SETTINGS, EXIT. PLAY is dimmed until someone has joined.
 - **PLAY** (`ui/play.rs`) shows a card per mode, left to right: CLASSIC (the highest open stage's mini-map), CITY RUN
-  (a slice of the district map's city), VERSUS (two tanks face to face; "COMING SOON" until it is built, ADR 0019).
+  (a slice of the district map's city), VERSUS (two tanks face to face; needs both players joined, "NEEDS 2 PLAYERS"
+  otherwise; not over LAN yet).
   Each card has its name, a one-line description and how far the players have got ("UP TO STAGE n" / "ALL CLEARED").
   Left/right picks (the cursor is kept between visits), A goes on to the stage tiles or the district map, B back to
   the title; B there comes back to PLAY.
@@ -269,6 +270,25 @@ can't be read is never written.
   trenches, bunkers and tank traps; The Citadel steel courtyards, brick mazes, the moat and pillar halls. Each district
   keeps its height, turrets, minis and placed enemies (the world board's district table depends on them). No 8-row
   stretch of street appears twice anywhere in City Run (tested).
+
+## VERSUS (`game/versus.rs`, `versus_map.rs`, `ui/versus.rs`, ADR 0019; plan M18)
+First step (V1): a plain duel, no NPC armies, no setup screen, no power-ups yet.
+- Title → PLAY → VERSUS with both players joined (offline only for now) starts round 1. Player 1 defends the classic
+  base at the bottom and starts beside it; player 2 defends the same base turned round at the top and starts at
+  the mirrored spot (x 136), facing down. Both bases have the brick ring.
+- Maps `levels/versus/NN.txt` (3 hand-drawn): only the bottom 13 rows; the top half is them turned 180 degrees, so
+  both sides get the same field. Tested on every map: point symmetry, player 1's spawn reaches the top base (bricks
+  open), steel over each ring in the centre lane, no dead-end pockets (as classic). Rounds go through the maps in
+  turn.
+- Sides: the players' shells always hit each other, whatever FRIENDLY FIRE says, and destroy the tank (level-4
+  armour holds once, as against enemies). Shells of the two sides cancel each other. A base takes damage only from
+  the other side: your own shell pops on it harmlessly.
+- 3 tanks each (EASY MODE: 2 more), star level 0, a shield on each respawn beside the own base. No borrowing.
+- The round ends when a base falls or a player has no tank left: the banner shows PLAYER n WINS (gold blocks), or
+  DRAW when both happen on one tick. Then VERSUS results: round wins per player and tanks destroyed this round; A
+  plays the next round on the next map, B goes to the title.
+- No world board, no achievements, the local hi score untouched; the HUD hides the HI line. Music: the fast stage
+  pool for now.
 
 ## Music (`music.rs`, ADR 0007)
 All tracks are normalised to −16 LUFS (linear gain from the MP3 master, see Operational lessons for the

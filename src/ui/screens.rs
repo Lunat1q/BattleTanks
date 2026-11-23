@@ -3,6 +3,7 @@
 use super::tally::{RESULTS_WAIT, Tally, kill_maxes, table, tally_len, tally_view};
 use super::*;
 use crate::achieve::Record;
+use crate::game::versus::Match;
 use crate::game::{Mode, Paused, Phase, Screen, Session, Sfx, StageRun};
 use crate::geom::Dir;
 use crate::input::{DeviceIntents, Intent};
@@ -49,8 +50,16 @@ fn overlay(bg: f32) -> impl Bundle {
     )
 }
 
-/// Banner heading for `phase`; empty while playing. Classic is brick, City Run steel.
-fn banner_head(phase: Phase, session: &Session) -> (String, Block) {
+/// Banner heading for `phase`; empty while playing. Classic is brick, City Run steel, VERSUS steel then the
+/// round's winner in gold.
+fn banner_head(phase: Phase, session: &Session, duel: &Match) -> (String, Block) {
+    if session.mode == Mode::Versus {
+        return match phase {
+            Phase::Intro => (format!("ROUND {}", duel.round), Block::Steel),
+            Phase::Play => (String::new(), Block::Steel),
+            Phase::Won | Phase::Lost => (super::versus::head(duel.last), Block::Gold),
+        };
+    }
     let m = if session.mode == Mode::City { Block::Steel } else { Block::Brick };
     let s = match phase {
         Phase::Intro => format!("{} {}", place(session), session.stage),
@@ -77,11 +86,16 @@ fn banner_plate() -> impl Bundle {
     )
 }
 
-fn spawn_overlays(mut commands: Commands, mut sel: ResMut<PauseSel>, session: Res<Session>, mut heads: Headings) {
+fn spawn_overlays(mut commands: Commands, mut sel: ResMut<PauseSel>, session: Res<Session>, duel: Res<Match>, mut heads: Headings) {
     sel.0 = 0;
     // Painted now, so the stage's end doesn't stall a frame to paint its banner.
+    if session.mode == Mode::Versus {
+        for last in [Some(0), Some(1), None] {
+            heads.image(&super::versus::head(last), Block::Gold);
+        }
+    }
     for phase in [Phase::Won, Phase::Lost] {
-        let (s, m) = banner_head(phase, &session);
+        let (s, m) = banner_head(phase, &session, &duel);
         heads.image(&s, m);
     }
     commands.spawn(overlay(0.0)).with_children(|b| {
@@ -102,6 +116,7 @@ fn spawn_overlays(mut commands: Commands, mut sel: ResMut<PauseSel>, session: Re
 fn banner(
     run: Option<Res<StageRun>>,
     session: Res<Session>,
+    duel: Res<Match>,
     mut heads: Headings,
     mut q: Query<(&mut Banner, &mut ImageNode)>,
     mut plate: Query<(&mut Visibility, &ChildOf), With<BannerPlate>>,
@@ -111,7 +126,7 @@ fn banner(
     let Some(run) = run else { return };
     let Ok((mut shown, mut img)) = q.single_mut() else { return };
     let Ok((mut vis, parent)) = plate.single_mut() else { return };
-    let (s, m) = banner_head(run.phase, &session);
+    let (s, m) = banner_head(run.phase, &session, &duel);
     if shown.0 != s {
         if !s.is_empty() {
             img.image = heads.image(&s, m);
@@ -202,7 +217,7 @@ fn place(session: &Session) -> &'static str {
 
 fn spawn_results(mut commands: Commands, session: Res<Session>, mut time: ResMut<ScreenTime>, mut heads: Headings) {
     time.0 = 0.0;
-    let (head, m) = banner_head(Phase::Won, &session);
+    let (head, m) = banner_head(Phase::Won, &session, &Match::default());
     let head = head.replace(" CLEAR", &format!(" {} CLEAR", session.stage));
     commands.spawn((screen_root(), DespawnOnExit(Screen::Results))).with_children(|r| {
         r.spawn(heads.node(&head, m, 7.0));
@@ -223,7 +238,7 @@ fn spawn_game_over(mut commands: Commands, session: Res<Session>, mut time: ResM
 }
 
 /// Any joined device pressed A/Start, after a short guard so a held fire button doesn't skip the screen.
-fn advance_pressed(time: &mut ScreenTime, dt: f32, session: &Session, devices: &DeviceIntents) -> bool {
+pub(super) fn advance_pressed(time: &mut ScreenTime, dt: f32, session: &Session, devices: &DeviceIntents) -> bool {
     time.0 += dt;
     time.0 > 1.0
         && (0..2).any(|i| {

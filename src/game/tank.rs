@@ -1,6 +1,5 @@
 //! Player control, tank movement with collisions, and firing.
 
-use super::stage::BASE_POS;
 use super::*;
 use crate::geom::{TILE, overlaps, rect_at, snap};
 use crate::terrain::{Terrain, Tile};
@@ -47,13 +46,13 @@ pub fn drive(
     session: Res<Session>,
     terrain: Res<Terrain>,
     view: Res<View>,
-    base: Query<(), With<Base>>,
+    bases: Query<&Transform, (With<Base>, Without<Tank>)>,
     mut tanks: Query<(Entity, &mut Tank, &mut Transform, Has<Spawning>)>,
     ids: Ids,
 ) {
     let dt = time.delta_secs().min(0.05);
     let mut rects: Vec<(Entity, Rect)> = tanks.iter().map(|(e, t, tf, _)| (e, rect_at(tf.translation.xy(), t.size))).collect();
-    let base = (!base.is_empty()).then(|| rect_at(BASE_POS, TILE));
+    let bases: Vec<Rect> = bases.iter().map(|tf| rect_at(tf.translation.xy(), TILE)).collect();
 
     // Spawn order: a tank that moves first takes the spot the next one wanted.
     for (e, mut tank, mut tf, spawning) in tanks.iter_mut().sort_by_key::<Entity, _>(|e| order(&ids, *e)) {
@@ -67,7 +66,7 @@ pub fn drive(
             .iter()
             .filter(|(o, r)| *o != e && !overlaps(*r, rect_at(pos, size))) // already overlapping: let them separate
             .map(|(_, r)| *r)
-            .chain(base)
+            .chain(bases.iter().copied())
             .collect();
         let now = rect_at(pos, size);
         let blocked = |p: Vec2| {

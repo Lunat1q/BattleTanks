@@ -80,17 +80,35 @@ pub fn parse(src: &str) -> Result<(Terrain, [usize; 4]), String> {
             counts = Some(n);
             continue;
         }
-        let chars: Vec<char> = line.chars().collect();
-        let row = match chars.len() {
-            13 => chars.iter().chain(chars.iter().rev()).copied().collect(),
-            26 => chars,
-            n => return Err(format!("row {} has {n} cells, want 13 or 26", rows.len() + 1)),
-        };
-        rows.push(row);
+        rows.push(row(line, rows.len())?);
     }
     if rows.len() != CELLS {
         return Err(format!("{} rows, want {CELLS}", rows.len()));
     }
+    let mut ter = paint(&rows)?;
+    for a in spawn_areas().iter().chain([&Rect::new(96.0, 0.0, 112.0, 16.0)]) {
+        for y in (a.min.y / 4.0) as usize..(a.max.y / 4.0) as usize {
+            for x in (a.min.x / 4.0) as usize..(a.max.x / 4.0) as usize {
+                ter.set(x, y, Tile::Empty);
+            }
+        }
+    }
+    ter.set_base_ring(Tile::Brick);
+    Ok((ter, counts.ok_or("missing `enemies` line")?))
+}
+
+/// Map line number `n` (0-based) as 26 cells: written out, or 13 mirrored.
+pub fn row(line: &str, n: usize) -> Result<Vec<char>, String> {
+    let chars: Vec<char> = line.chars().collect();
+    match chars.len() {
+        13 => Ok(chars.iter().chain(chars.iter().rev()).copied().collect()),
+        26 => Ok(chars),
+        len => Err(format!("row {} has {len} cells, want 13 or 26", n + 1)),
+    }
+}
+
+/// 26 rows of 26 cells (row 0 is the top) as a classic-sized terrain.
+pub fn paint(rows: &[Vec<char>]) -> Result<Terrain, String> {
     let mut ter = Terrain::default();
     for (r, row) in rows.iter().enumerate() {
         for (c, ch) in row.iter().enumerate() {
@@ -103,21 +121,13 @@ pub fn parse(src: &str) -> Result<(Terrain, [usize; 4]), String> {
                 '-' => Tile::Ice,
                 other => return Err(format!("unknown cell {other:?} at row {}", r + 1)),
             };
-            let (x, y) = (c * 2, (CELLS - 1 - r) * 2); // row 0 is the top
+            let (x, y) = (c * 2, (CELLS - 1 - r) * 2);
             for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
                 ter.set(x + dx, y + dy, tile);
             }
         }
     }
-    for a in spawn_areas().iter().chain([&Rect::new(96.0, 0.0, 112.0, 16.0)]) {
-        for y in (a.min.y / 4.0) as usize..(a.max.y / 4.0) as usize {
-            for x in (a.min.x / 4.0) as usize..(a.max.x / 4.0) as usize {
-                ter.set(x, y, Tile::Empty);
-            }
-        }
-    }
-    ter.set_base_ring(Tile::Brick);
-    Ok((ter, counts.ok_or("missing `enemies` line")?))
+    Ok(ter)
 }
 
 /// Steel and water: what a tank can never get through (bricks can be shot away).
