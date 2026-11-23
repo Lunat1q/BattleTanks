@@ -151,6 +151,7 @@ impl Lockstep {
                     self.waiting = true;
                 }
             }
+            crate::dev::lan_dump(world, self.me, self.tick);
             if self.tick.is_multiple_of(HASH_EVERY) {
                 let h = snap::hash(world);
                 self.hashes.insert(self.tick, h);

@@ -21,7 +21,7 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 | Achievement badge sheet (look at it) | `BT_BADGE_SHEET=<scratch>/badges.png cargo test badge_sheet -- --ignored` |
 | Regenerate app icon | `cargo test write_icon_file -- --ignored` → `assets/icon.ico` + `icon.png` (commit both) |
 | Smoke run + screenshot | `BT_SHOT=<scratch>/shot.png BT_STAGE=2 BT_SHOT_AT=8 ./target/debug/battle_tanks.exe --windowed` |
-| LAN smoke (two copies) | run twice at once: `BT_LAN=host` / `BT_LAN=join`, both with `BT_LAN_BOT=1 BT_LAN_SECS=60 BT_MUTE=1 ... --windowed`; compare their `lan: tick <t> hash <h>` log lines (`BT_DESYNC=<tick>` on the joiner tests the resync) |
+| LAN smoke (two copies) | run twice at once: `BT_LAN=host` / `BT_LAN=join`, both with `BT_LAN_BOT=1 BT_LAN_SECS=60 BT_MUTE=1 ... --windowed` (`BT_LAN_VERSUS=1` on both: the bots pick VERSUS); compare their `lan: tick <t> hash <h>` log lines (`BT_DESYNC=<tick>` on the joiner tests the resync) |
 
 - First build compiles Bevy (~3 min). If cargo says a `bevy_*` version "doesn't exist", the local index is stale:
   delete `Cargo.lock` and run `cargo generate-lockfile`.
@@ -74,7 +74,9 @@ non-Steam game, played with **controllers**. Two players on one keyboard also wo
 - **Determinism (LAN, ADR 0014):** gameplay randomness only from the gameplay `Rng`, never from visuals; a sim loop
   whose result depends on order (dice per entity, first match, sequential moves) iterates
   `.sort_by_key::<Entity, _>(|e| order(&ids, *e))` (spawn order, `NetId`); new sim state goes into `net::snap`.
-  `net::tests` fails when two worlds drift.
+  `net::tests` fails when two worlds drift. A system that decides whether `Sim` runs (pause, phase) goes in
+  `StageFlow`, which runs before `Sim`: unordered, the two machines may disagree on the tick play starts.
+  `BT_LAN_DUMP=<dir>` on both LAN smoke copies writes the stage as text every tick, to diff after a mismatch.
 - Crate-level `allow(clippy::type_complexity, clippy::too_many_arguments)` — normal for Bevy queries.
 - Comments say *why*. No commented-out code.
 

@@ -12,7 +12,7 @@ use crate::input::DeviceIntents;
 use crate::rules::{ARMY_BUDGETS, MATCH_ROUNDS};
 
 pub fn plugin(app: &mut App) {
-    app.insert_resource(Setup { row: 0, map: 0, army: 2, rounds: 1 })
+    app.insert_resource(Setup::default())
         .add_systems(OnEnter(Screen::VersusSetup), spawn_setup)
         .add_systems(Update, (setup_input, setup_refresh).chain().run_if(in_state(Screen::VersusSetup)))
         .add_systems(OnEnter(Screen::VersusResults), spawn)
@@ -27,6 +27,16 @@ struct Setup {
     map: usize,
     army: usize,
     rounds: usize,
+}
+
+impl Default for Setup {
+    fn default() -> Self {
+        Setup { row: 0, map: 0, army: 2, rounds: 1 }
+    }
+}
+
+pub(super) fn reset(world: &mut World) {
+    world.insert_resource(Setup::default());
 }
 
 impl Setup {
@@ -242,7 +252,7 @@ mod tests {
 
     #[test]
     fn setup_rows_stop_at_their_ends() {
-        let mut s = Setup { row: 0, map: 0, army: 2, rounds: 1 };
+        let mut s = Setup::default();
         assert!(!s.step(Dir::Left, 3), "RANDOM is the first map");
         assert!(!s.step(Dir::Up, 3));
         for _ in 0..5 {

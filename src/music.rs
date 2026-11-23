@@ -71,17 +71,17 @@ pub const NAMES: [(&str, &str); 33] = [
     ("STEEL RAIN", "stages 11-20"),
     ("FLANK LEFT", "stages 11-20"),
     ("HOLD THE LINE", "stages 11-20"),
-    ("FULL THROTTLE", "stages 21-30"),
-    ("OVERHEAT", "stages 21-30"),
-    ("BREAKTHROUGH", "stages 21-30"),
-    ("BLITZ", "stages 21-30"),
-    ("NO BRAKES", "stages 21-30"),
-    ("RED LINE", "stages 21-30"),
-    ("HEAVY METAL", "mini-boss"),
-    ("ARMOUR PIERCING", "mini-boss"),
-    ("IRON FIST", "mini-boss"),
-    ("SIEGE ENGINE", "mini-boss"),
-    ("WAR MACHINE", "mini-boss"),
+    ("FULL THROTTLE", "stages 21-30, VERSUS"),
+    ("OVERHEAT", "stages 21-30, VERSUS"),
+    ("BREAKTHROUGH", "stages 21-30, VERSUS"),
+    ("BLITZ", "stages 21-30, VERSUS"),
+    ("NO BRAKES", "stages 21-30, VERSUS"),
+    ("RED LINE", "stages 21-30, VERSUS"),
+    ("HEAVY METAL", "mini-boss, VERSUS"),
+    ("ARMOUR PIERCING", "mini-boss, VERSUS"),
+    ("IRON FIST", "mini-boss, VERSUS"),
+    ("SIEGE ENGINE", "mini-boss, VERSUS"),
+    ("WAR MACHINE", "mini-boss, VERSUS"),
     ("THE BIG ONE", "district boss"),
     ("LAST BASTION", "district boss"),
     ("FINAL STAND", "district boss"),
@@ -108,6 +108,8 @@ impl Jukebox {
 const SLOW: &[Track] = &[Slow1, Slow2, Slow3, Slow4, Slow5, Upbeat1, Upbeat2];
 const MEDIUM: &[Track] = &[Medium1, Medium2, Medium3, Medium4, Medium5];
 const FAST: &[Track] = &[Fast1, Fast2, Fast3, Fast4, Fast5, Fast6];
+/// A duel: the fast stage tracks and the mini-boss fights.
+const VERSUS: &[Track] = &[Fast1, HardFight1, Fast2, HardFight2, Fast3, HardFight3, Fast4, HardFight4, Fast5, HardFight5, Fast6];
 /// City districts are long, so their pools also reach one speed up.
 const CITY_SLOW: &[Track] = &[Slow1, Slow2, Slow3, Slow4, Medium1, Medium2, Slow5, Upbeat1, Upbeat2];
 const CITY_MEDIUM: &[Track] = &[Medium1, Medium2, Medium3, Medium4, Medium5, Fast1, Fast2];
@@ -186,8 +188,7 @@ pub fn pick(screen: Screen, mode: Mode, stage: usize, fight: Fight) -> &'static 
             (Fight::Boss, _) => BOSS,
             (Fight::Mini, _) => HARD,
             (_, Mode::Classic) => [SLOW, MEDIUM, FAST][n % 30 / 10],
-            // ponytail: VERSUS borrows the fast pool until it gets its own (plan M18 V5).
-            (_, Mode::Versus) => FAST,
+            (_, Mode::Versus) => VERSUS,
             (_, Mode::City) => match n {
                 0..=2 => CITY_SLOW,
                 3..=6 => CITY_MEDIUM,

@@ -183,7 +183,7 @@ fn run(
 }
 
 /// LAN smoke, two copies and no player: `BT_LAN=host` / `BT_LAN=join` opens LAN CO-OP and hosts / joins the first
-/// game heard; `BT_LAN_BOT=1` plays made-up input; `BT_LAN_SECS=n` quits n seconds after linking; `BT_DESYNC=t` (on
+/// game heard; `BT_LAN_BOT=1` plays made-up input (`BT_LAN_VERSUS=1`: picks VERSUS on PLAY); `BT_LAN_SECS=n` quits n seconds after linking; `BT_DESYNC=t` (on
 /// the joiner) nudges a tank at tick t to test the resync. Each copy logs `lan: tick <t> hash <h>` lines to compare.
 pub fn lan_plugin(app: &mut App) {
     if std::env::var("BT_LAN").is_ok() {
@@ -242,8 +242,9 @@ pub fn lan_log() -> bool {
 
 /// `BT_LAN_BOT`: made-up input for player `me`, one call per frame. A every 1.5 s (joins, starts, moves on), a new
 /// heading every half second, mostly upwards, and fire half the time but only facing up, so it doesn't shoot its own
-/// base and the stages last. Never Start, so it doesn't pause.
-pub fn lan_bot(me: Option<u8>) -> Option<crate::input::Intent> {
+/// base and the stages last. Never Start, so it doesn't pause. With `BT_LAN_VERSUS=1` it steers right on PLAY, to
+/// the VERSUS card.
+pub fn lan_bot(me: Option<u8>, screen: Screen) -> Option<crate::input::Intent> {
     use std::sync::atomic::{AtomicU32, Ordering};
     if !lan_env("BT_LAN_BOT") {
         return None;
@@ -259,8 +260,61 @@ pub fn lan_bot(me: Option<u8>) -> Option<crate::input::Intent> {
         fire: up && n % 40 < 20,
         fire_pressed: up && n.is_multiple_of(40),
         confirm: n % 90 == 45,
+        nav: (screen == Screen::Play && lan_env("BT_LAN_VERSUS") && n % 90 < 40).then_some(Dir::Right),
         ..default()
     })
+}
+
+/// `BT_LAN_DUMP=<dir>`: at each hash tick write this machine's stage as text to `<dir>/<me>-<tick>.txt` (entities in
+/// spawn order), to diff the two machines after a mismatch.
+pub fn lan_dump(world: &mut World, me: u8, tick: u32) {
+    use crate::game::*;
+    use std::fmt::Write;
+    let Ok(dir) = std::env::var("BT_LAN_DUMP") else { return };
+    let screen = *world.resource::<State<Screen>>().get();
+    let mut out = format!(
+        "rng {:x} {screen:?} paused {}
+",
+        world.resource::<crate::rng::Rng>().0,
+        world.resource::<Paused>().0
+    );
+    if let Some(r) = world.get_resource::<StageRun>() {
+        _ = writeln!(out, "run {:?} {} {} {:?} {:?}", r.phase, r.timer, r.clock, r.frozen, r.shovel);
+    }
+    if let Some(a) = world.get_resource::<versus::Armies>() {
+        for s in &a.sides {
+            _ = writeln!(out, "army {} {} {}", s.next, s.timer, s.point);
+        }
+    }
+    let mut q = world.query::<(
+        &NetId,
+        Option<&Transform>,
+        Option<&Tank>,
+        Option<&Gun>,
+        Option<&Enemy>,
+        Option<&Bullet>,
+        Option<&Spawning>,
+        Option<&Shield>,
+    )>();
+    let mut rows: Vec<_> = q.iter(world).collect();
+    rows.sort_by_key(|r| *r.0);
+    for (id, tf, tank, gun, en, b, sp, sh) in rows {
+        _ = write!(out, "{} {:?}", id.0, tf.map(|t| t.translation.xy()));
+        if let Some(t) = tank {
+            _ = write!(out, " tank {:?} {:?} {:?} {} {}", t.team, t.dir, t.want, t.blocked, t.slide);
+        }
+        if let Some(g) = gun {
+            _ = write!(out, " gun {} {}", g.trigger, g.cooldown);
+        }
+        if let Some(e) = en {
+            _ = write!(out, " ai {:?} {} {} {}", e.kind, e.hp, e.turn_in, e.fire_in);
+        }
+        if let Some(b) = b {
+            _ = write!(out, " bullet {:?} {:?}", b.team, b.dir);
+        }
+        _ = writeln!(out, " sp {:?} sh {:?}", sp.map(|s| s.0), sh.map(|s| s.0));
+    }
+    _ = std::fs::write(format!("{dir}/{me}-{tick}.txt"), out);
 }
 
 /// `BT_DESYNC=<tick>` on the joiner: shift player 1's tank a little before that tick, as a desync would.

@@ -32,6 +32,10 @@ fn world(mode: Mode, stage: usize) -> App {
     let mut s = app.world_mut().resource_mut::<Session>();
     s.slots = [Some(Slot::new(Device::Net(0))), Some(Slot::new(Device::Net(1)))];
     (s.mode, s.stage) = (mode, stage);
+    if mode == Mode::Versus {
+        // Map `stage`, armies of 20, best of 3: rounds end, results come, A (in `play`) starts the next.
+        app.insert_resource(crate::game::versus::Match::new(stage, 20, 3));
+    }
     app.world_mut().resource_mut::<NextState<Screen>>().set(Screen::Stage);
     app
 }
@@ -70,6 +74,8 @@ fn run(mode: Mode, stage: usize, ticks: u32) -> (Vec<u64>, App, App) {
         step(a.world_mut(), &mut ta, play(0, t), play(1, t));
         disturb(b.world_mut(), t);
         step(b.world_mut(), &mut tb, play(0, t), play(1, t));
+        next_round(a.world_mut());
+        next_round(b.world_mut());
         if t % 30 == 0 {
             let (ha, hb) = (snap::hash(a.world_mut()), snap::hash(b.world_mut()));
             assert_eq!(ha, hb, "{mode:?} {stage}: worlds drifted apart by tick {t}");
@@ -77,6 +83,14 @@ fn run(mode: Mode, stage: usize, ticks: u32) -> (Vec<u64>, App, App) {
         }
     }
     (hashes, a, b)
+}
+
+/// What VERSUS results do on A (the ui isn't in these worlds): the next round on the same map.
+fn next_round(world: &mut World) {
+    if *world.resource::<State<Screen>>().get() == Screen::VersusResults {
+        world.resource_mut::<crate::game::versus::Match>().round += 1;
+        world.resource_mut::<NextState<Screen>>().set(Screen::Stage);
+    }
 }
 
 fn live(world: &mut World) -> usize {
@@ -99,8 +113,26 @@ fn city_run_stays_in_step() {
 }
 
 #[test]
+fn versus_stays_in_step() {
+    let (mut hashes, a, _) = run(Mode::Versus, 4, 4800);
+    hashes.dedup();
+    assert!(hashes.len() > 60, "{} states", hashes.len());
+    let duel = a.world().resource::<crate::game::versus::Match>();
+    assert!(duel.round > 1, "rounds ended and the next began in step (round {})", duel.round);
+}
+
+#[test]
 fn a_desync_heals_through_the_host_snapshot() {
-    let (_, mut a, mut b) = run(Mode::City, 1, 600);
+    heal(Mode::City, 1);
+}
+
+#[test]
+fn a_versus_desync_heals_too() {
+    heal(Mode::Versus, 2);
+}
+
+fn heal(mode: Mode, stage: usize) {
+    let (_, mut a, mut b) = run(mode, stage, 600);
     assert_eq!(*a.world().resource::<State<Screen>>().get(), Screen::Stage, "still playing");
     assert!(live(a.world_mut()) > 3, "tanks and bullets about");
     let mut q = b.world_mut().query::<(&Tank, &mut Transform)>();

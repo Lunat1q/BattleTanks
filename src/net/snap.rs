@@ -6,6 +6,7 @@
 use super::wire::{R, W, index};
 use crate::city_map::Spawn;
 use crate::game::city::CityRun;
+use crate::game::versus::{Armies, Match};
 use crate::game::*;
 use crate::geom::Dir;
 use crate::input::Device;
@@ -14,7 +15,7 @@ use crate::rules::{EnemyKind, GunStats, PowerKind, Rank};
 use crate::terrain::{Terrain, Tile};
 use bevy::prelude::*;
 
-const SCREENS: [Screen; 12] = [
+const SCREENS: [Screen; 14] = [
     Screen::Title,
     Screen::Stage,
     Screen::Results,
@@ -27,6 +28,8 @@ const SCREENS: [Screen; 12] = [
     Screen::Achievements,
     Screen::Unlocks,
     Screen::VersusResults,
+    Screen::VersusSetup,
+    Screen::Draft,
 ];
 const RANKS: [Rank; 5] = [Rank::Normal, Rank::Turret, Rank::Mini, Rank::Boss, Rank::Sentry];
 const PHASES: [Phase; 4] = [Phase::Intro, Phase::Play, Phase::Won, Phase::Lost];
@@ -59,6 +62,12 @@ pub fn take(world: &mut World) -> Vec<u8> {
     t.tiles.iter().for_each(|tile| _ = w.u8(index(&Tile::ALL, tile)));
     match world.get_resource::<CityRun>() {
         Some(c) => put_city(w.bool(true), c, slot),
+        None => _ = w.bool(false),
+    }
+    let versus =
+        world.get_resource::<Match>().zip(world.get_resource::<Armies>()).filter(|_| world.resource::<Session>().mode == Mode::Versus);
+    match versus {
+        Some((m, a)) => super::versus::put(w.bool(true), m, a),
         None => _ = w.bool(false),
     }
     w.usize(ents.len());
@@ -99,6 +108,7 @@ pub fn apply(world: &mut World, bytes: &[u8]) -> Option<()> {
     let rows = r.usize()?;
     let tiles = (0..r.usize()?).map(|_| r.pick(&Tile::ALL)).collect::<Option<Vec<_>>>()?;
     let city = if r.bool()? { Some(get_city(&mut r)?) } else { None };
+    let versus = if r.bool()? { Some(super::versus::get(&mut r)?) } else { None };
     let things = (0..r.usize()?).map(|_| get_thing(&mut r)).collect::<Option<Vec<_>>>()?;
 
     // Parsed in full: now replace the world's stage.
@@ -162,6 +172,10 @@ pub fn apply(world: &mut World, bytes: &[u8]) -> Option<()> {
             world.insert_resource(c);
         }
         None => _ = world.remove_resource::<CityRun>(),
+    }
+    if let Some((duel, armies)) = versus {
+        world.insert_resource(duel);
+        world.insert_resource(armies);
     }
     Some(())
 }

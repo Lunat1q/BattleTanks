@@ -11,6 +11,7 @@ mod lockstep;
 pub mod snap;
 #[cfg(test)]
 mod tests;
+mod versus;
 pub mod wire;
 
 use crate::game::progress::{OwnProgress, Progress};
@@ -159,7 +160,7 @@ fn drive(world: &mut World) {
 }
 
 /// While linked: this machine's devices, merged, become our player's input (`Lockstep` packs it per tick).
-fn collect(mut net: ResMut<Net>, devices: Res<DeviceIntents>, mut lifecycle: MessageReader<AppLifecycle>) {
+fn collect(mut net: ResMut<Net>, devices: Res<DeviceIntents>, screen: Res<State<Screen>>, mut lifecycle: MessageReader<AppLifecycle>) {
     let local = devices.0.iter().map(|(d, _)| *d);
     net.local = local.clone().find(|d| matches!(d, Device::Pad(_))).or(local.clone().next());
     if !net.linked() {
@@ -169,7 +170,7 @@ fn collect(mut net: ResMut<Net>, devices: Res<DeviceIntents>, mut lifecycle: Mes
     let mut now =
         devices.0.iter().filter(|(d, _)| !matches!(d, Device::Net(_))).fold(Intent::default(), |a, (_, i)| crate::input::merge(a, *i));
     now.away = lifecycle.read().any(|&e| crate::game::stage::backgrounded(e) == Some(true));
-    if let Some(bot) = crate::dev::lan_bot(net.me) {
+    if let Some(bot) = crate::dev::lan_bot(net.me, *screen.get()) {
         now = bot;
     }
     net.pending_intent = wire::gather(net.pending_intent, now);
@@ -254,6 +255,7 @@ fn start(world: &mut World, (conn, theirs, me, ours): (Conn, Hello, u8, Hello)) 
     (s.slots, s.mode, s.stage, s.bonus) = ([None, None], crate::game::Mode::Classic, 1, 0);
     s.log.clear();
     world.insert_resource(crate::ui::title::TitleMenu::default());
+    crate::ui::reset_menus(world);
     world.resource_mut::<Paused>().0 = false;
     world.resource_mut::<NextState<Screen>>().set(Screen::Title);
     world.insert_resource(Lockstep::new(conn, me, session, restore));

@@ -444,6 +444,11 @@ pub enum Sfx {
 #[derive(SystemSet, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Sim;
 
+/// The stage's pause and phase systems (and the pause menu after them). They decide whether `Sim` runs this tick,
+/// so they run before it: left unordered, one LAN machine ran the first tick of play and the other didn't.
+#[derive(SystemSet, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct StageFlow;
+
 /// The world simulates: on a stage, not paused, past the intro banner.
 pub fn sim_running(screen: Res<State<Screen>>, paused: Res<Paused>, run: Option<Res<StageRun>>) -> bool {
     *screen.get() == Screen::Stage && !paused.0 && run.is_some_and(|r| r.phase != Phase::Intro)
@@ -460,7 +465,7 @@ pub fn plugin(app: &mut App) {
         .add_message::<combat::Hit>()
         .add_message::<Rumble>()
         .add_message::<Feat>()
-        .configure_sets(Update, Sim.run_if(sim_running))
+        .configure_sets(Update, (StageFlow.before(Sim), Sim.run_if(sim_running)))
         .add_systems(
             Update,
             (

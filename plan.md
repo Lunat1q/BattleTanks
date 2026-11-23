@@ -187,7 +187,7 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 ### M18 — VERSUS ⏳ (ADR 0019; owner's answers in it)
 - [x] Title PLAY → mode cards (CLASSIC / CITY RUN / VERSUS, pictures + progress), so the title menu stays short
 - [x] V1 plain duel: `Mode::Versus`, two bases (top base = rotated bottom one), `Team::side`, side hit rules, round
-  end, results; 3 hand-drawn point-symmetric maps; title VERSUS with two players joined (offline only until V5).
+  end, results; 3 hand-drawn point-symmetric maps; title VERSUS with two players joined.
   Smoke: `BT_VERSUS=<map>`, `BT_SCREEN=versus`
 - [x] Owner: no tank limit, a growing respawn wait instead (1, 3, 5, 7, 10, 15 s, +5 s up to 30 s); a round ends
   only on a base (ADR 0020)
@@ -203,7 +203,12 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [x] V4 maps (ADR 0021, owner: mirror the stage maps instead of a generator): every classic stage's bottom half
   turned for the top, kept if `versus_map::sound` passes (23 of 30), after the 3 hand-drawn: 26 maps; setup tiles
   in a 9-wide grid; RANDOM picks one per round
-- [ ] V5 LAN versus: setup in `Hello`, new state in `net::snap`, `net::tests` versus world; music pool
+- [x] V5 LAN versus: no `Hello` change needed (setup and draft run in the lockstep like every menu; menu cursors
+  reset per session), `Match` + `Armies` in `net::snap`, `net::tests` versus world across rounds + resync, VERSUS
+  music pool (fast + mini-boss tracks); LAN smoke `BT_LAN_VERSUS=1`: 7 rounds, 360 hash checks, no resync
+- [x] Found on the way: LAN worlds drifted a tick at every stage start (all modes; resyncs hid it): `StageFlow`
+  ordered before `Sim`
+- [ ] Owner: VERSUS over LAN on two phones / phone + TV
 
 ## Current state
 

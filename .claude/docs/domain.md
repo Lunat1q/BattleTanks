@@ -75,7 +75,7 @@ brick heading reads over bricks.
   SETTINGS, EXIT. PLAY is dimmed until someone has joined.
 - **PLAY** (`ui/play.rs`) shows a card per mode, left to right: CLASSIC (the highest open stage's mini-map), CITY RUN
   (a slice of the district map's city), VERSUS (two tanks face to face; needs both players joined, "NEEDS 2 PLAYERS"
-  otherwise; not over LAN yet).
+  otherwise; also over LAN).
   Each card has its name, a one-line description and how far the players have got ("UP TO STAGE n" / "ALL CLEARED").
   Left/right picks (the cursor is kept between visits), A goes on to the stage tiles or the district map, B back to
   the title; B there comes back to PLAY.
@@ -274,7 +274,7 @@ can't be read is never written.
 
 ## VERSUS (`game/versus.rs`, `versus_map.rs`, `ui/versus.rs`, ADR 0019, 0020; plan M18)
 Built so far: the duel (V1), NPC armies (V2), setup, draft and rounds (V3), maps from the stages (V4).
-- Title → PLAY → VERSUS with both players joined (offline only for now) opens **VERSUS SETUP** (steel heading; either
+- Title → PLAY → VERSUS with both players joined (on one couch or over LAN) opens **VERSUS SETUP** (steel heading; either
   pad): MAP (tiles in rows of 9: RANDOM "?" and each map's mini-map), NPC ARMY (OFF / 10 / 20 / 30 points, default 20),
   ROUNDS (1, best of 3, best of 5; default 3). Up/down picks a row, left/right changes it, A starts, B back to PLAY.
   The choices are kept until the game closes. RANDOM picks a map by the gameplay dice each round.
@@ -320,8 +320,11 @@ Built so far: the duel (V1), NPC armies (V2), setup, draft and rounds (V3), maps
   helmet and star as usual; the **clock** freezes the other side, player and NPCs, for 5 s (tinted icy); the
   **grenade** destroys the other side's NPCs on the field; the **shovel** turns your own base's ring to steel for 20 s;
   the **tank** makes your next respawn wait one step shorter.
-- No world board, no achievements, the local hi score untouched; the HUD hides the HI line. Music: the fast stage
-  pool for now.
+- No world board, no achievements, the local hi score untouched; the HUD hides the HI line. Music: its own pool, the fast
+  stage tracks and the mini-boss fights shuffled.
+- **Over LAN** (V5): same flow, each player on their own machine; the setup takes either player's pad, each draft
+  card its own player's. Every menu runs in the lockstep, so both machines pick the same RANDOM map and armies; the
+  snapshot carries the match and both armies. Menu cursors kept between visits start fresh in each LAN session.
 
 ## Music (`music.rs`, ADR 0007)
 All tracks are normalised to −16 LUFS (linear gain from the MP3 master, see Operational lessons for the
@@ -365,7 +368,7 @@ Only on hosts with `Platform::achieve` (Android: Play Games); the exe has none (
 Title → LAN CO-OP (hosts whose `Platform::lan` is set). One player picks HOST GAME (the screen says "HOSTING AS
 <name>"), the other sees that name in the list (JOIN <NAME>) and picks it. Both machines must run the same version
 (the list says which version a host runs). Once linked both go to the title with nobody joined; each player joins
-with A on their own device and is shown by machine name. Then it is the normal game for two: classic or City Run,
+with A on their own device and is shown by machine name. Then it is the normal game for two: classic, City Run or VERSUS,
 same rules, each machine draws it and plays its own sound and rumble.
 - Linked title: PLAY, LEAVE LAN (no HI SCORES / SETTINGS / EXIT). Pause menu: EXIT GAME becomes
   LEAVE LAN. Leaving ends it for both. The host's FRIENDLY FIRE, EASY MODE, open stages and districts apply; the
@@ -381,7 +384,7 @@ same rules, each machine draws it and plays its own sound and rumble.
   at 2 (33 ms) on home Wi-Fi, up to 5 on a bad link; the linked title shows the round trip and the delay.
 
 ## Known gaps / deliberate omissions
-- VERSUS: no army count on the HUD (the classic reserve icons stay hidden); no LAN yet (plan M18 V5).
+- VERSUS: no army count on the HUD (the classic reserve icons stay hidden).
 - LAN: two players only, same network, same version; a phone acting as a hotspot host may not be found (the beacon
   guesses a /24 broadcast); no reconnect after a drop.
 - The world board can't stop a careful cheat who extracts the key and fakes a plausible stage log (open source).
@@ -430,4 +433,5 @@ same rules, each machine draws it and plays its own sound and rumble.
 | HUD jumped sideways when a player went out and "A: BORROW A TANK" showed (owner) | side panels grew from their content width (`flex_basis: auto`), so the longer line widened one side | panels `flex_basis: 0`: equal split whatever the text |
 | City Run: a player kept respawning in a pocket, unable to get out or even die (owner, district 7) | respawn took the first open spot at the bottom of the view; that one's only way out ran down through brick, under the view | respawns only on `city_map::climbable` cells (no going down to get up) |
 | A flashing HEAVY dropped its power-up on the first hit; a second bonus kill took away the first drop (owner) | classic rule: drop on first hit, one power-up on the field | drop on the kill, drops pile up (`combat::tests`) |
+| LAN: a few resyncs a minute in every mode, no player at fault; dumps showed one machine starting play a tick later | `advance_phase` (Intro → Play) and the pause menu were unordered against `Sim`, whose run condition reads the phase and the pause | `StageFlow` set, ordered before `Sim`; LAN smoke now 360 hash checks, no resync |
 | `adb pull /sdcard/...` "no such file" from Git Bash | MSYS rewrites the remote path to `C:/Program Files/Git/sdcard/...` | prefix `MSYS_NO_PATHCONV=1` |

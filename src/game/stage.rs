@@ -19,7 +19,13 @@ pub fn plugin(app: &mut App) {
     app.init_resource::<super::versus::Match>()
         .add_systems(OnEnter(Screen::Stage), setup)
         .add_systems(OnExit(Screen::Stage), |mut paused: ResMut<Paused>| paused.0 = false)
-        .add_systems(Update, (watch_controllers, pause_when_away, toggle_pause, advance_phase).chain().run_if(in_state(Screen::Stage)));
+        .add_systems(
+            Update,
+            (watch_controllers, pause_when_away, toggle_pause, advance_phase)
+                .chain()
+                .in_set(super::StageFlow)
+                .run_if(in_state(Screen::Stage)),
+        );
 }
 
 /// App lifecycle -> whether the game is now in the background (Home, another app, TV off); `None` = no change.
@@ -72,6 +78,7 @@ fn setup(
         commands.remove_resource::<super::city::CityRun>();
         super::versus::reset_slots(&mut session);
         session.stage = duel.pick_map(&mut rng);
+        info!("versus: round {} on map {}, armies {:?}", duel.round, session.stage, duel.armies.each_ref().map(Vec::len));
         commands.insert_resource(super::versus::Armies::new(&duel.armies, &mut rng));
         for (side, at) in super::versus::BASES.into_iter().enumerate() {
             commands.spawn((Base(side), Transform::from_translation(at.extend(0.0)), DespawnOnExit(Screen::Stage)));

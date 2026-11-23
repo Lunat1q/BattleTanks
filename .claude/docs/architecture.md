@@ -51,9 +51,10 @@ src/
     mod.rs            # Net resource (host/join/handshake), Driver schedule in Update's place, session start/finish
     lockstep.rs       # ticks: input exchange, fixed-dt step, hash checks, resync, round trip -> input delay, "waiting for" overlay
     snap.rs           # the live stage as bytes (hash, snapshot, load)
+    versus.rs         # the VERSUS part of a snapshot: Match (round wins, setup, drafted armies) + Armies
     wire.rs           # byte reader/writer, packed Intent, datagram, beacon, FNV       [pure]
     link.rs           # std sockets: beacon + TCP listener, beacon finder, linked TCP/UDP pair
-    tests.rs          # two headless worlds stay in step; a desync heals
+    tests.rs          # two headless worlds stay in step (classic, City Run, VERSUS across rounds); a desync heals
   game/
     mod.rs            # Screen state, Mode, Session/Slot, StageRun, View, components, Fx/Sfx messages, Sim schedule
     stage.rs          # OnEnter build (classic or city), spawn_enemy, respawn point, timers, borrow a tank, win/lose, pause (+ app in background), pad loss
@@ -137,7 +138,8 @@ PreUpdate   input::gather ──▶ DeviceIntents [(Device, Intent)]
                 │
 Update          ├─ title / pause / results / game-over menus read DeviceIntents (via Session slots)
                 │
-                ├─ stage: watch_controllers ─▶ pause_when_away ─▶ toggle_pause ─▶ advance_phase (Intro→Play, Won/Lost→next Screen)
+                ├─ StageFlow (before Sim): watch_controllers ─▶ pause_when_away ─▶ toggle_pause ─▶ advance_phase (Intro→Play,
+                │  Won/Lost→next Screen) ─▶ ui pause_menu
                 │
                 └─ Sim (only: Screen::Stage, !Paused, phase != Intro), chained:
                    spawn_enemies ─▶ versus::spawn_npcs ─▶ tick_timers ─▶ [city: scroll ─▶ wake ─▶ reinforce ─▶ watch ─▶ cull] ─▶ borrow_life ─▶ versus::respawn ─▶ player_control ─▶ enemy::think ─▶ boss::act ─▶ drive ─▶ fire
@@ -168,7 +170,7 @@ Settings ◀──SETTINGS / B──▶ Title ──PLAY──▶ Play ──CLA
 
 `[Board]` = the world board screen, only when it is on (game key + host `post_score`) and the run counts.
 
-VERSUS: Title ──PLAY──▶ Play ──VERSUS (2 joined, offline)──▶ VersusSetup ──A──▶ [Draft (armies on) ──both ready──▶]
+VERSUS: Title ──PLAY──▶ Play ──VERSUS (2 joined, on one couch or over LAN)──▶ VersusSetup ──A──▶ [Draft (armies on) ──both ready──▶]
 Stage (mode Versus) ──a base falls──▶ VersusResults ──A──▶ Stage (next round) / match decided: [Draft ──▶] Stage
 (rematch) / ──B──▶ Title. B on Draft (not ready) ──▶ VersusSetup ──B──▶ Play.
 

@@ -50,6 +50,12 @@ pub fn plugin(app: &mut App) {
     ));
 }
 
+/// Menu cursors kept between visits go back to their defaults, so two LAN machines start a session alike.
+pub fn reset_menus(world: &mut World) {
+    play::reset(world);
+    versus::reset(world);
+}
+
 /// Text bundle sized in % of screen height.
 pub fn text(s: impl Into<String>, vh: f32, color: Color) -> impl Bundle {
     (Text::new(s), TextFont { font_size: FontSize::Vh(vh), ..default() }, TextColor(color))

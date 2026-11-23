@@ -4,7 +4,7 @@ use super::tally::{RESULTS_WAIT, Tally, kill_maxes, table, tally_len, tally_view
 use super::*;
 use crate::achieve::Record;
 use crate::game::versus::Match;
-use crate::game::{Mode, Paused, Phase, Screen, Session, Sfx, StageRun};
+use crate::game::{Mode, Paused, Phase, Screen, Session, Sfx, Sim, StageFlow, StageRun};
 use crate::geom::Dir;
 use crate::input::{DeviceIntents, Intent};
 
@@ -35,7 +35,7 @@ pub fn plugin(app: &mut App) {
     app.init_resource::<ScreenTime>()
         .init_resource::<PauseSel>()
         .add_systems(OnEnter(Screen::Stage), spawn_overlays)
-        .add_systems(Update, (banner, pause_menu).run_if(in_state(Screen::Stage)))
+        .add_systems(Update, (banner, pause_menu.after(StageFlow).before(Sim)).run_if(in_state(Screen::Stage)))
         .add_systems(OnEnter(Screen::Results), spawn_results)
         .add_systems(OnEnter(Screen::GameOver), spawn_game_over)
         .add_systems(Update, (super::tally::tally, results_input).chain().run_if(in_state(Screen::Results)))
