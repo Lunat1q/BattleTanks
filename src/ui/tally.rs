@@ -7,7 +7,6 @@ use crate::game::{Mode, Session, Sfx};
 use crate::input::DeviceIntents;
 use crate::rules::EnemyKind;
 
-const KIND_NAMES: [&str; 4] = ["LIGHT ", "SCOUT ", "GUNNER", "HEAVY "];
 /// Count-up pace: one kill per tick, a pause between rows.
 pub const TICK: f32 = 0.07;
 pub const ROW_PAUSE: f32 = 0.35;
@@ -68,7 +67,7 @@ pub fn table(session: &Session, view: Option<TallyView>) -> String {
     }
     for k in EnemyKind::ALL {
         let cap = view.map_or(Some(u32::MAX), |v| v.caps[k.index()]);
-        out += &format!("\n{:8}", if cap.is_some() { KIND_NAMES[k.index()] } else { "" });
+        out += &format!("\n{:8}", if cap.is_some() { k.name() } else { "" });
         for &i in &present {
             let n = session.slots[i].as_ref().map_or(0, |s| s.kills[k.index()]);
             let cell = cap.map_or(String::new(), |c| format!("{:>2} x {:>3}", n.min(c), k.points()));

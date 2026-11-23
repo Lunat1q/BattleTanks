@@ -273,15 +273,24 @@ can't be read is never written.
   stretch of street appears twice anywhere in City Run (tested).
 
 ## VERSUS (`game/versus.rs`, `versus_map.rs`, `ui/versus.rs`, ADR 0019, 0020; plan M18)
-Built so far: the duel (V1) and NPC armies (V2); no setup or draft screen yet, so every match uses AUTO armies of 20
-points.
-- Title → PLAY → VERSUS with both players joined (offline only for now) starts round 1. Player 1 defends the classic
+Built so far: the duel (V1), NPC armies (V2), setup, draft and rounds (V3).
+- Title → PLAY → VERSUS with both players joined (offline only for now) opens **VERSUS SETUP** (steel heading; either
+  pad): MAP (a row of tiles: RANDOM "?" and each map's mini-map), NPC ARMY (OFF / 10 / 20 / 30 points, default 20),
+  ROUNDS (1, best of 3, best of 5; default 3). Up/down picks a row, left/right changes it, A starts, B back to PLAY.
+  The choices are kept until the game closes. RANDOM picks a map by the gameplay dice each round (pre-made maps until
+  V4's generator).
+- With armies on, the **DRAFT** comes next: a card per player, each worked with that player's own pad. Rows LIGHT,
+  SCOUT, GUNNER, HEAVY (icon in the side's NPC colour, cost, count) and AUTO MIX; up/down picks, left/right takes one
+  off or adds one if the points left allow, A on AUTO MIX fills the mixed army, A elsewhere is READY (B takes it
+  back). Cards open on AUTO (a new match) or the last armies (a rematch); points need not all be spent, an empty
+  army is allowed. Both READY starts round 1; B on a card that isn't ready goes back to setup.
+- A match is best of the ROUNDS: it ends once a player has won more than half, or every round is played (most wins;
+  equal = a drawn match). Drawn rounds count as played. Player 1 defends the classic
   base at the bottom and starts beside it; player 2 defends the same base turned round at the top and starts at
   the mirrored spot (x 136), facing down. Both bases have the brick ring.
 - Maps `levels/versus/NN.txt` (3 hand-drawn): only the bottom 13 rows; the top half is them turned 180 degrees, so
   both sides get the same field. Tested on every map: point symmetry, player 1's spawn reaches the top base (bricks
-  open), steel over each ring in the centre lane, no dead-end pockets (as classic). Rounds go through the maps in
-  turn.
+  open), steel over each ring in the centre lane, no dead-end pockets (as classic).
 - Sides: the players' shells always hit each other, whatever FRIENDLY FIRE says, and destroy the tank (level-4
   armour holds once, as against enemies). Shells of the two sides cancel each other. A base takes damage only from
   the other side: your own shell pops on it harmlessly.
@@ -290,12 +299,14 @@ points.
   The HUD shows `LOST n` and, while waiting, `BACK IN n`. Star level 0 each round, a shield on each respawn, no
   borrowing; EASY MODE changes nothing in VERSUS.
 - The round ends only when a base falls: the banner shows PLAYER n WINS (gold blocks), or DRAW when both fall on one
-  tick. Then VERSUS results: round wins per player, tanks and NPCs destroyed this round; A plays the next round on
-  the next map, B goes to the title.
-- **NPC armies** (ADR 0019): each player gets an army bought with 20 points (LIGHT 1, SCOUT 2, GUNNER 3, HEAVY 5).
-  Until the draft screen (V3) it is the AUTO mix: one of each kind cheapest first, round after round while the points
-  last (20 = LIGHT, SCOUT, GUNNER, HEAVY, LIGHT, SCOUT, GUNNER, LIGHT, SCOUT), shuffled by the gameplay dice each
-  round. One NPC per side every 4 s, at most 4 of a side alive, entering at the two corners of their side's back row
+  tick. Then VERSUS results: the round's winner ("takes round n (best of N)"), or once the match is decided its
+  winner ("takes the match 2 - 1" / "match drawn"); round wins per player, tanks and NPCs destroyed this round. A
+  plays the next round (same map, or a new one for RANDOM), or after a decided match a rematch with the same setup
+  (through the draft again when armies are on); B goes to the title.
+- **NPC armies** (ADR 0019): each player's drafted army (LIGHT 1, SCOUT 2, GUNNER 3, HEAVY 5 points). The AUTO
+  mix is one of each kind cheapest first, round after round while the points last (20 = LIGHT, SCOUT, GUNNER, HEAVY,
+  LIGHT, SCOUT, GUNNER, LIGHT, SCOUT). The same army comes back every round of a match, shuffled by the gameplay
+  dice. One NPC per side every 4 s, at most 4 of a side alive, entering at the two corners of their side's back row
   in turn (a taken corner waits). Every 4th NPC of a side flashes red and drops a power-up when destroyed.
 - NPCs are the enemy models in a darker shade of their player's colour, with the enemies' speeds, HP and fire timing.
   They head 60 % for the other base, 40 % for the nearest hostile tank (the other player or their NPCs); their
@@ -303,7 +314,7 @@ points.
   through them, they can't hurt their own base; NPCs of the two sides fight each other. Only a player's kills count
   for them (results).
 - **Power-ups** (+500, picked up by players only): dropped by flashing NPCs anywhere a player can drive; with armies
-  OFF (`BT_ARMY=0` until the setup screen) one appears in the middle band (cell rows 10-15) every 20 s. In VERSUS:
+  OFF one appears in the middle band (cell rows 10-15) every 20 s. In VERSUS:
   helmet and star as usual; the **clock** freezes the other side, player and NPCs, for 5 s (tinted icy); the
   **grenade** destroys the other side's NPCs on the field; the **shovel** turns your own base's ring to steel for 20 s;
   the **tank** makes your next respawn wait one step shorter.

@@ -71,7 +71,8 @@ fn setup(
     } else if session.mode == Mode::Versus {
         commands.remove_resource::<super::city::CityRun>();
         super::versus::reset_slots(&mut session);
-        commands.insert_resource(super::versus::Armies::new(duel.budget, &mut rng));
+        session.stage = duel.pick_map(&mut rng);
+        commands.insert_resource(super::versus::Armies::new(&duel.armies, &mut rng));
         for (side, at) in super::versus::BASES.into_iter().enumerate() {
             commands.spawn((Base(side), Transform::from_translation(at.extend(0.0)), DespawnOnExit(Screen::Stage)));
         }

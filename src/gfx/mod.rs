@@ -52,6 +52,8 @@ pub struct Gfx {
     pub card_frame: Handle<Image>,
     /// Classic stage tiles' mini-maps, stage 1 first.
     pub stage_maps: Vec<Handle<Image>>,
+    /// VERSUS map tiles' mini-maps, map 1 first.
+    pub versus_maps: Vec<Handle<Image>>,
     pub brick: Handle<Image>,
     pub steel: Handle<Image>,
     pub trees: Handle<Image>,
@@ -82,6 +84,11 @@ impl Gfx {
 
 pub fn player_color(slot: usize) -> Color {
     if slot == 0 { Color::srgb(1.0, 0.80, 0.32) } else { Color::srgb(0.42, 0.92, 0.52) }
+}
+
+/// VERSUS NPCs: a darker shade of their player's colour.
+pub fn npc_color(side: usize) -> Color {
+    player_color(side).mix(&Color::BLACK, 0.35)
 }
 
 pub fn enemy_color(kind: EnemyKind, hp: u32) -> Color {
@@ -137,6 +144,7 @@ fn build_textures(images: &mut Assets<Image>) -> Gfx {
         title_logo: add(art_title::block_text(&art_title::LOGO, 4.0)),
         card_frame: add(art_title::card_frame()),
         stage_maps: (1..=crate::levels::stage_count()).map(|n| add(art_map::stage_map(&crate::levels::load(n).terrain))).collect(),
+        versus_maps: (1..=crate::versus_map::count()).map(|n| add(art_map::stage_map(&crate::versus_map::load(n)))).collect(),
         brick: add(art_world::brick()),
         steel: add(art_world::steel()),
         trees: add(art_world::trees()),

@@ -173,7 +173,9 @@ pub fn pick(screen: Screen, mode: Mode, stage: usize, fight: Fight) -> &'static 
         | Screen::HiScores
         | Screen::Lan
         | Screen::Achievements
-        | Screen::Bunker => &[Menu],
+        | Screen::Bunker
+        | Screen::VersusSetup
+        | Screen::Draft => &[Menu],
         Screen::CityMap => &[MenuAlt],
         Screen::Results | Screen::Unlocks | Screen::VersusResults => &[Victory],
         Screen::GameOver => LOSS,

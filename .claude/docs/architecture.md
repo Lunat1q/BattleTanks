@@ -69,9 +69,10 @@ src/
                       # (rules::boss_kit): echo, brick ring (pure ring), rage, marked lines (pure marked)
     combat.rs         # fly_bullets (sub-steps: tanks, bases, terrain; bullet-vs-bullet) -> Hit; resolve_hits;
                       # can_hit / opposing / hurts_base by side in VERSUS (pure)
-    versus.rs         # VERSUS (ADR 0019, 0020): base + spawn spots per side, Match (round wins), outcome (pure), slot reset,
-                      # lost_tank (growing wait) + respawn (in Sim after borrow_life); Armies (AUTO army per side,
-                      # rules::auto_army) + spawn_npcs (back corners, 4 s, max 4, every 4th a carrier; no armies:
+    versus.rs         # VERSUS (ADR 0019, 0020): base + spawn spots per side, Match (setup, drafted armies, round wins;
+                      # result = best of, pick_map, rematch; pure), outcome (pure), slot reset,
+                      # lost_tank (growing wait) + respawn (in Sim after borrow_life); Armies (drafted army per side,
+                      # shuffled) + spawn_npcs (back corners, 4 s, max 4, every 4th a carrier; no armies:
                       # middle-band power-ups)
     powerup.rs        # drop on a bonus carrier's kill (drops pile up), pickup effects (VERSUS: clock / grenade / shovel by
                       # side); middle_spot (VERSUS without armies)
@@ -115,7 +116,9 @@ src/
     lan.rs            # Screen::Lan from the title: HOST GAME / JOIN <name> / BACK
     badge_rows.rs     # achievement rows (badge, name, description + progress bar, points + gem): spawn per slot, Rows::show
     achievements.rs   # Screen::Achievements from the title: points earned, a tab per group (n/m), 7 rows + scrollbar
-    versus.rs         # Screen::VersusResults: the round's winner, round wins, tanks destroyed; A next round, B title
+    versus.rs         # Screen::VersusSetup: MAP tiles (RANDOM + mini-maps) / NPC ARMY / ROUNDS (Setup::step pure);
+                      # Screen::VersusResults: round or match winner, round wins, tanks destroyed; A next round / rematch, B title
+    draft.rs          # Screen::Draft: a card per player on their own pad, counts within the points, AUTO MIX, ready (Draft pure)
     unlocks.rs        # Screen::Unlocks: the run's new achievements, rows sliding in one by one, then the board
     bunker.rs         # Screen::Bunker (title combo): CHANGELOG / OST (jukebox) / SOUND TEST tabs, 14 rows; unlocks look_both_ways
     hiscores.rs       # Screen::HiScores from the title: MODE / PLAYERS / DISTRICT selectors (Pick -> board id), top 10 per
@@ -164,8 +167,9 @@ Settings ◀──SETTINGS / B──▶ Title ──PLAY──▶ Play ──CLA
 
 `[Board]` = the world board screen, only when it is on (game key + host `post_score`) and the run counts.
 
-VERSUS: Title ──PLAY──▶ Play ──VERSUS (2 joined, offline)──▶ Stage (mode Versus, map n) ──a base falls or a player is
-out──▶ VersusResults ──A──▶ Stage (next map) / ──B──▶ Title.
+VERSUS: Title ──PLAY──▶ Play ──VERSUS (2 joined, offline)──▶ VersusSetup ──A──▶ [Draft (armies on) ──both ready──▶]
+Stage (mode Versus) ──a base falls──▶ VersusResults ──A──▶ Stage (next round) / match decided: [Draft ──▶] Stage
+(rematch) / ──B──▶ Title. B on Draft (not ready) ──▶ VersusSetup ──B──▶ Play.
 
 City Run: Title ──PLAY──▶ Play ──CITY RUN──▶ CityMap ──A──▶ Stage (mode City) ──boss killed──▶ Results ──▶ [Board ──▶] CityMap;
 game over ──▶ CityMap (retry). B on the map or the stage tiles ──▶ Play ──B──▶ Title.

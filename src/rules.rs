@@ -20,6 +20,9 @@ pub const SPAWN_TIME: f32 = 1.0; // spawn twinkle before a tank becomes real
 /// VERSUS NPC armies (ADR 0019): points per player, one NPC per side every `NPC_SPAWN_GAP` s with at most
 /// `NPC_MAX_ALIVE` of a side on the field; every `NPC_BONUS_EVERY`th flashes and drops a power-up.
 pub const ARMY_BUDGET: u32 = 20;
+/// VERSUS setup choices: NPC ARMY points (0 = OFF) and ROUNDS (best of).
+pub const ARMY_BUDGETS: [u32; 4] = [0, 10, 20, 30];
+pub const MATCH_ROUNDS: [u32; 3] = [1, 3, 5];
 pub const NPC_SPAWN_GAP: f32 = 4.0;
 pub const NPC_MAX_ALIVE: usize = 4;
 pub const NPC_BONUS_EVERY: usize = 4;
@@ -77,6 +80,9 @@ impl EnemyKind {
 
     pub fn index(self) -> usize {
         self as usize
+    }
+    pub fn name(self) -> &'static str {
+        ["LIGHT", "SCOUT", "GUNNER", "HEAVY"][self.index()]
     }
     /// VERSUS army points (ADR 0019).
     pub fn cost(self) -> u32 {

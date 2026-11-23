@@ -159,7 +159,7 @@ fn tank_looks(
             (Team::Enemy | Team::Npc(_), Some(e)) => {
                 // VERSUS NPCs: the enemy models in a darker shade of their player's colour.
                 let mut c = match tank.team {
-                    Team::Npc(side) => player_color(side).mix(&Color::BLACK, 0.35),
+                    Team::Npc(side) => super::npc_color(side),
                     _ => rank_color(e.rank, e.kind, e.hp, e.max_hp),
                 };
                 if e.bonus && blink {

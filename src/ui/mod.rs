@@ -5,6 +5,7 @@ mod badge_rows;
 mod board;
 mod bunker;
 mod city_map;
+mod draft;
 mod hiscores;
 mod hud;
 mod lan;
@@ -45,6 +46,7 @@ pub fn plugin(app: &mut App) {
         bunker::plugin,
         play::plugin,
         versus::plugin,
+        draft::plugin,
     ));
 }
 

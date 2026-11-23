@@ -16,7 +16,7 @@ pub const SPAWNS: [(Vec2, Dir); 2] = [(Vec2::new(72.0, 8.0), Dir::Up), (Vec2::ne
 pub const NPC_SPAWNS: [[Vec2; 2]; 2] =
     [[Vec2::new(8.0, 8.0), Vec2::new(FIELD - 8.0, 8.0)], [Vec2::new(FIELD - 8.0, FIELD - 8.0), Vec2::new(8.0, FIELD - 8.0)]];
 
-/// The match so far.
+/// The match: its setup (VERSUS SETUP, the draft) and the rounds so far.
 #[derive(Resource, Default)]
 pub struct Match {
     /// Rounds won per player.
@@ -27,12 +27,42 @@ pub struct Match {
     pub last: Option<usize>,
     /// NPC army points per player (0 = no armies: a plain duel with timed power-ups).
     pub budget: u32,
+    /// Best of this many rounds.
+    pub rounds: u32,
+    /// The map, 1-based; 0 = RANDOM, a new one each round.
+    pub map: usize,
+    /// Each player's drafted army (empty without armies).
+    pub armies: [Vec<EnemyKind>; 2],
 }
 
 impl Match {
-    /// A new match from PLAY.
-    pub fn new(budget: u32) -> Self {
-        Match { round: 1, budget, ..default() }
+    /// A new match, both armies AUTO until the draft says otherwise.
+    pub fn new(map: usize, budget: u32, rounds: u32) -> Self {
+        let auto = rules::auto_army(budget);
+        Match { round: 1, budget, rounds, map, armies: [auto.clone(), auto], ..default() }
+    }
+
+    /// Once the match is decided (a majority of `rounds` won, or every round played): `Some(winner)`,
+    /// `Some(None)` for a drawn match. Drawn rounds count as played but win nothing.
+    pub fn result(&self) -> Option<Option<usize>> {
+        let [a, b] = self.wins;
+        let need = self.rounds / 2 + 1;
+        (a >= need || b >= need || self.round >= self.rounds as usize).then(|| match a.cmp(&b) {
+            std::cmp::Ordering::Greater => Some(0),
+            std::cmp::Ordering::Less => Some(1),
+            std::cmp::Ordering::Equal => None,
+        })
+    }
+
+    /// Same setup and armies, scores back to nothing.
+    pub fn rematch(&mut self) {
+        (self.wins, self.round, self.last) = ([0; 2], 1, None);
+    }
+
+    /// The next round's map: the chosen one, or for RANDOM any of them. ponytail: RANDOM picks a pre-made map
+    /// until `versus_gen` draws one (plan M18 V4).
+    pub fn pick_map(&self, rng: &mut Rng) -> usize {
+        if self.map > 0 { self.map } else { 1 + rng.below(crate::versus_map::count() as u32) as usize }
     }
 }
 
@@ -56,14 +86,14 @@ pub struct Armies {
 }
 
 impl Armies {
-    /// The round's armies: each player's `budget` as an AUTO army, shuffled.
-    pub fn new(budget: u32, rng: &mut Rng) -> Self {
-        let army = |rng: &mut Rng| {
-            let mut roster = rules::auto_army(budget);
+    /// The round's armies: each player's drafted army, shuffled.
+    pub fn new(armies: &[Vec<EnemyKind>; 2], rng: &mut Rng) -> Self {
+        let mut army = |side: usize| {
+            let mut roster = armies[side].clone();
             rng.shuffle(&mut roster);
             Army { roster, ..default() }
         };
-        Armies { sides: [army(rng), army(rng)], drop_in: rules::VERSUS_DROP_GAP }
+        Armies { sides: [army(0), army(1)], drop_in: rules::VERSUS_DROP_GAP }
     }
 }
 
@@ -196,7 +226,7 @@ mod tests {
             let spent: u32 = rules::auto_army(budget).iter().map(|k| k.cost()).sum();
             assert_eq!(spent, budget, "budget {budget}");
         }
-        let a = Armies::new(20, &mut Rng::new(7));
+        let a = Armies::new(&Match::new(1, 20, 3).armies, &mut Rng::new(7));
         let mut sorted = a.sides[0].roster.clone();
         sorted.sort_by_key(|k| k.index());
         let mut auto = rules::auto_army(20);
@@ -204,6 +234,32 @@ mod tests {
         assert_eq!(sorted, auto, "shuffled, same army");
         assert_eq!((0..9).filter(|&n| carrier(n)).collect::<Vec<_>>(), [3, 7]);
         assert_eq!(Team::Npc(1).side(), Team::Player(1).side());
+    }
+
+    #[test]
+    fn a_match_is_best_of_its_rounds() {
+        let mut m = Match::new(0, 0, 3);
+        let play = |m: &mut Match, winner: Option<usize>| {
+            if let Some(w) = winner {
+                m.wins[w] += 1;
+            }
+            let r = m.result();
+            m.round += 1;
+            r
+        };
+        assert_eq!(play(&mut m, Some(0)), None);
+        assert_eq!(play(&mut m, Some(0)), Some(Some(0)), "2 of 3: decided early");
+        m.rematch();
+        assert_eq!((m.wins, m.round, m.armies[0].len()), ([0; 2], 1, 0));
+        assert_eq!(play(&mut m, None), None);
+        assert_eq!(play(&mut m, Some(1)), None);
+        assert_eq!(play(&mut m, None), Some(Some(1)), "every round played: most wins");
+        let mut one = Match::new(2, 20, 1);
+        assert_eq!(play(&mut one, None), Some(None), "a drawn single round draws the match");
+        assert_eq!(one.armies[1], rules::auto_army(20));
+        let mut rng = Rng::new(3);
+        assert_eq!(one.pick_map(&mut rng), 2);
+        assert!((0..20).all(|_| (1..=crate::versus_map::count()).contains(&Match::new(0, 0, 1).pick_map(&mut rng))));
     }
 
     #[test]

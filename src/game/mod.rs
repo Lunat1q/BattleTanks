@@ -44,6 +44,10 @@ pub enum Screen {
     Unlocks,
     /// The secret bunker (a button combo on the title): changelog, jukebox, sound test.
     Bunker,
+    /// VERSUS from PLAY: map, NPC army points, rounds.
+    VersusSetup,
+    /// VERSUS with armies: each player buys their NPC army on their own card.
+    Draft,
     /// After a VERSUS round: who won it, round wins, kills.
     VersusResults,
 }

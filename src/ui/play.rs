@@ -1,5 +1,5 @@
 //! PLAY from the title: one card per mode (CLASSIC, CITY RUN, VERSUS) with a picture, left/right picks, A goes on to
-//! the mode's own picker (stage tiles, district map) or, for VERSUS, straight into round 1, B back to the title.
+//! the mode's own picker (stage tiles, district map, VERSUS SETUP), B back to the title.
 
 use super::*;
 use crate::game::progress::Progress;
@@ -148,7 +148,6 @@ fn picture(pic: &mut ChildSpawnerCommands, pick: Pick, gfx: &Gfx, stage: usize) 
 }
 
 fn input(
-    mut commands: Commands,
     devices: Res<DeviceIntents>,
     net: Res<crate::net::Net>,
     mut session: ResMut<Session>,
@@ -170,11 +169,7 @@ fn input(
         let (mode, screen) = match PICKS[sel.0] {
             Pick::Classic => (Mode::Classic, Screen::StageSelect),
             Pick::City => (Mode::City, Screen::CityMap),
-            Pick::Versus => {
-                session.stage = 1;
-                commands.insert_resource(crate::game::versus::Match::new(crate::rules::ARMY_BUDGET));
-                (Mode::Versus, Screen::Stage)
-            }
+            Pick::Versus => (Mode::Versus, Screen::VersusSetup),
         };
         session.mode = mode;
         sfx.write(Sfx::MenuPick);

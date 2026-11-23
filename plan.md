@@ -188,7 +188,7 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [x] Title PLAY → mode cards (CLASSIC / CITY RUN / VERSUS, pictures + progress), so the title menu stays short
 - [x] V1 plain duel: `Mode::Versus`, two bases (top base = rotated bottom one), `Team::side`, side hit rules, round
   end, results; 3 hand-drawn point-symmetric maps; title VERSUS with two players joined (offline only until V5).
-  Smoke: `BT_VERSUS=<map>`, `BT_SCREEN=versus`; rounds walk the maps in turn until V3's setup screen
+  Smoke: `BT_VERSUS=<map>`, `BT_SCREEN=versus`
 - [x] Owner: no tank limit, a growing respawn wait instead (1, 3, 5, 7, 10, 15 s, +5 s up to 30 s); a round ends
   only on a base (ADR 0020)
 - [ ] Owner: a couch duel (map feel, respawn waits)
@@ -196,7 +196,10 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
   (other base / nearest hostile tank), side tints, drops, VERSUS power-ups (clock / grenade / shovel by side, tank =
   shorter wait); timed middle drops without armies (`BT_ARMY=0`)
 - [ ] Owner: couch feel of the armies (4 s cadence, 4 alive, NPC aim)
-- [ ] V3 setup + draft: MAP / NPC ARMY / ROUNDS screen, per-player draft cards, rounds and rematch
+- [x] V3 setup + draft: VERSUS SETUP (MAP tiles incl. RANDOM, NPC ARMY OFF/10/20/30, ROUNDS 1/3/5), DRAFT cards
+  per player (counts within the points, AUTO MIX, both ready), best-of rounds, rematch with the same setup (back
+  through the draft). RANDOM picks a pre-made map each round until V4. Smoke `BT_SCREEN=versussetup` / `draft`
+- [ ] Owner: setup and draft on the couch (pads, readability on the TV)
 - [ ] V4 maps: `versus_gen` + validator (symmetry, reachability, base cover, pockets), ~12 in `levels/versus/`, RANDOM
   at runtime from the session seed
 - [ ] V5 LAN versus: setup in `Hello`, new state in `net::snap`, `net::tests` versus world; music pool
