@@ -1,13 +1,13 @@
 # 0019 — VERSUS: a two-player duel, with optional NPC armies
 
-Status: proposed (2026-11-23, owner idea; not built)
+Status: accepted (2026-11-23, owner; not built yet, plan M18)
 
 ## Context
 Every mode is co-op. The owner wants a couch duel: each player defends a base and attacks the other's. Optionally
 each player also brings friendly NPC tanks, bought from a points budget before the duel, which spawn over time and
 fight for their side. The map is either picked from a pre-generated set or generated at random.
 
-## Decision (proposed)
+## Decision
 
 **Field and map**
 - The classic 208 x 208 field. Player 1's base sits bottom centre as now; player 2's is its 180° rotation at top
@@ -90,9 +90,6 @@ fight for their side. The map is either picked from a pre-generated set or gener
 - Player-vs-player kills are new (classic only paralyzes), so the Rumble, Fx and HUD paths need checking.
 - The generator moves from test-only to runtime; its validator must stay fast enough for RANDOM (redraws included).
 
-## Open questions (for the owner)
-1. **Draft or auto armies:** do players pick their NPCs, or does the game pick a mix from the budget?
-2. **Own-base safety:** are bases immune to their own side (proposed), or does the classic rule stay that any shell
-   kills them?
-3. **Time limit:** does a round need one against turtling (e.g. 5 min, then the most kills wins)?
-4. **Power-ups:** are the VERSUS versions of clock, grenade and shovel above fine?
+## Owner's answers (2026-11-23)
+Draft with AUTO; bases immune to their own side; no round time limit (add one only if couch play shows stalls); the
+VERSUS clock, grenade and shovel as above.

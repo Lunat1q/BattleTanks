@@ -184,7 +184,7 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [x] City Run respawns only where the tank can climb on without leaving the view (district 7 pocket, owner)
 - [ ] Owner: couch feel of districts 7-10's bosses
 
-### M18 — VERSUS (planned, ADR 0019 proposed; confirm the open questions before building)
+### M18 — VERSUS (planned, ADR 0019; owner's answers in it)
 - [ ] V1 plain duel: `Mode::Versus`, two bases (top base = rotated bottom one), `Team::side`, side hit rules, round
   end, results; 3 hand-drawn point-symmetric maps; title VERSUS with two players joined
 - [ ] V2 NPC armies: costs (LIGHT 1, SCOUT 2, GUNNER 3, HEAVY 5), budget 20 with an auto mix, spawn cadence, NPC targets
