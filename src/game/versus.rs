@@ -59,8 +59,7 @@ impl Match {
         (self.wins, self.round, self.last) = ([0; 2], 1, None);
     }
 
-    /// The next round's map: the chosen one, or for RANDOM any of them. ponytail: RANDOM picks a pre-made map
-    /// until `versus_gen` draws one (plan M18 V4).
+    /// The next round's map: the chosen one, or for RANDOM any of them.
     pub fn pick_map(&self, rng: &mut Rng) -> usize {
         if self.map > 0 { self.map } else { 1 + rng.below(crate::versus_map::count() as u32) as usize }
     }

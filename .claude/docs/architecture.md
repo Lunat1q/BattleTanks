@@ -33,7 +33,8 @@ src/
   rules.rs            # every gameplay number: speeds, timers, enemy stats, gun levels, scoring    [pure]
   terrain.rs          # 52-wide sub-cell grid, any height; tank blocking, bullet impact strip, Wall/Gate/Secret, base ring, dirty list [pure]
   levels.rs           # parse stage files (row / paint shared with versus_map), force spawns/base clear, rosters, harder laps [pure]
-  versus_map.rs       # VERSUS maps: bottom half -> point-symmetric field, both bases ringed; map rules tested [pure]
+  versus_map.rs       # VERSUS maps: bottom half -> point-symmetric field, both bases ringed; hand-drawn maps + classic
+                      # stage halves that pass `sound` (reach, centre-lane steel, no pockets), built once (ADR 0021) [pure]
   city_map.rs         # parse district files: tall terrain, placed enemies/turrets/minis/boss, gates, stashes; reachable /
                       # climbable (respawn spots that never need going down) [pure]
   city_gen.rs         # test-only: write_city_districts draws levels/city/*.txt from each district's plan (height, turrets,

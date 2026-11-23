@@ -273,12 +273,11 @@ can't be read is never written.
   stretch of street appears twice anywhere in City Run (tested).
 
 ## VERSUS (`game/versus.rs`, `versus_map.rs`, `ui/versus.rs`, ADR 0019, 0020; plan M18)
-Built so far: the duel (V1), NPC armies (V2), setup, draft and rounds (V3).
+Built so far: the duel (V1), NPC armies (V2), setup, draft and rounds (V3), maps from the stages (V4).
 - Title → PLAY → VERSUS with both players joined (offline only for now) opens **VERSUS SETUP** (steel heading; either
-  pad): MAP (a row of tiles: RANDOM "?" and each map's mini-map), NPC ARMY (OFF / 10 / 20 / 30 points, default 20),
+  pad): MAP (tiles in rows of 9: RANDOM "?" and each map's mini-map), NPC ARMY (OFF / 10 / 20 / 30 points, default 20),
   ROUNDS (1, best of 3, best of 5; default 3). Up/down picks a row, left/right changes it, A starts, B back to PLAY.
-  The choices are kept until the game closes. RANDOM picks a map by the gameplay dice each round (pre-made maps until
-  V4's generator).
+  The choices are kept until the game closes. RANDOM picks a map by the gameplay dice each round.
 - With armies on, the **DRAFT** comes next: a card per player, each worked with that player's own pad. Rows LIGHT,
   SCOUT, GUNNER, HEAVY (icon in the side's NPC colour, cost, count) and AUTO MIX; up/down picks, left/right takes one
   off or adds one if the points left allow, A on AUTO MIX fills the mixed army, A elsewhere is READY (B takes it
@@ -288,9 +287,11 @@ Built so far: the duel (V1), NPC armies (V2), setup, draft and rounds (V3).
   equal = a drawn match). Drawn rounds count as played. Player 1 defends the classic
   base at the bottom and starts beside it; player 2 defends the same base turned round at the top and starts at
   the mirrored spot (x 136), facing down. Both bases have the brick ring.
-- Maps `levels/versus/NN.txt` (3 hand-drawn): only the bottom 13 rows; the top half is them turned 180 degrees, so
-  both sides get the same field. Tested on every map: point symmetry, player 1's spawn reaches the top base (bricks
-  open), steel over each ring in the centre lane, no dead-end pockets (as classic).
+- Maps (ADR 0021): a bottom half of 13 rows, the top half being it turned 180 degrees, so both sides get the same
+  field. First the 3 hand-drawn `levels/versus/NN.txt`, then the bottom half of every classic stage that passes the
+  map rules (`versus_map::sound`, checked at startup): player 1's spawn and the NPC corners reach the top base (bricks
+  open), steel over each ring in the centre lane, no dead-end pockets (as classic). 23 of 30 stages pass (not 6, 8,
+  13, 30: centre lane open; not 17, 23, 27: walled off), so 26 maps.
 - Sides: the players' shells always hit each other, whatever FRIENDLY FIRE says, and destroy the tank (level-4
   armour holds once, as against enemies). Shells of the two sides cancel each other. A base takes damage only from
   the other side: your own shell pops on it harmlessly.

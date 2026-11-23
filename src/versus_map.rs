@@ -1,25 +1,81 @@
-//! VERSUS maps (`levels/versus/NN.txt`, baked into the exe; ADR 0019). A file holds only the bottom 13 rows, in
-//! the stage file's cells (`levels`); the top half is the bottom half turned 180 degrees, so cell `(c, r)` = cell
-//! `(25 - c, 25 - r)` and both sides get the same map. Player 1's base, ring and spawn are forced at the bottom
-//! (as in classic) and turned up for player 2. Pure, no ECS.
+//! VERSUS maps (ADR 0019). A map is a bottom half of 13 rows, in the stage file's cells (`levels`); the top half
+//! is it turned 180 degrees, so cell `(c, r)` = cell `(25 - c, 25 - r)` and both sides get the same map. Player 1's
+//! base, ring and spawn are forced at the bottom (as in classic) and turned up for player 2. The maps: the
+//! hand-drawn `levels/versus/NN.txt` first, then the bottom half of every classic stage that passes `sound`
+//! (owner: stage maps mirrored, so there are plenty). Pure, no ECS.
 
 use crate::geom::{CELLS, SUBS};
-use crate::levels::{paint, row};
+use crate::levels::{fits, hard_wall, neighbours, paint, row, steps};
 use crate::terrain::{Terrain, Tile};
+use std::sync::OnceLock;
 
 const MAPS: &[&str] =
     &[include_str!("../levels/versus/01.txt"), include_str!("../levels/versus/02.txt"), include_str!("../levels/versus/03.txt")];
 
+/// Every map, built once: the same list on every machine (LAN).
+fn all() -> &'static [Terrain] {
+    static ALL: OnceLock<Vec<Terrain>> = OnceLock::new();
+    ALL.get_or_init(|| {
+        let drawn = MAPS.iter().enumerate().map(|(i, src)| parse(src).unwrap_or_else(|e| panic!("levels/versus/{:02}.txt: {e}", i + 1)));
+        let stages = (1..=crate::levels::stage_count()).filter_map(|n| parse(&stage_half(crate::levels::source(n))).ok());
+        drawn.chain(stages.filter(|t| sound(t).is_ok())).collect()
+    })
+}
+
 pub fn count() -> usize {
-    MAPS.len()
+    all().len()
 }
 
 /// Map `n` (1-based, wraps).
 pub fn load(n: usize) -> Terrain {
-    let i = (n.max(1) - 1) % MAPS.len();
-    let mut ter = parse(MAPS[i]).unwrap_or_else(|e| panic!("levels/versus/{:02}.txt: {e}", i + 1));
+    let mut ter = all()[(n.max(1) - 1) % count()].clone();
     ter.dirty.clear();
     ter
+}
+
+/// A classic stage file's bottom 13 map rows.
+fn stage_half(src: &str) -> String {
+    let rows: Vec<&str> =
+        src.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with(';') && !l.starts_with("enemies")).collect();
+    rows[rows.len().saturating_sub(CELLS / 2)..].join(
+        "
+",
+    )
+}
+
+/// The VERSUS map rules (player 2's side follows by symmetry):
+/// - player 1 (cell 8, 0) and the NPC corners reach just under player 2's ring (cell rows 23-25, cols 11-14),
+///   bricks open;
+/// - every column over the ring has steel between the halfway line and the ring, as in classic, so nobody shoots a
+///   base straight down the centre lane;
+/// - walking out of any dead end reaches a junction within 4 cells (no pockets), as in classic.
+pub fn sound(ter: &Terrain) -> Result<(), String> {
+    for spawn in [(8, 0), (0, 0), (24, 0)] {
+        if steps(ter, spawn, hard_wall)[21 * CELLS + 12].is_none() {
+            return Err(format!("{spawn:?} is walled off from the top base"));
+        }
+    }
+    if !(22..30).all(|x| (6..SUBS / 2).any(|y| ter.get(x, y) == Tile::Steel)) {
+        return Err("centre lane open to the base".into());
+    }
+    let fit = |x: usize, y: usize| fits(ter, x, y, &hard_wall);
+    let ways = |(x, y): (usize, usize)| neighbours(x, y).filter(|&(x, y)| fit(x, y)).collect::<Vec<_>>();
+    for (x, y) in (0..CELLS).flat_map(|x| (0..CELLS).map(move |y| (x, y))) {
+        if !fit(x, y) || ways((x, y)).len() > 1 {
+            continue;
+        }
+        let (mut prev, mut cur, mut depth) = ((x, y), (x, y), 0);
+        while let [next] = ways(cur).into_iter().filter(|&c| c != prev).collect::<Vec<_>>()[..] {
+            (prev, cur, depth) = (cur, next, depth + 1);
+            if ways(cur).len() > 2 {
+                break;
+            }
+        }
+        if depth > 4 {
+            return Err(format!("dead end at cell {:?} is {depth} cells deep", (x, y)));
+        }
+    }
+    Ok(())
 }
 
 pub fn parse(src: &str) -> Result<Terrain, String> {
@@ -54,40 +110,43 @@ pub fn parse(src: &str) -> Result<Terrain, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::levels::{fits, hard_wall, neighbours, steps};
-
-    fn maps() -> impl Iterator<Item = (String, Terrain)> {
-        MAPS.iter().enumerate().map(|(i, src)| (format!("levels/versus/{:02}.txt", i + 1), parse(src).unwrap()))
-    }
 
     #[test]
-    fn maps_are_point_symmetric_with_both_bases_ringed() {
-        for (name, ter) in maps() {
+    fn every_map_is_point_symmetric_ringed_and_sound() {
+        for n in 1..=count() {
+            let ter = load(n);
             for (x, y) in (0..SUBS).flat_map(|x| (0..SUBS).map(move |y| (x, y))) {
-                assert_eq!(ter.get(x, y), ter.get(SUBS - 1 - x, SUBS - 1 - y), "{name}: sub-cell {x},{y}");
+                assert_eq!(ter.get(x, y), ter.get(SUBS - 1 - x, SUBS - 1 - y), "map {n}: sub-cell {x},{y}");
             }
-            assert!(Terrain::base_ring().all(|(x, y)| ter.get(x, y) == Tile::Brick), "{name}");
+            assert!(Terrain::base_ring().all(|(x, y)| ter.get(x, y) == Tile::Brick), "map {n}");
+            assert_eq!(sound(&ter), Ok(()), "map {n}");
         }
-        assert!(parse("..\n").is_err());
+        for (i, src) in MAPS.iter().enumerate() {
+            assert_eq!(sound(&parse(src).unwrap()), Ok(()), "levels/versus/{:02}.txt", i + 1);
+        }
+        assert!(
+            parse(
+                "..
+"
+            )
+            .is_err()
+        );
     }
 
     #[test]
-    fn every_spawn_can_reach_the_other_base() {
-        // Player 1 (cell 8, 0) and the NPC corners to just under player 2's ring (cell rows 23-25, cols 11-14);
-        // player 2's side by symmetry.
-        for (name, ter) in maps() {
-            for spawn in [(8, 0), (0, 0), (24, 0)] {
-                assert!(steps(&ter, spawn, hard_wall)[21 * CELLS + 12].is_some(), "{name}: {spawn:?} is walled off from the top base");
-            }
-        }
-    }
-
-    #[test]
-    fn steel_covers_each_base_from_the_centre_lane() {
-        // As in classic: every column over the ring has steel between the halfway line and the ring (the top by symmetry).
-        for (name, ter) in maps() {
-            assert!((22..30).all(|x| (6..SUBS / 2).any(|y| ter.get(x, y) == Tile::Steel)), "{name}: centre lane open to the base");
-        }
+    fn classic_stages_add_maps() {
+        let report: Vec<String> = (1..=crate::levels::stage_count())
+            .map(|n| format!("stage {n}: {:?}", parse(&stage_half(crate::levels::source(n))).and_then(|t| sound(&t))))
+            .collect();
+        assert!(
+            count() >= MAPS.len() + 8,
+            "{}",
+            report.join(
+                "
+"
+            )
+        );
+        assert_eq!(stage_half(crate::levels::source(1)).lines().count(), CELLS / 2);
     }
 
     #[test]
@@ -96,27 +155,5 @@ mod tests {
         let (spawn, other) = ((64.0..80.0, 0.0..16.0), (96.0..112.0, 192.0..208.0));
         let apart = |a: &std::ops::Range<f32>, b: &std::ops::Range<f32>| a.end <= b.start || b.end <= a.start;
         assert!(apart(&spawn.0, &other.0) && apart(&spawn.1, &other.1));
-    }
-
-    #[test]
-    fn no_dead_end_pockets() {
-        // Same rule as the classic stages: walking out of any dead end reaches a junction within 4 cells.
-        for (name, ter) in maps() {
-            let fit = |x: usize, y: usize| fits(&ter, x, y, &hard_wall);
-            let ways = |(x, y): (usize, usize)| neighbours(x, y).filter(|&(x, y)| fit(x, y)).collect::<Vec<_>>();
-            for (x, y) in (0..CELLS).flat_map(|x| (0..CELLS).map(move |y| (x, y))) {
-                if !fit(x, y) || ways((x, y)).len() > 1 {
-                    continue;
-                }
-                let (mut prev, mut cur, mut depth) = ((x, y), (x, y), 0);
-                while let [next] = ways(cur).into_iter().filter(|&c| c != prev).collect::<Vec<_>>()[..] {
-                    (prev, cur, depth) = (cur, next, depth + 1);
-                    if ways(cur).len() > 2 {
-                        break;
-                    }
-                }
-                assert!(depth <= 4, "{name}: dead end at cell {:?} is {depth} cells deep", (x, y));
-            }
-        }
     }
 }

@@ -198,10 +198,11 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
 - [ ] Owner: couch feel of the armies (4 s cadence, 4 alive, NPC aim)
 - [x] V3 setup + draft: VERSUS SETUP (MAP tiles incl. RANDOM, NPC ARMY OFF/10/20/30, ROUNDS 1/3/5), DRAFT cards
   per player (counts within the points, AUTO MIX, both ready), best-of rounds, rematch with the same setup (back
-  through the draft). RANDOM picks a pre-made map each round until V4. Smoke `BT_SCREEN=versussetup` / `draft`
+  through the draft). RANDOM picks a map each round. Smoke `BT_SCREEN=versussetup` / `draft`
 - [ ] Owner: setup and draft on the couch (pads, readability on the TV)
-- [ ] V4 maps: `versus_gen` + validator (symmetry, reachability, base cover, pockets), ~12 in `levels/versus/`, RANDOM
-  at runtime from the session seed
+- [x] V4 maps (ADR 0021, owner: mirror the stage maps instead of a generator): every classic stage's bottom half
+  turned for the top, kept if `versus_map::sound` passes (23 of 30), after the 3 hand-drawn: 26 maps; setup tiles
+  in a 9-wide grid; RANDOM picks one per round
 - [ ] V5 LAN versus: setup in `Hello`, new state in `net::snap`, `net::tests` versus world; music pool
 
 ## Current state

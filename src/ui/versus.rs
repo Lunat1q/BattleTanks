@@ -73,12 +73,19 @@ fn spawn_setup(mut commands: Commands, gfx: Res<Gfx>, setup: Res<Setup>, mut hea
         root.spawn(heads.node("VERSUS", Block::Steel, 7.0));
         root.spawn(Node { height: vh(1), ..default() });
         root.spawn((text(setup.line(0), 3.6, INK), MenuLine(0)));
-        root.spawn(Node { column_gap: vh(1.6), ..default() }).with_children(|row| {
+        root.spawn(Node {
+            display: Display::Grid,
+            grid_template_columns: RepeatedGridTrack::auto(9),
+            column_gap: vh(1.2),
+            row_gap: vh(1.2),
+            ..default()
+        })
+        .with_children(|row| {
             for i in 0..=crate::versus_map::count() {
                 row.spawn((
                     Node {
-                        width: vh(16),
-                        height: vh(16),
+                        width: vh(10),
+                        height: vh(10),
                         border: UiRect::all(vh(0.5)),
                         border_radius: BorderRadius::all(vh(1.2)),
                         align_items: AlignItems::Center,
@@ -92,7 +99,7 @@ fn spawn_setup(mut commands: Commands, gfx: Res<Gfx>, setup: Res<Setup>, mut hea
                 ))
                 .with_children(|tile| {
                     if i == 0 {
-                        tile.spawn(text("?", 9.0, GOLD));
+                        tile.spawn(text("?", 6.0, GOLD));
                     } else {
                         tile.spawn((
                             ImageNode::new(gfx.versus_maps[i - 1].clone()),

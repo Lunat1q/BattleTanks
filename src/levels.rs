@@ -166,6 +166,11 @@ pub fn steps(ter: &Terrain, from: (usize, usize), wall: impl Fn(usize, usize, Ti
     dist
 }
 
+/// Stage `n`'s file (1-based).
+pub fn source(n: usize) -> &'static str {
+    STAGES[(n.max(1) - 1) % STAGES.len()]
+}
+
 pub fn stage_count() -> usize {
     STAGES.len()
 }
