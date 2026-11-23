@@ -2,6 +2,20 @@
 
 Shown in the game too, so each line stays short and talks to players.
 
+## 0.7.14 (2026-11-23)
+- New mode VERSUS: a 1 on 1 duel, each player defends a base and attacks the other's
+- Pick the map (26, or RANDOM), NPC army points and best of 1, 3 or 5 rounds
+- Draft your own NPC army (LIGHT, SCOUT, GUNNER, HEAVY) or take an AUTO mix
+- Unlimited tanks, but each loss waits longer to come back; a round ends when a base falls
+- VERSUS power-ups hit the other side: the clock freezes them, a grenade wipes their NPCs
+- VERSUS works over LAN too, with its own music
+- PLAY now opens a card per mode: CLASSIC, CITY RUN, VERSUS
+- Bosses and mini-bosses show a health bar; the district map shows your best clear time
+- A player who is out waits 5 s before borrowing a partner's tank
+- Two-player runs with FRIENDLY FIRE off no longer go to the world board
+- Sharper power-up icons
+- LAN: fewer hiccups (both machines now start every stage on the same tick)
+
 ## 0.7.13 (2026-11-23)
 - Bosses learn new tricks further into the city: an echo barrage (district 3),
 - a sudden rage at low health (5), a brick ring (7) and red lines aimed at you (9)
