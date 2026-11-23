@@ -84,7 +84,7 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Assisted runs stay off the world board: EASY MODE (was KEEP POWER) runs skip the board and achievements (0.7.2).
   Still open: FRIENDLY FIRE off in 2P counts as ranked. Runs sent since 0.4.0 carry no flag, so the boards may hold
   assisted runs
-- [ ] World board live check: server reachable at `scores.maxpodolski.com` (tunnel route + DNS added, key and rules checked live); first real run from the couch still to come
+- [x] World board live check: server reachable at `scores.maxpodolski.com` (tunnel route + DNS added, key and rules checked live; runs sent and boards read from the TV and a phone)
 
 ### M8 — LAN co-op ✅ (v0.5.0, ADR 0014 + 0015)
 - [x] Lockstep over UDP (packed intents, 3-tick delay), hello over TCP; `net::Driver` runs `Update` per tick
@@ -111,7 +111,7 @@ Sunshine/Vibepollo → Moonlight, play with two controllers, classic rules, nice
 - [x] Title → ACHIEVEMENTS: tabs per group, badge rows with points and progress bars, scrollbar (smoke
   `BT_SCREEN=achievements` / `unlocks` with `BT_ACHIEVE=1`); title packs tighter with 8 items
 - [x] Docs, version 0.6.0
-- [ ] Owner: play a few stages on the phone once Play Console has the achievements (Android plan, section M)
+- [x] Owner: play a few stages on the phone once Play Console has the achievements (Android plan, section M; done 2026-11-22)
 
 ### M10 — Title rework (v0.7.0, ADR 0018) ✅
 - [x] Title: no tagline / START / STAGE lines; menu CLASSIC, CITY RUN, LAN CO-OP, HI SCORES, ACHIEVEMENTS, SETTINGS, EXIT
@@ -166,7 +166,8 @@ Every menu / screen heading drawn from terrain cells like the title logo (`gfx/a
   (`CHANGELOG.md`, versions 0.1.0-0.7.9), OST jukebox (24 named tracks, plays on down the list), SOUND TEST
 - [x] Achievement Look Both Ways (10 pts, 950 in all; its description is the riddle), road-crossing badge
 - [x] 0.7.10: A on the playing OST track pauses it, A again resumes (owner)
-- [ ] Owner: rename OST tracks if the names don't fit (`music::NAMES`); import the new achievement in Play Console
+- [x] Owner: import the new achievement in Play Console (2026-11-22)
+- [ ] Owner: rename OST tracks if the names don't fit (`music::NAMES`)
 
 ### M16 — Boss attacks + more music (v0.7.12) ✅
 - [x] Owner's 9 new tracks (slow 5, upbeat slow 1-2, hardfight 3-5, bossfight 3-5), -16 LUFS Vorbis; OST names
