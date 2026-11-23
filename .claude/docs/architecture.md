@@ -80,7 +80,7 @@ src/
     canvas.rs         # SDF painter -> Image; sd_box/rbox/circle/seg/poly, star, tileable noise   [pure]
     art_tanks.rs      # 5 player (star levels 0-4: pips, floats) + 4 enemy tank models x 2 tread frames, mini-boss, boss, turret; grey (tinted by Sprite.color)
     art_world.rs      # brick, steel, water x3, trees, ice, ground, base (alive/destroyed); *_at point painters (+ gold_at)
-    art_icons.rs      # bullet, particle dot, spawn sparkle, shield ring, flag, 6 power-up icons
+    art_icons.rs      # bullet, particle dot, spawn sparkle, shield ring, flag; 6 power-up tiles (48 px pixel art on art_badges::tile)
     world.rs          # terrain sub-cell sprites from the dirty list, water anim, attach/update tank/bullet/base/power-up sprites
     art_title.rs      # block_text: words built from terrain cells (Block: brick, steel, water, ice, trees, gold; art_world's
                       # *_at painters + font glyphs): the title logo (LOGO) and every screen heading; the player cards' frame
@@ -88,7 +88,7 @@ src/
     art_map.rs        # City Run map backdrop (pixel-art night city); classic stage mini-maps (stage_map, one pixel per sub-cell)
     icon.rs           # app icon painter; runtime window/taskbar icon (winit); ICO writer (test-only)
     art_badges.rs     # achievement badges, 32x32 pixel art: plate per group + gold rim, crisp outlined emblem, number tag;
-                      # locked (grey) copies, hidden "?", points gem; badge_sheet test writes a contact sheet
+                      # locked (grey) copies, hidden "?", points gem; tile (power-ups); badge_sheet test writes a contact sheet
     badge_art.rs      # emblems per achievement (flags, shields, tanks drawn for badge size, flames, coins, pranks...)
     badge_city.rs     # City Run emblems: one per district (scarecrow, stall, bridge, church, ironworks, snowflake, anchor,
                       # locomotive, gatehouse, burning citadel) + the City Run extras

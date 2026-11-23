@@ -82,55 +82,67 @@ pub fn flag() -> Image {
     c.into_image()
 }
 
-const INK: C = rgb(0.98, 0.93, 0.78);
+const POWERUP_PX: f32 = 48.0;
 
+/// Power-up tile, 48 x 48 pixel art like the achievement badges (navy plate, gold rim, crisp outlined emblem), shown
+/// with nearest sampling: 3 px per field unit.
 pub fn powerup(kind: PowerKind) -> Image {
-    let mut c = Canvas::new(16.0, 16.0, 8.0);
-    let frame = |p: Vec2| sd_rbox(p, Vec2::ZERO, Vec2::splat(7.6), 2.2);
-    c.paint(|p| frame(p) - 0.6, |_| rgb(0.95, 0.80, 0.35));
-    c.paint(frame, |p| mix(rgb(0.10, 0.14, 0.30), rgb(0.22, 0.30, 0.58), 0.5 + p.y / 16.0));
-    let o = 0.45;
+    use super::badge_art::{self as b, flat, toon, v};
+    // Laid out in the badges' 32 units, painted at 48 px (owner: 32 px read too coarse on the field).
+    let mut c = Canvas::new(32.0, 32.0, POWERUP_PX / 32.0);
     match kind {
         PowerKind::Helmet => {
-            c.outlined(|p| sd_circle(p, Vec2::new(0.0, -1.0), 4.8).max(-p.y - 1.0), o, |p| mix(INK, gray(0.7), -p.x / 5.0));
-            c.outlined(|p| sd_rbox(p, Vec2::new(0.0, -1.6), Vec2::new(5.8, 0.8), 0.4), o, |_| gray(0.8));
+            let at = v(0.0, -3.0);
+            c.paint(|p| sd_circle(p, at, 10.0).max(at.y - p.y), toon(b::LIGHT, at + v(0.0, 4.0), 7.0));
+            c.paint(|p| sd_box(p, at + v(0.0, 6.0), v(1.0, 3.5)).max(sd_circle(p, at, 10.0)), flat(b::STEEL));
+            c.paint(|p| sd_rbox(p, at + v(0.0, -1.0), v(12.0, 2.0), 0.8), toon(b::STEEL, at, 2.0));
+            b::star5(&mut c, at + v(0.0, 4.5), 3.8, b::GOLD);
         }
         PowerKind::Clock => {
-            c.outlined(|p| sd_circle(p, Vec2::ZERO, 5.2), o, |_| INK);
-            c.paint(|p| sd_seg(p, Vec2::ZERO, Vec2::new(0.0, 3.6), 0.5), |_| gray(0.15));
-            c.paint(|p| sd_seg(p, Vec2::ZERO, Vec2::new(2.6, 0.0), 0.5), |_| gray(0.15));
-            for k in 0..12 {
-                let a = k as f32 * TAU / 12.0;
-                c.paint(|p| sd_circle(p, Vec2::from_angle(a) * 4.3, 0.3), |_| gray(0.3));
+            let at = v(0.0, -1.5);
+            c.paint(|p| sd_box(p, at + v(0.0, 11.5), v(2.2, 1.4)), flat(b::GOLD));
+            c.paint(|p| sd_circle(p, at, 10.0), flat(b::GOLD));
+            c.paint(|p| sd_circle(p, at, 8.0), toon(b::WHITE, at, 8.0));
+            for k in 0..4 {
+                let d = Vec2::from_angle(k as f32 * TAU / 4.0);
+                c.paint(|p| sd_box(p, at + d * 6.2, v(0.6, 0.6) + d.abs()), flat(b::DARK));
             }
+            c.paint(|p| sd_seg(p, at, at + v(0.0, 5.5), 0.7), flat(b::DARK));
+            c.paint(|p| sd_seg(p, at, at + v(4.0, 0.0), 0.7), flat(b::RED));
         }
         PowerKind::Shovel => {
-            c.outlined(|p| sd_seg(p, Vec2::new(-4.0, 4.0), Vec2::new(1.0, -1.0), 0.6), o, |_| rgb(0.75, 0.55, 0.32));
-            c.outlined(|p| sd_box(p, Vec2::new(-4.2, 4.2), Vec2::new(1.6, 0.6)), o, |_| rgb(0.75, 0.55, 0.32));
-            let blade = [Vec2::new(0.0, 0.0), Vec2::new(2.6, -2.6), Vec2::new(5.0, -5.6), Vec2::new(2.2, -5.0), Vec2::new(-0.4, -2.4)];
-            c.outlined(|p| sd_poly(p, &blade) - 0.6, o, |_| INK);
+            // Diagonal: T-grip top left, blade pointing bottom right; `uv` = along / across the shaft.
+            let (d, n) = (v(1.0, -1.0).normalize(), v(1.0, 1.0).normalize());
+            let uv = |u: f32, w: f32| v(-1.0, 1.0) + d * u + n * w;
+            c.paint(|p| sd_seg(p, uv(-10.5, 0.0), uv(0.0, 0.0), 1.3), toon(b::WOOD, uv(-5.0, 0.0), 2.0));
+            c.paint(|p| sd_seg(p, uv(-11.0, -3.2), uv(-11.0, 3.2), 1.3), flat(b::WOOD));
+            let blade = [uv(0.0, -4.5), uv(7.0, -4.5), uv(12.0, 0.0), uv(7.0, 4.5), uv(0.0, 4.5)];
+            c.paint(|p| sd_poly(p, &blade), toon(b::STEEL, uv(5.0, 0.0), 5.0));
+            c.paint(|p| sd_seg(p, uv(1.0, 0.0), uv(7.5, 0.0), 0.6), flat(shade(b::STEEL, 0.65)));
         }
-        PowerKind::Star => {
-            let pts = star(Vec2::new(0.0, -0.3), 6.0, 2.5, 5);
-            c.outlined(|p| sd_poly(p, &pts), o, |p| mix(rgb(1.0, 0.92, 0.5), rgb(1.0, 0.65, 0.2), 0.5 - p.y / 10.0));
-        }
-        PowerKind::Grenade => {
-            c.outlined(
-                |p| sd_circle(p, Vec2::new(0.0, -1.2), 4.4),
-                o,
-                |p| mix(rgb(0.45, 0.6, 0.3), rgb(0.25, 0.35, 0.15), p.x / 8.0 + 0.5),
-            );
-            c.outlined(|p| sd_box(p, Vec2::new(0.0, 3.6), Vec2::new(1.5, 1.0)), o, |_| gray(0.7));
-            c.paint(|p| sd_circle(p, Vec2::new(2.6, 4.6), 1.2).abs() - 0.35, |_| INK);
-        }
-        PowerKind::Tank => {
-            c.outlined(|p| sd_rbox(p, Vec2::new(0.0, -1.5), Vec2::new(5.5, 2.5), 1.0), o, |_| INK);
-            c.outlined(|p| sd_circle(p, Vec2::new(-0.5, 1.6), 2.2), o, |_| INK);
-            c.outlined(|p| sd_box(p, Vec2::new(3.2, 2.0), Vec2::new(3.0, 0.5)), o, |_| INK);
-            for k in 0..4 {
-                c.paint(|p| sd_circle(p, Vec2::new(-3.6 + k as f32 * 2.4, -2.0), 0.7), |_| gray(0.3));
-            }
+        PowerKind::Star => b::star5(&mut c, v(0.0, -0.8), 12.5, b::GOLD),
+        PowerKind::Grenade => b::grenade(&mut c, v(0.0, -2.0)),
+        PowerKind::Tank => b::tank(&mut c, v(0.0, 0.0), 19.0, rgb(0.42, 0.86, 0.48), true),
+    }
+    super::art_badges::tile(&c)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn powerup_tiles_are_48_px_and_all_differ() {
+        let tiles: Vec<Vec<u8>> = PowerKind::ALL
+            .iter()
+            .map(|&k| {
+                let img = powerup(k);
+                assert_eq!((img.width(), img.height()), (48, 48));
+                img.data.unwrap()
+            })
+            .collect();
+        for (i, a) in tiles.iter().enumerate() {
+            assert!(tiles[i + 1..].iter().all(|b| a != b), "tile {i} repeats");
         }
     }
-    c.into_image()
 }

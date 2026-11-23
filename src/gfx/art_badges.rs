@@ -60,6 +60,11 @@ pub fn hidden() -> Image {
     image(hidden_pixels(), PX)
 }
 
+/// Emblem `c` (32 x 32, 1 px per unit) on a navy plate: a power-up tile, same pixel style as the badges.
+pub fn tile(c: &Canvas) -> Image {
+    image(compose(rgb(0.14, 0.20, 0.44), c).into_iter().flatten().collect(), c.size().0 as usize)
+}
+
 /// The points diamond next to each row's points.
 pub fn gem() -> Image {
     const ROWS: [&str; 9] =
@@ -96,8 +101,7 @@ fn to8(c: C) -> [u8; 4] {
 
 /// Plate: rounded square, dark outline, a gold rim lit from the top left, a dark groove, then the face in three
 /// bands (light top, dark bottom) with a checker dither where the bands meet.
-fn plate(base: C) -> Px {
-    let n = PX as i32;
+fn plate(base: C, n: i32) -> Px {
     let gold = rgb(1.0, 0.80, 0.30);
     (0..n * n)
         .map(|i| {
@@ -128,10 +132,10 @@ fn plate(base: C) -> Px {
 
 /// Emblem `c` made crisp (no half-covered pixels), outlined, shadowed and laid on the plate.
 fn compose(base: C, c: &Canvas) -> Px {
-    let mut out = plate(base);
+    let n = c.size().0 as i32;
+    let mut out = plate(base, n);
     let raw = c.rgba8();
     let glyph: Px = raw.chunks(4).map(|p| if p[3] >= 110 { [p[0], p[1], p[2], 255] } else { [0; 4] }).collect();
-    let n = PX as i32;
     let solid = |x: i32, y: i32| x >= 0 && y >= 0 && x < n && y < n && glyph[(y * n + x) as usize][3] > 0;
     let inked = |x: i32, y: i32| solid(x, y) || [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(|(dx, dy)| solid(x + dx, y + dy));
     for y in 0..n {

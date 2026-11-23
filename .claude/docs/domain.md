@@ -59,6 +59,7 @@ All numbers live in `src/rules.rs` unless noted.
 Classic drops land on open ground (no brick, steel or water) that a tank can reach from player 1's spawn without
 crossing steel or water (tested). Helmet (shield 10 s) · Clock (enemies freeze 10 s, tinted icy) · Shovel (steel base ring 20 s, blinks back to
 brick in the last 3 s) · Star (+1 level) · Grenade (destroys all enemies on the field, no points) · Tank (+1 life).
+Their icons are 48 px pixel art in the badges' style (navy plate, gold rim, outlined emblem; owner: 32 px too coarse).
 
 ## Screen headings (`gfx/art_title.rs` `block_text`, `ui::Headings`)
 Every screen heading is built from terrain blocks like the logo, one 5x7 glyph pixel per 8-unit cell: CLASSIC brick,
